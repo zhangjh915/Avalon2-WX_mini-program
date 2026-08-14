@@ -17,8 +17,39 @@ function cleanName(value) {
   return String(value || "").trim().slice(0, 12) || "无名骑士"
 }
 
-function makeCode() {
-  return String(Math.floor(100000 + Math.random() * 900000))
+// 房间存活时长；超时后房间码可被回收，加入时也不再命中。
+// 注意：avalon_rooms 需要为 code 建立索引，否则房间数增长后查重会变慢。
+const ROOM_TTL_MS = 12 * 60 * 60 * 1000
+
+function roomUsable(room, now) {
+  if (!room) return false
+  if (room.status === "finished") return false
+  return !room.expiresAt || Number(room.expiresAt) > now
+}
+
+// 按房间码取当前有效房间。历史上同一房间码可能被多次分配，
+// 这里同时返回“只找到已失效房间”的情形，便于给出更准确的提示。
+async function roomsByCode(code, now) {
+  const result = await rooms.where({ code: String(code || "") }).limit(20).get()
+  const all = result.data || []
+  const usable = all.filter(room => roomUsable(room, now))
+  usable.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+  return { room: usable[0] || null, onlyStale: !usable.length && all.length > 0 }
+}
+
+// 随机生成房间码并查重，避免与仍然有效的房间冲突。
+async function allocateCode(now) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    const found = await roomsByCode(code, now)
+    if (!found.room) return code
+  }
+  fail("房间码暂时分配不出来，请稍后重试")
+}
+
+// 测试玩家相关能力只在开发版房间开放，避免正式对局被误触破坏。
+function requireDevRoom(room) {
+  if (!room || !room.devMode) fail("测试玩家功能仅在开发版可用")
 }
 
 const tableRegions = ["top", "right", "bottom", "left"]
@@ -51,11 +82,16 @@ function publicSettings(payload) {
   }
 }
 
+// 房间被清理或 id 失效时，给出稳定文案，方便客户端识别并把玩家送回首页，
+// 而不是落到「服务器开小差了」这种无法处理的兜底错误里。
+const ROOM_GONE_MESSAGE = "房间不存在或已结束"
+
 async function loadState(roomId) {
   const [roomResult, secretResult] = await Promise.all([
-    rooms.doc(roomId).get(),
-    secrets.doc(roomId).get()
+    rooms.doc(roomId).get().catch(() => ({ data: null })),
+    secrets.doc(roomId).get().catch(() => ({ data: null }))
   ])
+  if (!roomResult.data || !secretResult.data) fail(ROOM_GONE_MESSAGE)
   return { room: roomResult.data, secret: secretResult.data }
 }
 
@@ -65,8 +101,9 @@ async function transactState(roomId, handler) {
       return await db.runTransaction(async transaction => {
         const transactionRooms = transaction.collection("avalon_rooms")
         const transactionSecrets = transaction.collection("avalon_game_secrets")
-        const room = (await transactionRooms.doc(roomId).get()).data
-        const secret = (await transactionSecrets.doc(roomId).get()).data
+        const room = (await transactionRooms.doc(roomId).get().catch(() => ({ data: null }))).data
+        const secret = (await transactionSecrets.doc(roomId).get().catch(() => ({ data: null }))).data
+        if (!room || !secret) fail(ROOM_GONE_MESSAGE)
         return handler({ room, secret }, transactionRooms.doc(roomId), transactionSecrets.doc(roomId))
       })
     } catch (error) {
@@ -109,7 +146,7 @@ function resultView(room, secret, openid) {
       return player && player.bot
     })
     const botHunter = secret.players.find(player => player.role === "hunter" && player.bot)
-    privateView.canControlBotHunter = !!botHunter
+    privateView.canControlBotHunter = !!botHunter && !!room.devMode
   }
   return {
     room: safeRoom,
@@ -218,12 +255,14 @@ async function createRoom(event, openid) {
   if (playerCount < 5 || playerCount > 10) fail("当前支持5至10人局")
   const tableType = event.tableType === "round" ? "round" : "long"
   const seatLayout = seatLayoutFor(playerCount, tableType, event.seatLayout, event.tableSides)
-  const code = makeCode()
   const now = Date.now()
+  const code = await allocateCode(now)
   const roomData = {
+    schemaVersion: 1,
     code,
     status: "lobby",
     playerCount,
+    devMode: !!event.devMode,
     settings: publicSettings(event),
     tableType,
     tableTypeName: tableType === "long" ? "长桌" : "圆桌",
@@ -232,7 +271,8 @@ async function createRoom(event, openid) {
     phase: "lobby",
     game: {},
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    expiresAt: now + ROOM_TTL_MS
   }
   const created = await rooms.add({ data: roomData })
   await secrets.doc(created._id).set({
@@ -248,11 +288,10 @@ async function createRoom(event, openid) {
 }
 
 async function findRoom(event, openid) {
-  const result = await rooms.where({ code: String(event.code || "") }).limit(1).get()
-  if (!result.data.length) return { room: null }
-  const room = result.data[0]
-  const secret = (await secrets.doc(room._id).get()).data
-  return { room, isHost: isHost(secret, openid) }
+  const found = await roomsByCode(event.code, Date.now())
+  if (!found.room) return { room: null, reason: found.onlyStale ? "expired" : "notFound" }
+  const secret = (await secrets.doc(found.room._id).get()).data
+  return { room: found.room, isHost: isHost(secret, openid) }
 }
 
 async function getState(event, openid) {
@@ -288,6 +327,7 @@ async function takeSeat(event, openid) {
 async function fillBots(event, openid) {
   return transactState(event.roomId, async (state, roomDoc) => {
     requireHost(state.secret, openid)
+    requireDevRoom(state.room)
     if (state.room.status !== "lobby") fail("游戏已经开始")
     const seats = state.room.seats.map(seat => seat.name ? seat : { ...seat, name: `测试骑士${seat.seatNo}`, bot: true })
     await roomDoc.update({ data: { seats, updatedAt: Date.now() } })
@@ -417,10 +457,14 @@ async function missionAction(event, openid) {
 async function submitVote(event, openid, botPlayerId) {
   return transactState(event.roomId, async (state, roomDoc, secretDoc) => {
     const game = state.room.game
+    // 权限校验先于状态校验：正式房间不该因为“阶段不对”才拒绝测试能力。
+    if (botPlayerId) {
+      requireHost(state.secret, openid)
+      requireDevRoom(state.room)
+    }
     if (state.room.phase !== "vote") fail("当前不是任务投票阶段")
     let player = null
     if (botPlayerId) {
-      requireHost(state.secret, openid)
       player = core.getPlayer(state.secret, botPlayerId)
       if (!player || !player.bot) fail("该座位不是测试玩家")
     } else player = requirePlayer(state.secret, openid)
@@ -456,6 +500,7 @@ async function submitVote(event, openid, botPlayerId) {
 async function submitBotVotes(event, openid) {
   return transactState(event.roomId, async (state, roomDoc, secretDoc) => {
     requireHost(state.secret, openid)
+    requireDevRoom(state.room)
     const game = state.room.game
     if (state.room.phase !== "vote") fail("当前不是任务投票阶段")
     const roundVotes = state.secret.votes[String(game.round)] || {}
@@ -621,7 +666,7 @@ async function finaleAction(event, openid) {
   }
   if (event.action === "hunterDecision") {
     const hunter = core.getPlayer(state.secret, state.secret.finalHunterId)
-    const controlsBotHunter = !!(hunter && hunter.bot && isHost(state.secret, openid))
+    const controlsBotHunter = !!(hunter && hunter.bot && state.room.devMode && isHost(state.secret, openid))
     if ((player.id !== state.secret.finalHunterId && !controlsBotHunter) || final.stage !== "hunterDecision") fail("只有盲眼杀手可以做出该决定")
     if (final.trigger === "goodMissions" && !event.hunt) fail("正义方三次任务成功后必须发动猎杀")
     if (event.hunt) {
@@ -632,7 +677,7 @@ async function finaleAction(event, openid) {
   }
   if (event.action === "hunterTargets") {
     const hunter = core.getPlayer(state.secret, state.secret.finalHunterId)
-    const controlsBotHunter = !!(hunter && hunter.bot && isHost(state.secret, openid))
+    const controlsBotHunter = !!(hunter && hunter.bot && state.room.devMode && isHost(state.secret, openid))
     if ((player.id !== state.secret.finalHunterId && !controlsBotHunter) || final.stage !== "hunterTargets") fail("当前不能提交猎杀目标")
     const targets = (event.targets || []).map(Number)
     if (targets.length !== 2 || new Set(targets).size !== 2) fail("请选择两位不同玩家")
@@ -694,8 +739,7 @@ async function getResult(event, openid) {
   }
 }
 
-exports.main = async event => {
-  const openid = cloud.getWXContext().OPENID
+async function dispatch(event, openid) {
   switch (event.action) {
     case "createRoom": return createRoom(event, openid)
     case "findRoom": return findRoom(event, openid)
@@ -727,5 +771,29 @@ exports.main = async event => {
     case "finalIdentify": return finaleAction(event, openid)
     case "getResult": return getResult(event, openid)
     default: fail("未知游戏操作")
+  }
+}
+
+exports.main = async event => {
+  const openid = cloud.getWXContext().OPENID
+  try {
+    return await dispatch(event, openid)
+  } catch (error) {
+    // 规则错误的文案本身就是写给玩家看的，原样抛出。
+    if (error && error.code === "AVALON_RULE_ERROR") throw error
+    // 其余错误（数据库、网络、代码缺陷）可能带很长的堆栈，
+    // 完整信息只留在云端日志，客户端只拿到短提示和可排查的 trace id。
+    const traceId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+    console.error("[avalonGame] 未预期错误", JSON.stringify({
+      traceId,
+      action: event && event.action,
+      roomId: event && event.roomId,
+      openid,
+      message: error && error.message,
+      stack: error && error.stack
+    }))
+    const wrapped = new Error(`服务器开小差了，请重试（${traceId}）`)
+    wrapped.code = "AVALON_INTERNAL_ERROR"
+    throw wrapped
   }
 }

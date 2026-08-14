@@ -187,6 +187,7 @@ function publicPlayer(player) {
     id: player.id,
     name: player.name,
     title: player.title,
+    bot: !!player.bot,
     hasLed: player.hasLed,
     hadAmulet: player.hadAmulet,
     fadedAmulet: player.fadedAmulet,

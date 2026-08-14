@@ -1,6 +1,7 @@
 const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
+const env = require("../../utils/env")
 
 Page({
   data: {
@@ -8,6 +9,7 @@ Page({
     room: null,
     playerName: "",
     isHost: false,
+    devMode: false,
     mySeatNo: 0,
     seatedCount: 0,
     tableType: "round",
@@ -42,11 +44,26 @@ Page({
     this.startPolling()
   },
 
-  onUnload() { if (this.pollTimer) clearInterval(this.pollTimer) },
+  onUnload() { this.stopPolling() },
+
+  // 切后台时停止轮询省流量，回到前台立刻补一次拉取，
+  // 不必等下一个轮询周期才恢复到最新状态。
+  onShow() {
+    if (!this.data.roomId || this.fatalHandled) return
+    this.startPolling()
+    this.loadRoom(false)
+  },
+
+  onHide() { this.stopPolling() },
 
   startPolling() {
-    if (this.pollTimer) clearInterval(this.pollTimer)
+    this.stopPolling()
     this.pollTimer = setInterval(() => this.loadRoom(false), 1200)
+  },
+
+  stopPolling() {
+    if (this.pollTimer) clearInterval(this.pollTimer)
+    this.pollTimer = null
   },
 
   loadRoom(showError) {
@@ -57,8 +74,25 @@ Page({
       if (generation !== this.stateGeneration || this.data.writing) return
       this.applyState(result)
     }).catch(error => {
+      if (this.handleRoomGone(error)) return
       if (showError) this.showWriteError(error)
     }).finally(() => { this.loading = false })
+  },
+
+  // 房间被清理或已结束时，轮询会一直失败；直接停下并送玩家回首页。
+  handleRoomGone(error) {
+    if (!/房间不存在|已结束/.test(error && error.message || "")) return false
+    if (this.fatalHandled) return true
+    this.fatalHandled = true
+    this.stopPolling()
+    wx.showModal({
+      title: "房间已失效",
+      content: "这个房间不存在或已经结束。",
+      confirmText: "返回首页",
+      showCancel: false,
+      complete: () => wx.reLaunch({ url: "/pages/index/index" })
+    })
+    return true
   },
 
   applyState(result) {
@@ -101,6 +135,8 @@ Page({
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
       isHost: !!result.isHost,
+      // 测试玩家入口只在开发版房间且当前也跑在开发版时出现
+      devMode: !!room.devMode && env.isDevBuild(),
       mySeatNo: mySeat ? mySeat.seatNo : 0,
       seatedCount: seats.filter(seat => seat.name).length,
       settingsSummary: settings.length ? settings.join(" · ") : "基础规则",

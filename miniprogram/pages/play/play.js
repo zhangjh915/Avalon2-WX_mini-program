@@ -3,6 +3,7 @@ const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const roleGuideData = require("../../data/roleGuides")
 const ttsData = require("../../data/ttsLines")
+const env = require("../../utils/env")
 
 const phaseNames = {
   reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
@@ -34,7 +35,7 @@ Page({
     finalClock: "5:00", lastMission: null, myInTeam: false,
     canVoteSuccess: false, canVoteFail: false, canClaimGood: false, canClaimEvil: false,
     hunterVoteValue: "", traitorSide: "", traitorTargets: [],
-    hasBots: false, botPlayers: [], debugVisible: false, syncing: false,
+    hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -52,13 +53,34 @@ Page({
   onLoad(options) {
     this.setData({ roomId: options.roomId })
     this.loadState(true)
+    this.startTimers()
+  },
+
+  // 切后台停表，回到前台立刻补一次拉取：锁屏或切微信聊天回来后
+  // 不用等下一个轮询周期，也能马上追上其他玩家的进度。
+  onShow() {
+    if (!this.data.roomId || this.fatalHandled) return
+    this.startTimers()
+    this.loadState(false)
+  },
+
+  onHide() { this.stopTimers() },
+
+  startTimers() {
+    this.stopTimers()
     this.pollTimer = setInterval(() => this.loadState(false), 900)
     this.clockTimer = setInterval(() => this.updateClock(), 200)
   },
 
-  onUnload() {
+  stopTimers() {
     if (this.pollTimer) clearInterval(this.pollTimer)
     if (this.clockTimer) clearInterval(this.clockTimer)
+    this.pollTimer = null
+    this.clockTimer = null
+  },
+
+  onUnload() {
+    this.stopTimers()
     if (this.ceremonyTimer) clearTimeout(this.ceremonyTimer)
     if (this.nightTimer) clearTimeout(this.nightTimer)
     if (this.selectionTimer) clearTimeout(this.selectionTimer)
@@ -72,8 +94,25 @@ Page({
       if (generation !== this.stateGeneration || this.data.syncing) return
       this.applyState(result)
     }).catch(error => {
+      if (this.handleRoomGone(error)) return
       if (showError) this.showError(error)
     }).finally(() => { this.loading = false })
+  },
+
+  // 房间被清理或已结束时轮询会持续失败，停表并把玩家送回首页。
+  handleRoomGone(error) {
+    if (!/房间不存在|已结束/.test(error && error.message || "")) return false
+    if (this.fatalHandled) return true
+    this.fatalHandled = true
+    this.stopTimers()
+    wx.showModal({
+      title: "房间已失效",
+      content: "这个房间不存在或已经结束。",
+      confirmText: "返回首页",
+      showCancel: false,
+      complete: () => wx.reLaunch({ url: "/pages/index/index" })
+    })
+    return true
   },
 
   applyState(result) {
@@ -100,6 +139,12 @@ Page({
       canInspect: !player.hadAmulet && !player.fadedAmulet && (!game.amulet || player.id !== game.amulet.ownerId)
     }))
     const leader = decoratedPlayers.find(player => player.id === game.leaderId) || null
+    // 测试玩家能力只在「开发版房间 + 当前也跑在开发版」时开放；
+    // 服务端对同一条件另有独立校验，客户端这里只负责不显示入口。
+    const devMode = !!room.devMode && env.isDevBuild()
+    const pendingBots = decoratedPlayers.filter(player => player.bot
+      && game.current.team.indexOf(player.id) >= 0
+      && (privateView.botVotedIds || []).indexOf(player.id) < 0)
     const identity = game.identity || { readyIds: [], rememberedIds: [] }
     const amulet = game.amulet || null
     const myRole = privateView.role ? gameUtil.getRoleInfo(privateView.role) : null
@@ -126,7 +171,8 @@ Page({
       nightCeremony, nightStep, currentNightLine: nightCeremony[nightStep] || {},
       nightDirective: ttsData.pickNightDisplay(Number(game.firstLeaderId || 0) + Number(game.playerCount || 0)),
       leader, isLeader: privateView.id === game.leaderId,
-      canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && leader.name.indexOf("测试骑士") === 0),
+      devMode,
+      canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode),
       missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
       missionTrack: this.buildMissionTrack(game), decoratedPlayers,
       tableOrientation: tableGeometry.orientation,
@@ -145,9 +191,9 @@ Page({
       myInTeam: game.current.team.indexOf(privateView.id) >= 0,
       canVoteSuccess: (privateView.voteOptions || []).indexOf("success") >= 0,
       canVoteFail: (privateView.voteOptions || []).indexOf("fail") >= 0,
-      hasBots: decoratedPlayers.some(player => player.name.indexOf("测试骑士") === 0 && game.current.team.indexOf(player.id) >= 0 && (privateView.botVotedIds || []).indexOf(player.id) < 0),
-      botPlayers: decoratedPlayers.filter(player => player.name.indexOf("测试骑士") === 0 && game.current.team.indexOf(player.id) >= 0 && (privateView.botVotedIds || []).indexOf(player.id) < 0),
-      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && leader.name.indexOf("测试骑士") === 0))) : this.data.tableVisible,
+      hasBots: devMode && pendingBots.length > 0,
+      botPlayers: devMode ? pendingBots : [],
+      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode))) : this.data.tableVisible,
       tableMode: phaseChanged && room.phase === "mission" ? "team" : this.data.tableMode,
       tableTitle: phaseChanged && room.phase === "mission" ? "选择同行骑士" : this.data.tableTitle,
       tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名同行骑士` : this.data.tableHint,
@@ -537,7 +583,7 @@ Page({
     this.setData({ syncing: true })
     actions.reduce((promise, item) => promise.then(() => roomStore.action(this.data.roomId, item[0], item[1])), Promise.resolve())
       .then(result => this.applyState(result)).catch(error => {
-        this.showError(error)
+        if (!this.handleRoomGone(error)) this.showError(error)
         this.stateGeneration += 1
       }).finally(() => this.setData({ syncing: false }))
   },
@@ -552,7 +598,7 @@ Page({
       this.applyState(result)
       if (successAfter) this.setData(successAfter)
     }).catch(error => {
-      this.showError(error)
+      if (!this.handleRoomGone(error)) this.showError(error)
       this.stateGeneration += 1
     }).finally(() => {
       this.setData({ syncing: false, ...(after || {}) })

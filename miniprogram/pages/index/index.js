@@ -1,6 +1,7 @@
 const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
+const env = require("../../utils/env")
 
 Page({
   data: {
@@ -321,7 +322,9 @@ Page({
       unknownRoles: this.data.unknownRoles,
       hunterVoteVariant: this.data.hunterVoteVariant,
       tableType: this.data.tableType,
-      seatLayout: this.data.tableType === "long" ? this.data.seatLayout : null
+      seatLayout: this.data.tableType === "long" ? this.data.seatLayout : null,
+      // 房间在创建时就固定是否为开发房间，之后不再允许改变
+      devMode: env.isDevBuild()
     }).then(({ roomId }) => {
       wx.hideLoading()
       wx.navigateTo({ url: `/pages/room/room?roomId=${roomId}&name=${encodeURIComponent(this.data.playerName)}` })
@@ -336,9 +339,12 @@ Page({
       return
     }
     wx.showLoading({ title: "查找房间" })
-    roomStore.findRoomByCode(code).then(room => {
+    roomStore.findRoomByCode(code).then(({ room, reason }) => {
       wx.hideLoading()
-      if (!room) return wx.showToast({ title: "房间不存在", icon: "none" })
+      if (!room) {
+        const title = reason === "expired" ? "房间已结束或过期" : "房间不存在"
+        return wx.showToast({ title, icon: "none" })
+      }
       this.setData({ joinPadVisible: false })
       wx.navigateTo({ url: `/pages/room/room?roomId=${room._id}&name=${encodeURIComponent(this.data.playerName)}` })
     }).catch(error => this.showError("加入失败", error))

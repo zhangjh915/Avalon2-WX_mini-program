@@ -161,7 +161,8 @@ async function createStartedRoom(playerCount, roleCounts, options) {
     roleCounts: roleCounts || gameUtil.buildDefaultRoleCounts(playerCount, false),
     unknownRoles: !!(options && options.unknownRoles),
     hunterVoteVariant: !!(options && options.hunterVoteVariant),
-    tableType: options && options.tableType || "round"
+    tableType: options && options.tableType || "round",
+    devMode: true
   })
   await action("takeSeat", { roomId: created.roomId, seatNo: 1, name: "房主" })
   await action("fillBots", { roomId: created.roomId })
@@ -618,7 +619,101 @@ async function testHunterVoteVariant() {
   assert.ok(["hunterTargets", "identify", "resolved"].includes(room(roomId).game.final.stage))
 }
 
+// 正式版房间（devMode 未开）必须拒绝一切测试玩家能力，
+// 否则正式对局可能被误触破坏。
+async function testDevModeGating() {
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 5,
+    roleCounts: gameUtil.buildDefaultRoleCounts(5, false),
+    tableType: "round"
+  })
+  assert.strictEqual(room(created.roomId).devMode, false, "未声明 devMode 的房间应为正式房间")
+  await action("takeSeat", { roomId: created.roomId, seatNo: 1, name: "房主" })
+  await expectFailure(action("fillBots", { roomId: created.roomId }), /仅在开发版可用/)
+  await expectFailure(action("submitBotVotes", { roomId: created.roomId }), /仅在开发版可用/)
+  await expectFailure(
+    action("submitBotVote", { roomId: created.roomId, playerId: 2, value: "success" }),
+    /仅在开发版可用/
+  )
+}
+
+// 房间码必须唯一，且失效房间不能再被加入。
+async function testRoomCodeLifecycle() {
+  cloudMock.reset()
+  const make = () => action("createRoom", {
+    playerCount: 5,
+    roleCounts: gameUtil.buildDefaultRoleCounts(5, false),
+    tableType: "round",
+    devMode: true
+  })
+
+  const codes = new Set()
+  for (let index = 0; index < 12; index += 1) codes.add((await make()).code)
+  assert.strictEqual(codes.size, 12, "同时有效的房间码不能重复")
+
+  const target = await make()
+  assert.strictEqual((await action("findRoom", { code: target.code })).room._id, target.roomId)
+
+  // 过期房间不再被命中，并且能区分“过期”和“不存在”
+  room(target.roomId).expiresAt = Date.now() - 1
+  const expired = await action("findRoom", { code: target.code })
+  assert.strictEqual(expired.room, null, "过期房间不应被加入")
+  assert.strictEqual(expired.reason, "expired")
+  assert.strictEqual((await action("findRoom", { code: "000000" })).reason, "notFound")
+
+  // 过期后房间码可以被新房间复用，且复用后能正确命中新房间
+  const reused = await action("createRoom", {
+    playerCount: 5,
+    roleCounts: gameUtil.buildDefaultRoleCounts(5, false),
+    tableType: "round",
+    devMode: true
+  })
+  room(reused.roomId).code = target.code
+  const found = await action("findRoom", { code: target.code })
+  assert.strictEqual(found.room._id, reused.roomId, "应命中仍然有效的新房间")
+
+  // 已结束的房间同样不该被加入
+  room(reused.roomId).status = "finished"
+  assert.strictEqual((await action("findRoom", { code: target.code })).room, null)
+}
+
+// 房间失效必须是客户端可识别的稳定文案，才能把玩家送回首页。
+async function testMissingRoomMessage() {
+  cloudMock.reset()
+  for (const name of ["getState", "takeSeat", "startGame"]) {
+    let error = null
+    try { await action(name, { roomId: "不存在的房间", seatNo: 1, name: "甲" }) } catch (caught) { error = caught }
+    assert.ok(error, `${name} 操作不存在的房间应当失败`)
+    assert.strictEqual(error.code, "AVALON_RULE_ERROR", `${name} 应返回规则错误`)
+    assert.match(error.message, /房间不存在或已结束/)
+  }
+}
+
+// 非规则类错误（数据库、代码缺陷）不能把堆栈直接抛给客户端。
+async function testInternalErrorSanitized() {
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 5,
+    roleCounts: gameUtil.buildDefaultRoleCounts(5, false),
+    tableType: "round"
+  })
+  // 构造一个真实的内部故障：座位数据损坏会让 seats.map 抛 TypeError
+  room(created.roomId).seats = null
+  let error = null
+  try { await action("takeSeat", { roomId: created.roomId, seatNo: 1, name: "甲" }) } catch (caught) { error = caught }
+  assert.ok(error, "损坏的房间数据应当导致失败")
+  assert.strictEqual(error.code, "AVALON_INTERNAL_ERROR")
+  assert.match(error.message, /服务器开小差了/)
+  assert.ok(!/TypeError|null|seats|at Object/.test(error.message), "不能泄露底层错误细节")
+  assert.ok(error.message.length < 60, "面向玩家的错误文案必须简短")
+}
+
 async function run() {
+  await testDevModeGating()
+  await testRoomCodeLifecycle()
+  await testMissingRoomMessage()
+  await testInternalErrorSanitized()
   for (const playerCount of [5, 6, 7, 8, 9, 10]) await playFiveRoundGame(playerCount)
   await testHumanAmuletFlow()
   await testInvalidClicks()

@@ -75,7 +75,7 @@ async function run() {
     const before = await state(roomId)
     const game = before.room.game
     const eligibleBots = game.players.filter(player => {
-      return player.name.indexOf("测试骑士") === 0 && !player.hasLed && !player.hadAmulet
+      return player.bot && !player.hasLed && !player.hadAmulet
     })
     const nextLeader = eligibleBots[0]
     assert.ok(nextLeader, "缺少可接任的测试队长")
@@ -116,7 +116,8 @@ async function run() {
       unknownRoles: false,
       hunterVoteVariant: false,
       tableType: "long",
-      seatLayout: { top: 3, right: 1, bottom: 3, left: 1 }
+      seatLayout: { top: 3, right: 1, bottom: 3, left: 1 },
+      devMode: true
     })
     const roomId = created.roomId
 
@@ -148,7 +149,7 @@ async function run() {
 
     current = await state(roomId)
     const botIds = current.room.game.players
-      .filter(player => player.name.indexOf("测试骑士") === 0)
+      .filter(player => player.bot)
       .map(player => player.id)
     assert.strictEqual(botIds.length, 7)
 

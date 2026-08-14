@@ -11,7 +11,14 @@ function deferred() {
 async function run() {
   let definition = null
   global.Page = value => { definition = value }
-  global.wx = { showToast() {}, redirectTo() {} }
+  const modals = []
+  const relaunched = []
+  global.wx = {
+    showToast() {},
+    redirectTo() {},
+    reLaunch(options) { relaunched.push(options.url) },
+    showModal(options) { modals.push(options); if (options.complete) options.complete() }
+  }
 
   const roomStore = require("../miniprogram/utils/roomStore")
   const originalGetState = roomStore.getState
@@ -30,7 +37,9 @@ async function run() {
     setData(patch) { Object.assign(this.data, patch) },
     applyState(result) { applied.push(result) },
     showError() {},
-    loadState: definition.loadState
+    loadState: definition.loadState,
+    handleRoomGone: definition.handleRoomGone,
+    stopTimers: definition.stopTimers
   }
 
   const readPromise = definition.loadState.call(page, false)
@@ -58,6 +67,27 @@ async function run() {
   failedAction.reject(new Error("network"))
   await failurePromise
   assert.strictEqual(page.data.tableVisible, true, "failed writes keep the current sheet open for retry")
+
+  // 房间失效：必须停表、只弹一次窗，并把玩家送回首页
+  const gonePage = {
+    data: { roomId: "room-1", syncing: false },
+    loading: false,
+    stateGeneration: 0,
+    setData(patch) { Object.assign(this.data, patch) },
+    applyState() { throw new Error("失效房间不应再应用状态") },
+    showError() { throw new Error("房间失效应走专用提示，而不是普通错误提示") },
+    loadState: definition.loadState,
+    handleRoomGone: definition.handleRoomGone,
+    stopTimers: definition.stopTimers
+  }
+  roomStore.getState = () => Promise.reject(new Error("房间不存在或已结束"))
+  await definition.loadState.call(gonePage, true)
+  assert.strictEqual(modals.length, 1, "房间失效只提示一次")
+  assert.deepStrictEqual(relaunched, ["/pages/index/index"], "房间失效后回到首页")
+  assert.strictEqual(gonePage.fatalHandled, true)
+
+  await definition.loadState.call(gonePage, true)
+  assert.strictEqual(modals.length, 1, "后续轮询失败不应重复弹窗")
 
   roomStore.getState = originalGetState
   roomStore.action = originalAction

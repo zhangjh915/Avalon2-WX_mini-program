@@ -28,7 +28,7 @@
   </view>
 
   <view wx:if="{{isHost}}" class="lobby-actions">
-    <button class="btn secondary" bindtap="fillTestSeats" disabled="{{writing}}">补满测试玩家</button>
+    <button wx:if="{{devMode}}" class="btn secondary" bindtap="fillTestSeats" disabled="{{writing}}">补满测试玩家</button>
     <button class="btn" bindtap="startGame" disabled="{{writing}}">开始游戏</button>
   </view>
   <view wx:else class="waiting-host">
