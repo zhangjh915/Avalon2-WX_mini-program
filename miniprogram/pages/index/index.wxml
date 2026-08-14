@@ -110,6 +110,10 @@
       <view><view class="setting-label">猎杀投票变体</view><view class="muted">终局由全员投票决定是否强制猎杀</view></view>
       <switch checked="{{hunterVoteVariant}}" color="#2f7358" bindchange="toggleHunterVote" />
     </view>
+    <view wx:if="{{canUseTestMode}}" class="toggle-row">
+      <view><view class="setting-label">测试模式</view><view class="muted">可补满测试玩家并代其投票；正式和同事玩时请关闭</view></view>
+      <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
+    </view>
     <button class="btn" bindtap="createRoom" disabled="{{!roleConfigValid}}">创建房间</button>
     </view>
   </view>

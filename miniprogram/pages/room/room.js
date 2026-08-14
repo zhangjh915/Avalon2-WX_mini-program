@@ -1,7 +1,6 @@
 const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
-const env = require("../../utils/env")
 
 Page({
   data: {
@@ -135,8 +134,8 @@ Page({
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
       isHost: !!result.isHost,
-      // 测试玩家入口只在开发版房间且当前也跑在开发版时出现
-      devMode: !!room.devMode && env.isDevBuild(),
+      // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验
+      devMode: !!room.devMode,
       mySeatNo: mySeat ? mySeat.seatNo : 0,
       seatedCount: seats.filter(seat => seat.name).length,
       settingsSummary: settings.length ? settings.join(" · ") : "基础规则",

@@ -40,12 +40,28 @@ Page({
     balanceLevel: "balanced",
     rolePoolCount: 0,
     roleErrors: [],
+    canUseTestMode: false,
+    testMode: false,
     roleConfigValid: true
   },
 
   onLoad() {
-    this.setData({ playerName: wx.getStorageSync("playerName") || "" })
+    // 测试模式由房主显式开关，不再从运行环境推断：
+    // 开发期在开发版和体验版都需要补测试玩家，正式版一律不允许。
+    const canUseTestMode = env.canUseTestMode()
+    const stored = wx.getStorageSync("testMode")
+    this.setData({
+      playerName: wx.getStorageSync("playerName") || "",
+      canUseTestMode,
+      testMode: canUseTestMode && (stored === "" ? true : !!stored)
+    })
     this.resetRoles(false)
+  },
+
+  toggleTestMode(event) {
+    const testMode = !!event.detail.value
+    this.setData({ testMode })
+    wx.setStorageSync("testMode", testMode)
   },
 
   onNameInput(event) {
@@ -323,8 +339,8 @@ Page({
       hunterVoteVariant: this.data.hunterVoteVariant,
       tableType: this.data.tableType,
       seatLayout: this.data.tableType === "long" ? this.data.seatLayout : null,
-      // 房间在创建时就固定是否为开发房间，之后不再允许改变
-      devMode: env.isDevBuild()
+      // 房间在创建时就固定是否为测试房间，开局后不再允许改变
+      devMode: this.data.canUseTestMode && this.data.testMode
     }).then(({ roomId }) => {
       wx.hideLoading()
       wx.navigateTo({ url: `/pages/room/room?roomId=${roomId}&name=${encodeURIComponent(this.data.playerName)}` })

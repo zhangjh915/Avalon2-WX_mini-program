@@ -3,7 +3,6 @@ const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const roleGuideData = require("../../data/roleGuides")
 const ttsData = require("../../data/ttsLines")
-const env = require("../../utils/env")
 
 const phaseNames = {
   reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
@@ -144,9 +143,9 @@ Page({
       canInspect: !player.hadAmulet && !player.fadedAmulet && (!game.amulet || player.id !== game.amulet.ownerId)
     }))
     const leader = decoratedPlayers.find(player => player.id === game.leaderId) || null
-    // 测试玩家能力只在「开发版房间 + 当前也跑在开发版」时开放；
-    // 服务端对同一条件另有独立校验，客户端这里只负责不显示入口。
-    const devMode = !!room.devMode && env.isDevBuild()
+    // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验，
+    // 客户端这里只负责不显示入口。
+    const devMode = !!room.devMode
     const pendingBots = decoratedPlayers.filter(player => player.bot
       && game.current.team.indexOf(player.id) >= 0
       && (privateView.botVotedIds || []).indexOf(player.id) < 0)

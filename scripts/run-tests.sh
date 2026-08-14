@@ -32,6 +32,7 @@ TESTS=(
   uiAnimations
   stateSync
   waitingHint
+  env
 )
 
 failed=0

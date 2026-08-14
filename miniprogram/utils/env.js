@@ -21,7 +21,18 @@ function isDevBuild() {
   return envVersion() === "develop"
 }
 
+// 是否允许房主打开「测试模式」。
+//
+// 开发期在开发版和体验版都需要补测试玩家单机走流程，所以两者都放开；
+// 正式版一律禁止，避免真实对局被误触破坏。
+// 注意：这只控制入口是否出现，最终以创建房间时写入的 devMode 为准，
+// 服务端对每一个测试玩家操作都会独立校验。
+function canUseTestMode() {
+  return ["develop", "trial"].indexOf(envVersion()) >= 0
+}
+
 module.exports = {
   envVersion,
-  isDevBuild
+  isDevBuild,
+  canUseTestMode
 }
