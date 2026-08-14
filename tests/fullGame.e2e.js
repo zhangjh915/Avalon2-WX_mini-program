@@ -47,6 +47,21 @@ async function main() {
   const mp = await withTimeout(automator.connect({ wsEndpoint: ENDPOINT }), 20000, "连接开发者工具")
   log(`已连接 ${ENDPOINT}`)
 
+  // 预检：开发者工具重启后模拟器常常没起来（控制台报
+  // "Cannot read property 'subPackages' of undefined" 和 "simulator not found"），
+  // 此时 connect 仍会成功，但之后每一个调用都超时。与其跑到一半才失败，
+  // 不如先探一次，并直接告诉使用者怎么修——在开发者工具里点一次「重新编译」。
+  try {
+    await withTimeout(mp.evaluate(() => true), 8000, "预检")
+  } catch (error) {
+    throw new Error([
+      "模拟器没有响应（connect 成功但 evaluate 超时）。",
+      "通常是开发者工具启动后模拟器初始化失败，控制台会看到 simulator not found。",
+      "解决办法：在开发者工具里点一次「重新编译」，然后重跑本脚本。"
+    ].join("\n         "))
+  }
+  log("预检通过，模拟器可用")
+
   const problems = []
   mp.on("exception", error => problems.push(`[exception] ${error.message}`))
   mp.on("console", message => {
