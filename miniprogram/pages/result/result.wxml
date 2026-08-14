@@ -1,0 +1,37 @@
+<view class="result-page" wx:if="{{game}}">
+  <view class="verdict {{game.winner === 'good' ? 'good-verdict' : 'evil-verdict'}}">
+    <view class="verdict-kicker">远征终局</view>
+    <view class="verdict-mark">{{game.winner === 'good' ? '光' : '影'}}</view>
+    <view class="verdict-title">{{winnerName}}胜利</view>
+    <view class="score-line">正义 {{game.goodWins}} · {{game.evilWins}} 邪恶</view>
+    <view class="verdict-copy">{{hostLine.text}}</view>
+  </view>
+
+  <view class="result-section identity-section">
+    <view class="section-head"><view class="section-kicker">全员公开</view><view class="section-title">圆桌身份</view></view>
+    <view class="identity-list">
+      <view wx:for="{{players}}" wx:key="id" class="identity-row {{item.faction === 'good' ? 'good-row' : 'evil-row'}}" style="animation-delay: {{item.revealDelay}}ms;">
+        <view class="identity-avatar">{{item.initial}}</view>
+        <view class="identity-player"><view class="identity-seat">{{item.id}}号 · {{item.name}}</view><view class="identity-title">{{item.title}}</view></view>
+        <view class="identity-role">{{item.roleName}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-section final-record animated-section">
+    <view class="section-head"><view class="section-kicker">终局档案</view><view class="section-title">最后判定</view></view>
+    <view class="record-copy">{{report}}</view>
+  </view>
+
+  <view class="result-section archive-section animated-section">
+    <view class="section-head"><view class="section-kicker">五次远征</view><view class="section-title">任务档案</view></view>
+    <view class="mission-archive">
+      <view wx:for="{{missionLines}}" wx:key="round" class="archive-row">
+        <view class="archive-orb {{item.winner === 'good' ? 'archive-good' : 'archive-evil'}}">{{item.winner === 'good' ? '成' : '败'}}</view>
+        <view class="archive-copy"><view class="archive-title">{{item.title}}</view><view class="archive-detail">{{item.detail}}</view></view>
+      </view>
+    </view>
+  </view>
+
+  <button class="new-game-button" bindtap="newGame">返回首页，再开一局</button>
+</view>

@@ -1,0 +1,257 @@
+<view class="play-page" wx:if="{{game}}">
+  <view class="mission-header">
+    <view class="mission-board">
+      <view class="mission-line"></view>
+      <view wx:for="{{missionTrack}}" wx:key="round" class="mission-stop">
+        <view class="mission-orb mission-{{item.state}}"><view class="mission-symbol">{{item.label}}</view></view>
+        <view class="mission-size">{{item.size}}人<text wx:if="{{item.protected}}"> · 双败</text></view>
+      </view>
+    </view>
+    <view class="round-strip">
+      <view><view class="round-kicker">第 {{game.round}} 轮</view><view class="round-title">{{phaseName}}</view></view>
+      <view class="table-icon-button" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view>
+    </view>
+    <view wx:if="{{leader && phase !== 'reveal' && phase !== 'night' && phase !== 'finale'}}" class="leader-line">
+      <view class="leader-crown"><text class="symbol-icon crown-icon">👑</text></view><text>{{leader.id}}号 {{leader.name}}</text>
+      <text class="leader-rule">{{missionSize}}人任务 {{protectedText}}</text>
+    </view>
+  </view>
+
+  <view class="phase-shell">
+    <view wx:if="{{phase === 'reveal'}}" class="phase-content identity-content">
+      <view wx:if="{{identityMode === 'prepare'}}" class="identity-waiting">
+        <view class="sigil-placeholder">杯</view>
+        <view class="waiting-title">准备查看身份</view>
+        <view class="waiting-copy">将手机转向自己。全员准备后，身份与私密信息会同时揭示。</view>
+        <button wx:if="{{!identityReady}}" class="primary-action" bindtap="confirmIdentity">我已准备</button>
+        <view wx:else class="submitted-state"><view class="submitted-seal">候</view><view class="waiting-title">等待全员准备</view></view>
+        <view class="identity-progress">{{identityReadyCount}} / {{game.playerCount}}</view>
+        <button wx:if="{{isHost && identityReadyCount === game.playerCount && !game.identity.revealAt}}" class="launch-action" bindtap="startIdentity">统一揭示身份</button>
+      </view>
+
+      <view wx:if="{{identityMode === 'countdown'}}" class="identity-countdown"><view class="countdown-number">{{identityCountdown}}</view><view class="waiting-copy">命运即将显现</view></view>
+
+      <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
+        <view class="role-card {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}">
+          <view class="role-faction">{{privateView.factionName}}</view>
+          <view class="role-name-display">{{privateView.roleName}}</view>
+          <view class="role-art-placeholder">{{privateView.faction === 'good' ? '光' : '影'}}</view>
+          <view class="role-description">{{myRole.desc}}</view>
+          <view wx:if="{{privateView.needsLeaderClaim}}" class="leader-claim-box">
+            <view class="intel-title">骗徒 · 首任领袖能力</view>
+            <view wx:if="{{!privateView.leaderClaimSubmitted}}" class="role-description">你恰好是首任领袖。现在选择本次向教士展示的阵营。</view>
+            <view wx:if="{{!privateView.leaderClaimSubmitted}}" class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim">邪恶</button></view>
+            <view wx:else class="claim-submitted">已向教士展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
+          </view>
+          <view wx:if="{{privateView.nightInfo.length}}" class="secret-intel">
+            <view class="intel-title">命运密令</view>
+            <view wx:for="{{privateView.nightInfo}}" wx:key="*this" class="intel-line">{{item}}</view>
+          </view>
+          <view class="role-guide">
+            <view class="guide-title">本局思路</view>
+            <view class="guide-goal">{{myRoleGuide.goal}}</view>
+            <view wx:for="{{myRoleGuide.tips}}" wx:key="*this" class="guide-tip">{{index + 1}}. {{item}}</view>
+          </view>
+        </view>
+        <view class="reading-clock">阅读时间 {{identitySecondsLeft}}秒</view>
+      </view>
+
+      <view wx:if="{{identityMode === 'remember'}}" class="identity-waiting">
+        <view class="sigil-placeholder sealed">封</view>
+        <view class="waiting-title">身份已隐藏</view>
+        <view class="waiting-copy">确认你已记住角色、额外信息和本局思路。</view>
+        <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-reminder">
+          <view class="waiting-copy">你是首任领袖的骗徒，请先选择向教士展示的阵营。</view>
+          <view class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim">邪恶</button></view>
+        </view>
+        <button wx:if="{{!identityRemembered && (!privateView.needsLeaderClaim || privateView.leaderClaimSubmitted)}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
+        <view wx:else class="submitted-state"><view class="submitted-seal">记</view><view class="waiting-title">已完成确认</view></view>
+        <view class="identity-progress">{{identityRememberedCount}} / {{game.playerCount}}</view>
+        <button wx:if="{{isHost && identityRememberedCount === game.playerCount}}" class="launch-action" bindtap="enterNight">进入首夜仪式</button>
+      </view>
+    </view>
+
+    <view wx:if="{{phase === 'night'}}" class="phase-content ceremony-content">
+      <view class="ceremony-mark">夜</view>
+      <view class="directive-kicker">{{nightDirective.subtitle}}</view>
+      <view class="ceremony-step">主持音频占位 · {{nightSecondsLeft}}s</view>
+      <view wx:if="{{!nightFinished}}" class="ceremony-text">{{nightDirective.title}}</view>
+      <view wx:else class="ceremony-text">指令播放完毕，远征即将开始。</view>
+      <view class="directive-progress"><view style="width: {{nightSecondsLeft * 20}}%;"></view></view>
+      <button wx:if="{{isHost}}" class="text-command" bindtap="enterMission">跳过指令</button>
+    </view>
+
+    <view wx:if="{{phase === 'mission'}}" class="phase-content">
+      <view wx:if="{{canControlLeader}}">
+        <view class="action-copy">队长选择 {{missionSize}} 名同行骑士，再将魔法指示物交给其中一人。</view>
+        <view class="selected-riders">
+          <view wx:for="{{teamPlayers}}" wx:key="id" class="rider-token {{item.justSelected ? 'rider-entering' : ''}} {{item.id === magicTargetId ? 'magic-rider' : ''}}"><view class="rider-avatar">{{item.initial}}<text wx:if="{{item.id === magicTargetId}}" class="rider-fire symbol-icon fire-icon">🔥</text></view><view class="rider-no">{{item.id}}号</view></view>
+          <view wx:if="{{!teamPlayers.length}}" class="empty-selection">尚未选择同行骑士</view>
+        </view>
+        <button class="primary-action" data-mode="team" bindtap="openTable">选择同行骑士（{{selectedTeam.length}} / {{missionSize}}）</button>
+        <button wx:if="{{selectedTeam.length === missionSize}}" class="secondary-action" bindtap="chooseMagicMode">{{magicTargetId ? '更换魔法指示物' : '交付魔法指示物'}}</button>
+        <button wx:if="{{magicTargetId}}" class="launch-action" bindtap="startVote">确认队伍，开始任务</button>
+      </view>
+      <view wx:else class="submitted-state"><view class="submitted-seal spectator">候</view><view class="waiting-title">队长正在组建远征队</view><view class="waiting-copy">继续线下讨论，最终选择由队长提交。</view></view>
+    </view>
+
+    <view wx:if="{{phase === 'vote'}}" class="phase-content">
+      <view wx:if="{{myInTeam && !privateView.hasVoted && !myVotePending}}">
+        <view class="action-copy">选择一张任务牌。提交后不可更改，其他人只会看到最终票数。</view>
+        <view class="vote-actions">
+          <button class="mission-vote success-vote" data-value="success" bindtap="submitVote" disabled="{{!canVoteSuccess}}">任务成功</button>
+          <button class="mission-vote fail-vote" data-value="fail" bindtap="submitVote" disabled="{{!canVoteFail}}">任务失败</button>
+        </view>
+      </view>
+      <view wx:else class="submitted-state"><view class="submitted-seal">{{myInTeam ? '已' : '候'}}</view><view class="waiting-title">{{myInTeam ? '任务牌已提交' : '本轮未上车'}}</view></view>
+      <view class="vote-progress"><view class="vote-progress-fill" style="width: {{votePercent}}%;"></view></view>
+      <view class="identity-progress">{{voteCount}} / {{game.current.team.length}}</view>
+      <view wx:if="{{isHost && hasBots}}" class="bot-vote-list">
+        <button class="secondary-action" bindtap="submitBotVotes">测试玩家自动投票</button>
+      </view>
+    </view>
+
+    <view wx:if="{{phase === 'missionResult'}}" class="phase-content">
+      <view class="mission-card-reveal">
+        <view wx:for="{{missionResultCards}}" wx:key="id" class="mission-result-card card-{{item.value}}" style="animation-delay: {{item.delay}}ms;"><view class="mission-card-back">杯</view><view class="mission-card-front">{{item.label}}</view></view>
+      </view>
+      <view class="result-title">{{lastMission.winner === 'good' ? '远征成功' : '远征失败'}}</view>
+      <view class="waiting-copy">成功 {{lastMission.successCount}} · 失败 {{lastMission.failCount}}</view>
+      <button wx:if="{{canClaimGalahad}}" class="launch-action" bindtap="claimGalahad">公开加拉哈德，接管皇冠</button>
+      <view wx:if="{{canControlLeader}}" class="handoff-actions">
+        <view wx:if="{{nextLeaderPlayer || nextAmuletPlayer}}" class="handoff-preview">
+          <view wx:if="{{nextLeaderPlayer}}" class="handoff-preview-item crown-preview">
+            <view class="handoff-preview-symbol"><text class="symbol-icon crown-icon">👑</text></view>
+            <view><view class="handoff-preview-label">下一任队长</view><view class="handoff-preview-name">{{nextLeaderPlayer.id}}号 {{nextLeaderPlayer.name}}</view></view>
+          </view>
+          <view wx:if="{{nextAmuletPlayer}}" class="handoff-preview-item amulet-preview">
+            <view class="handoff-preview-symbol"><text class="symbol-icon amulet-icon">🧿</text></view>
+            <view><view class="handoff-preview-label">护身符</view><view class="handoff-preview-name">{{nextAmuletPlayer.id}}号 {{nextAmuletPlayer.name}}</view></view>
+          </view>
+        </view>
+        <button wx:if="{{!game.galahadLeaderId}}" class="primary-action" data-mode="leader" bindtap="openTable">{{nextLeaderId ? '更换下一位队长' : '选择下一位队长'}}</button>
+        <view wx:if="{{game.galahadLeaderId}}" class="waiting-copy">加拉哈德已公开并接管下一任皇冠。</view>
+        <button wx:if="{{needsAmulet && (nextLeaderId || game.galahadLeaderId)}}" class="secondary-action" data-mode="amuletOwner" bindtap="openTable">{{nextAmuletId ? '更换护身符持有者' : '分配护身符'}}</button>
+        <button wx:if="{{(nextLeaderId || game.galahadLeaderId) && (!needsAmulet || nextAmuletId)}}" class="launch-action" bindtap="handoff">确认交接</button>
+      </view>
+      <view wx:else class="waiting-copy">等待当前队长完成皇冠交接。</view>
+    </view>
+
+    <view wx:if="{{phase === 'amulet'}}" class="phase-content">
+      <view class="amulet-emblem"><text class="symbol-icon amulet-icon">🧿</text></view>
+      <view wx:if="{{amulet.status === 'select' && isAmuletOwner}}"><view class="waiting-title">护身符在你手中</view><button class="primary-action" data-mode="inspect" bindtap="openTable">选择查验对象</button></view>
+      <view wx:if="{{amulet.status === 'claim' && isInspectionTarget}}">
+        <view class="waiting-title">你正在被护身符查验</view><view class="waiting-copy">选择本次对外展示的阵营。不合法的选项已置灰。</view>
+        <view class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="inspectionClaim" disabled="{{!canClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="inspectionClaim" disabled="{{!canClaimEvil}}">邪恶</button></view>
+      </view>
+      <view wx:if="{{amulet.status === 'result' && inspectionResultName}}"><view class="waiting-title">护身符显示为</view><view class="inspection-result {{privateView.inspectionResult === 'good' ? 'good-result' : 'evil-result'}}">{{inspectionResultName}}</view><button wx:if="{{isAmuletOwner}}" class="launch-action" bindtap="completeAmulet">收起护身符，开始讨论</button></view>
+      <view wx:if="{{!(amulet.status === 'select' && isAmuletOwner) && !(amulet.status === 'claim' && isInspectionTarget) && !(amulet.status === 'result' && inspectionResultName)}}" class="submitted-state"><view class="submitted-seal spectator">候</view><view class="waiting-title">护身符正在传递信息</view></view>
+    </view>
+
+    <view wx:if="{{phase === 'finale'}}" class="phase-content finale-content">
+      <view class="finale-banner">最终审判</view>
+      <view wx:if="{{finalStage === 'discussion'}}">
+        <view class="final-timer">{{finalClock}}</view>
+        <view class="waiting-title">全员自由讨论</view><view class="waiting-copy">时间归零后立即停止交谈。</view>
+        <button wx:if="{{isHost && finalSecondsLeft === 0}}" class="launch-action" bindtap="finishDiscussion">结束讨论</button>
+        <button wx:if="{{isHost && finalSecondsLeft > 0}}" class="text-command" bindtap="forceFinishDiscussion">提前结束</button>
+      </view>
+      <view wx:if="{{finalStage === 'hunterVote'}}">
+        <view class="waiting-title">是否强制发动猎杀</view><view class="waiting-copy">正义方必须投成功，邪恶方可自由选择。</view>
+        <view wx:if="{{!privateView.hunterVoteSubmitted}}" class="vote-actions"><button class="mission-vote success-vote" data-value="success" bindtap="hunterVote">成功</button><button class="mission-vote fail-vote" data-value="fail" bindtap="hunterVote" disabled="{{privateView.faction === 'good'}}">失败</button></view>
+        <view wx:else class="submitted-state"><view class="submitted-seal">已</view><view class="waiting-title">猎杀票已提交</view></view>
+      </view>
+      <view wx:if="{{finalStage === 'hunterDecision'}}">
+        <view wx:if="{{canOperateHunter}}"><view class="waiting-title">{{privateView.role === 'hunter' ? '现在由你决定' : '代测试盲眼杀手决定'}}</view><view class="waiting-copy">邪恶方已赢得三次任务。现在发动猎杀会立即公开身份；保持沉默则进入正义方最终指认。</view><button class="launch-action danger-launch" bindtap="revealHunter">举手现身，发动猎杀</button><button class="secondary-action" bindtap="silenceHunter">保持沉默，进入指认</button></view>
+        <view wx:else class="submitted-state"><view class="submitted-seal spectator">寂</view><view class="waiting-title">等待盲眼杀手表态</view></view>
+      </view>
+      <view wx:if="{{finalStage === 'hunterTargets'}}">
+        <view wx:if="{{canOperateHunter}}"><view class="role-reveal-small">盲眼杀手</view><view class="waiting-copy">其他人禁止交谈。选择两位正义玩家；有教士时必须包含教士。</view></view>
+        <view wx:else class="submitted-state"><view class="submitted-seal danger-seal">杀</view><view class="waiting-title">盲眼杀手已经现身</view><view class="waiting-copy">保持沉默，等待猎杀结果。</view></view>
+      </view>
+      <view wx:if="{{finalStage === 'identify'}}">
+        <view wx:if="{{privateView.role === 'traitor' && !privateView.traitorDecision && !traitorSide}}"><view class="waiting-title">选择叛徒的归宿</view><button class="secondary-action" data-side="evil" bindtap="chooseTraitorSide">保持邪恶</button><button class="primary-action" data-side="good" bindtap="chooseTraitorSide">投向正义</button></view>
+        <view wx:if="{{traitorSide === 'good' && !privateView.traitorDecision}}"><view class="waiting-title">完成阵营转换</view><view class="waiting-copy">指向两位正义玩家才能投向正义。</view></view>
+        <view wx:if="{{privateView.role !== 'traitor' || privateView.traitorDecision}}">
+          <view wx:if="{{!finalSubmitted}}"><view class="waiting-title">私密指认两位邪恶玩家</view><view class="waiting-copy">全员都要提交；服务端只使用正义方的结果判定。</view></view>
+          <view wx:else class="submitted-state"><view class="submitted-seal">审</view><view class="waiting-title">最终指认已封存</view></view>
+          <view class="identity-progress">{{game.final.submittedCount || 0}} / {{game.playerCount}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{finalSelectionMode}}" class="inline-final-selector">
+        <view class="final-selection-status">
+          <text>{{finalSelectionMode === 'hunter' ? '猎杀目标' : (finalSelectionMode === 'traitor' ? '正义目标' : '指认目标')}}</text>
+          <text>{{finalTargets.length}} / 2</text>
+        </view>
+        <view class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
+          <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? 'width:' + tableWidth + '%;height:' + tableHeight + '%;' : ''}}"><view class="table-emblem">杯</view></view>
+          <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
+            <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
+          </view>
+        </view>
+        <view class="final-selection-actions">
+          <view wx:if="{{finalTargets.length < 2}}" class="final-selection-hint">再选择 {{2 - finalTargets.length}} 人</view>
+          <button wx:if="{{finalSelectionMode === 'hunter' && finalTargets.length === 2}}" class="launch-action danger-launch" bindtap="submitHunterTargets">确认并执行猎杀</button>
+          <button wx:if="{{finalSelectionMode === 'traitor' && finalTargets.length === 2}}" class="launch-action" bindtap="submitTraitorDecision">确认并投向正义</button>
+          <button wx:if="{{finalSelectionMode === 'identify' && finalTargets.length === 2}}" class="launch-action" bindtap="submitFinalIdentify">确认并提交指认</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{tableVisible}}" class="table-overlay selector-overlay">
+    <view class="table-sheet selector-page">
+      <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view class="selector-tools"><view class="table-icon-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>
+      <view class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
+        <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? 'width:' + tableWidth + '%;height:' + tableHeight + '%;' : ''}}"><view class="table-emblem">杯</view></view>
+        <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.selected ? 'selected' : ''}} {{item.justSelected ? 'seat-boarding' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}} {{item.id === game.leaderId ? 'leader' : ''}} {{item.id === nextLeaderId ? 'leader-selected' : ''}} {{item.id === nextAmuletId ? 'amulet-selected' : ''}} {{tableMode === 'magic' && item.id === magicTargetId ? 'magic-selected' : ''}} {{tableMode === 'leader' && !item.canLead ? 'seat-disabled' : ''}} {{tableMode === 'amuletOwner' && (!item.canReceiveAmulet || item.id === nextLeaderId) ? 'seat-disabled' : ''}} {{tableMode === 'inspect' && !item.canInspect ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" bindtap="tapSeat">
+          <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
+          <view wx:if="{{item.id === game.leaderId || item.id === nextLeaderId}}" class="seat-badge leader-badge"><text class="symbol-icon crown-icon">👑</text></view><view wx:if="{{item.hadAmulet || item.id === nextAmuletId}}" class="seat-badge amulet-badge"><text class="symbol-icon amulet-icon">🧿</text></view><view wx:if="{{tableMode === 'magic' && item.id === magicTargetId}}" class="seat-badge magic-badge"><text class="symbol-icon fire-icon">🔥</text></view><view wx:if="{{item.fadedAmulet}}" class="seat-badge faded-badge"><text class="symbol-icon faded-amulet-icon">🧿</text></view>
+        </view>
+      </view>
+      <view class="sheet-actions {{syncing ? 'sheet-actions-syncing' : ''}}">
+        <button wx:if="{{tableMode === 'team' && selectedTeam.length === missionSize}}" class="primary-action" bindtap="chooseMagicMode" disabled="{{syncing}}">队伍已选齐，交付魔法</button>
+        <button wx:if="{{tableMode === 'magic' && magicTargetId}}" class="launch-action" bindtap="startVote" disabled="{{syncing}}">{{syncing ? '发车中…' : '确认发车'}}</button>
+        <button wx:if="{{tableMode === 'leader' && nextLeaderId && needsAmulet}}" class="primary-action" data-mode="amuletOwner" bindtap="openTable" disabled="{{syncing}}">继续分配护身符</button>
+        <button wx:if="{{tableMode === 'leader' && nextLeaderId && !needsAmulet}}" class="launch-action" bindtap="handoff" disabled="{{syncing}}">{{syncing ? '交接中…' : '确认交接'}}</button>
+        <button wx:if="{{tableMode === 'amuletOwner' && nextAmuletId}}" class="launch-action" bindtap="handoff" disabled="{{syncing}}">{{syncing ? '交接中…' : '确认交接'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{historyVisible}}" class="history-overlay">
+    <view class="history-page">
+      <view class="sheet-head history-head"><view><view class="sheet-title">圆桌纪录</view><view class="sheet-hint">仅展示公开信息</view></view><view class="modal-close" bindtap="closeHistory" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
+      <scroll-view class="history-scroll" scroll-y>
+        <view wx:if="{{!historyMissions.length && !historyAmulets.length}}" class="history-empty">尚无已完成的远征记录</view>
+        <view wx:for="{{historyMissions}}" wx:key="round" class="history-round">
+          <view class="history-round-head"><view class="history-round-no">第 {{item.round}} 轮</view><view class="history-result history-{{item.resultClass}}">{{item.result}}</view></view>
+          <view class="history-line"><view class="history-label"><text class="symbol-icon crown-icon">👑</text></view><view>{{item.leader}}</view></view>
+          <view class="history-line"><text>车队</text><view>{{item.team}}</view></view>
+          <view class="history-line"><view class="history-label"><text class="symbol-icon fire-icon">🔥</text></view><view>{{item.magic}}</view></view>
+          <view class="history-line"><text>任务牌</text><view>{{item.votes}}</view></view>
+        </view>
+        <view wx:if="{{historyAmulets.length}}" class="history-section-title"><text class="symbol-icon amulet-icon">🧿</text><text>护身符记录</text></view>
+        <view wx:for="{{historyAmulets}}" wx:key="id" class="history-amulet"><text>第 {{item.round}} 轮前</text><view><text class="symbol-icon inline-amulet-icon">🧿</text>{{item.owner}} 查验 {{item.target}}</view></view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{ceremonyVisible}}" class="ceremony-overlay ceremony-{{ceremonyType}}" catchtap="stopPropagation">
+    <view class="ceremony-ring ring-outer"></view>
+    <view class="ceremony-ring ring-inner"></view>
+    <view class="ceremony-stage">
+      <view class="ceremony-sparks"><view></view><view></view><view></view><view></view></view>
+      <view class="ceremony-symbol">{{ceremonySymbol}}</view>
+      <view wx:if="{{ceremonyTarget}}" class="ceremony-target">
+        <view class="ceremony-avatar">{{ceremonyTarget.initial}}</view>
+        <view class="ceremony-target-name">{{ceremonyTarget.id}}号 {{ceremonyTarget.name}}</view>
+      </view>
+      <view class="ceremony-title">{{ceremonyTitle}}</view>
+      <view class="ceremony-subtitle">{{ceremonySubtitle}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{syncing}}" class="sync-indicator">同步中</view>
+</view>

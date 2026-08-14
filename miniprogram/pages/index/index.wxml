@@ -1,0 +1,210 @@
+<view class="page">
+  <view class="home-brand">
+    <view class="home-emblem">杯</view>
+    <view class="title">圆桌秘闻</view>
+  </view>
+
+  <view class="panel identity-panel">
+    <view class="section-title">你的昵称</view>
+    <input class="input" value="{{playerName}}" bindinput="onNameInput" placeholder="例如 张三" />
+  </view>
+
+  <view class="home-actions">
+    <view class="home-command create-command" bindtap="openCreateSetup">
+      <view class="command-symbol">+</view>
+      <view class="command-title">创建游戏</view>
+      <view class="command-arrow">›</view>
+    </view>
+
+    <view class="home-command join-command" bindtap="openJoinPad">
+      <view class="command-symbol">入</view>
+      <view class="join-command-body">
+        <view class="command-title">加入游戏</view>
+      </view>
+      <view class="command-arrow">›</view>
+    </view>
+  </view>
+
+  <view wx:if="{{joinPadVisible}}" class="join-overlay" bindtap="closeJoinPad">
+    <view class="join-sheet" catchtap="stopPropagation">
+      <view class="sheet-handle"></view>
+      <view class="layout-sheet-head">
+        <view><view class="layout-sheet-title">加入游戏</view><view class="layout-sheet-subtitle">输入房主提供的 6 位房间号</view></view>
+        <view class="modal-close" bindtap="closeJoinPad" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+      </view>
+
+      <view class="room-code-slots">
+        <view wx:for="{{joinSlots}}" wx:key="index" class="room-code-slot {{item ? 'filled' : ''}}">{{item}}</view>
+      </view>
+
+      <view class="dial-pad">
+        <view class="dial-key" data-digit="1" bindtap="pressJoinDigit">1</view>
+        <view class="dial-key" data-digit="2" bindtap="pressJoinDigit">2</view>
+        <view class="dial-key" data-digit="3" bindtap="pressJoinDigit">3</view>
+        <view class="dial-key" data-digit="4" bindtap="pressJoinDigit">4</view>
+        <view class="dial-key" data-digit="5" bindtap="pressJoinDigit">5</view>
+        <view class="dial-key" data-digit="6" bindtap="pressJoinDigit">6</view>
+        <view class="dial-key" data-digit="7" bindtap="pressJoinDigit">7</view>
+        <view class="dial-key" data-digit="8" bindtap="pressJoinDigit">8</view>
+        <view class="dial-key" data-digit="9" bindtap="pressJoinDigit">9</view>
+        <view class="dial-key dial-tool" bindtap="clearJoinCode">清</view>
+        <view class="dial-key" data-digit="0" bindtap="pressJoinDigit">0</view>
+        <view class="dial-key dial-tool dial-delete" bindtap="deleteJoinDigit">⌫</view>
+      </view>
+
+      <button class="join-room-action" bindtap="joinRoom" disabled="{{joinCode.length !== 6}}">加入房间</button>
+    </view>
+  </view>
+
+  <view wx:if="{{createSetupVisible}}" class="create-overlay" bindtap="closeCreateSetup">
+    <view class="create-sheet" catchtap="stopPropagation">
+      <view class="layout-sheet-head">
+        <view><view class="layout-sheet-title">创建游戏</view><view class="layout-sheet-subtitle">设置本局游戏</view></view>
+        <view class="modal-close" bindtap="closeCreateSetup" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+      </view>
+
+    <view class="player-count-row">
+      <view>
+        <view class="setting-label">游戏人数</view>
+        <view class="muted">当前支持 5 至 10 人</view>
+      </view>
+      <view class="count-stepper player-count-stepper">
+        <view class="count-button {{playerCount <= 5 ? 'control-disabled' : ''}}" data-delta="-1" bindtap="changePlayerCount">−</view>
+        <text class="count-value">{{playerCount}}</text>
+        <view class="count-button {{playerCount >= 10 ? 'control-disabled' : ''}}" data-delta="1" bindtap="changePlayerCount">+</view>
+      </view>
+    </view>
+
+    <view class="setting-block">
+      <view class="setting-label">座位布局</view>
+      <view class="table-type-tabs">
+        <view class="table-type-option {{tableType === 'long' ? 'active' : ''}}" data-type="long" bindtap="selectTableType"><view class="table-type-icon long-table-icon"></view><text>长桌</text></view>
+        <view class="table-type-option {{tableType === 'round' ? 'active' : ''}}" data-type="round" bindtap="selectTableType"><view class="table-type-icon round-table-icon"></view><text>圆桌</text></view>
+      </view>
+    </view>
+
+    <view class="role-config-head">
+      <view><view class="setting-label">角色配置</view><view class="muted">{{rolePoolCount}} 张{{unknownRoles ? '候选牌，开局随机抽选' : '角色牌'}}</view></view>
+      <view class="mini-command" bindtap="openRoleEditor">自定义</view>
+    </view>
+    <view class="faction-roster">
+      <view class="faction-roster-row">
+        <view class="faction-count good-count"><text>{{goodRoleCount}}</text> 正义</view>
+        <view class="faction-role-list">{{goodRoleSummary}}</view>
+      </view>
+      <view class="faction-roster-row">
+        <view class="faction-count evil-count"><text>{{evilRoleCount}}</text> 邪恶</view>
+        <view class="faction-role-list">{{evilRoleSummary}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{roleErrors.length}}" class="validation-box">
+      <view wx:for="{{roleErrors}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="toggle-row">
+      <view><view class="setting-label">未知角色变体</view><view class="muted">人工多选候选角色，开局按阵营名额随机抽选</view></view>
+      <switch checked="{{unknownRoles}}" color="#2f7358" bindchange="toggleUnknownRoles" />
+    </view>
+    <view class="toggle-row">
+      <view><view class="setting-label">猎杀投票变体</view><view class="muted">终局由全员投票决定是否强制猎杀</view></view>
+      <switch checked="{{hunterVoteVariant}}" color="#2f7358" bindchange="toggleHunterVote" />
+    </view>
+    <button class="btn" bindtap="createRoom" disabled="{{!roleConfigValid}}">创建房间</button>
+    </view>
+  </view>
+
+  <view wx:if="{{roleEditorVisible}}" class="role-overlay" bindtap="closeRoleEditor">
+    <view class="role-sheet" catchtap="stopPropagation">
+      <view class="sheet-handle"></view>
+      <view class="layout-sheet-head">
+        <view>
+          <view class="layout-sheet-title">选择特殊角色</view>
+          <view class="layout-sheet-subtitle">{{unknownRoles ? '可多选候选角色，必选角色不会被抽掉' : '忠臣与爪牙将按阵营名额自动补齐'}}</view>
+        </view>
+        <view class="modal-close" bindtap="closeRoleEditor" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+      </view>
+
+      <view class="role-quota-strip">
+        <view class="role-quota good-quota">正义 {{goodRoleCount}}{{unknownRoles ? '选' : ''}} / {{targetGoodCount}}{{unknownRoles ? '抽' : ''}}</view>
+        <view class="role-quota evil-quota">邪恶 {{evilRoleCount}}{{unknownRoles ? '选' : ''}} / {{targetEvilCount}}{{unknownRoles ? '抽' : ''}}</view>
+      </view>
+
+      <view class="balance-panel balance-{{balanceLevel}}">
+        <view class="balance-head"><view class="setting-label">{{unknownRoles ? '候选池平衡预估' : '平衡性预估'}}</view><view class="balance-result">{{balanceTitle}}</view></view>
+        <view class="balance-scale">
+          <view class="balance-zone good-zone"></view><view class="balance-zone fair-zone"></view><view class="balance-zone evil-zone"></view>
+          <view class="balance-center"></view><view class="balance-marker" style="left: {{balanceMarkerPercent}}%;"></view>
+        </view>
+        <view class="balance-axis"><text>正义更轻松</text><text>平衡</text><text>邪恶更轻松</text></view>
+        <view wx:if="{{balanceWarning}}" class="balance-warning">{{balanceWarning}}</view>
+      </view>
+
+      <view class="role-pack-tabs">
+        <view class="role-pack-option {{roleFactionFilter === 'good' ? 'active good-tab' : ''}}" data-faction="good" bindtap="selectRoleFaction">正义阵营</view>
+        <view class="role-pack-option {{roleFactionFilter === 'evil' ? 'active evil-tab' : ''}}" data-faction="evil" bindtap="selectRoleFaction">邪恶阵营</view>
+      </view>
+
+      <scroll-view class="role-choice-list" scroll-y>
+        <view wx:for="{{roleEditorList}}" wx:key="role" class="role-choice {{item.selected ? 'selected' : ''}} {{item.locked ? 'locked' : ''}}" data-role="{{item.role}}" bindtap="toggleRoleSelection">
+          <view class="role-choice-mark">{{item.selected ? '✓' : ''}}</view>
+          <view class="role-choice-copy">
+            <view class="role-choice-title"><text>{{item.name}}</text><text class="role-pack-label">{{item.packName}}</text></view>
+            <view class="role-choice-desc">{{item.desc}}</view>
+            <view wx:if="{{item.pairName}}" class="role-pair-note">与{{item.pairName}}成对加入</view>
+          </view>
+          <view wx:if="{{item.locked}}" class="role-lock">必选</view>
+        </view>
+      </scroll-view>
+
+      <view class="role-sheet-actions">
+        <button class="layout-reset" bindtap="resetRoleDraft">恢复默认</button>
+        <button class="layout-confirm" bindtap="useRoleDraft">使用此{{unknownRoles ? '候选池' : '阵容'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{layoutEditorVisible}}" class="layout-overlay" bindtap="closeLayoutEditor">
+    <view class="layout-sheet" catchtap="stopPropagation">
+      <view class="sheet-handle"></view>
+      <view class="layout-sheet-head">
+        <view>
+          <view class="layout-sheet-title">安排长桌座位</view>
+          <view class="layout-sheet-subtitle">按现实座位调整四条桌边</view>
+        </view>
+        <view class="modal-close" bindtap="closeLayoutEditor" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+      </view>
+
+      <view class="layout-count-status {{draftRemainingCount === 0 ? 'complete' : ''}}">
+        <view>已安排 <text>{{draftAssignedCount}}</text> / {{playerCount}}</view>
+        <view wx:if="{{draftRemainingCount > 0}}">还差 {{draftRemainingCount}} 个座位</view>
+        <view wx:else>座位已安排完毕</view>
+      </view>
+
+      <view class="layout-designer {{draftOrientation === 'vertical' ? 'vertical' : 'horizontal'}}">
+        <view class="edge-control edge-top">
+          <view class="edge-label">上边</view>
+          <view class="edge-stepper"><view class="edge-step-button {{draftSeatLayout.top <= 0 ? 'control-disabled' : ''}}" data-region="top" data-delta="-1" bindtap="changeLayoutSide">−</view><text>{{draftSeatLayout.top}}</text><view class="edge-step-button {{draftRemainingCount <= 0 ? 'control-disabled' : ''}}" data-region="top" data-delta="1" bindtap="changeLayoutSide">+</view></view>
+        </view>
+        <view class="edge-control edge-right">
+          <view class="edge-label">右边</view>
+          <view class="edge-stepper"><view class="edge-step-button {{draftSeatLayout.right <= 0 ? 'control-disabled' : ''}}" data-region="right" data-delta="-1" bindtap="changeLayoutSide">−</view><text>{{draftSeatLayout.right}}</text><view class="edge-step-button {{draftRemainingCount <= 0 ? 'control-disabled' : ''}}" data-region="right" data-delta="1" bindtap="changeLayoutSide">+</view></view>
+        </view>
+        <view class="edge-control edge-bottom">
+          <view class="edge-label">下边</view>
+          <view class="edge-stepper"><view class="edge-step-button {{draftSeatLayout.bottom <= 0 ? 'control-disabled' : ''}}" data-region="bottom" data-delta="-1" bindtap="changeLayoutSide">−</view><text>{{draftSeatLayout.bottom}}</text><view class="edge-step-button {{draftRemainingCount <= 0 ? 'control-disabled' : ''}}" data-region="bottom" data-delta="1" bindtap="changeLayoutSide">+</view></view>
+        </view>
+        <view class="edge-control edge-left">
+          <view class="edge-label">左边</view>
+          <view class="edge-stepper"><view class="edge-step-button {{draftSeatLayout.left <= 0 ? 'control-disabled' : ''}}" data-region="left" data-delta="-1" bindtap="changeLayoutSide">−</view><text>{{draftSeatLayout.left}}</text><view class="edge-step-button {{draftRemainingCount <= 0 ? 'control-disabled' : ''}}" data-region="left" data-delta="1" bindtap="changeLayoutSide">+</view></view>
+        </view>
+
+        <view class="designer-table" style="width: {{draftTableWidth}}%; height: {{draftTableHeight}}%;"><view class="designer-table-core">{{playerCount}} 人长桌</view></view>
+      </view>
+      <view class="layout-sheet-actions">
+        <button class="layout-reset" bindtap="resetSeatLayout">恢复默认</button>
+        <button class="layout-confirm" bindtap="useSeatLayout" disabled="{{draftRemainingCount !== 0}}">使用此布局</button>
+      </view>
+    </view>
+  </view>
+</view>

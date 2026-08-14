@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/room/room",
+    "pages/play/play",
+    "pages/result/result"
+  ],
+  "window": {
+    "navigationBarTitleText": "圆桌秘闻",
+    "navigationBarBackgroundColor": "#2a2018",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f6efe2"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

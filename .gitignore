@@ -1,0 +1,14 @@
+# 依赖
+node_modules/
+.pnpm-store/
+miniprogram_npm/
+
+# 微信开发者工具本地配置（每台机器不同，不应共享）
+project.private.config.json
+
+# 临时与派生产物（PDF 拆页、探针截图等，均可重新生成）
+tmp/
+
+# 系统与日志
+.DS_Store
+*.log

@@ -1,0 +1,564 @@
+const roomStore = require("../../utils/roomStore")
+const gameUtil = require("../../utils/game")
+const tableLayout = require("../../utils/tableLayout")
+const roleGuideData = require("../../data/roleGuides")
+const ttsData = require("../../data/ttsLines")
+
+const phaseNames = {
+  reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
+  vote: "秘密投票", missionResult: "远征结算", finale: "最终审判"
+}
+
+Page({
+  data: {
+    roomId: "", room: null, game: null, privateView: null, isHost: false,
+    phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
+    roleVisible: false, identityMode: "prepare", identityCountdown: 3, identitySecondsLeft: 40,
+    identityReady: false, identityRemembered: false, identityReadyCount: 0, identityRememberedCount: 0,
+    nightCeremony: [], currentNightLine: {}, nightStep: 0, nightSecondsLeft: 5, nightFinished: false,
+    nightDirective: { title: "天黑请闭眼", subtitle: "请听指令" },
+    leader: null, isLeader: false, missionSize: 0, protectedText: "", missionTrack: [],
+    canControlLeader: false,
+    tableOrientation: "horizontal",
+    tableWidth: 44,
+    tableHeight: 34,
+    tableVisible: false, tableMode: "team", tableTitle: "选择同行骑士", tableHint: "",
+    historyVisible: false, historyMissions: [], historyAmulets: [],
+    decoratedPlayers: [], selectedTeam: [], magicTargetId: null, teamPlayers: [],
+    nextLeaderId: null, nextAmuletId: null, needsAmulet: false,
+    voteCount: 0, votePercent: 0, myVotePending: false,
+    amulet: null, isAmuletOwner: false, isInspectionTarget: false, inspectionResultName: "",
+    canClaimGalahad: false,
+    finalStage: "", finalSelectionMode: "", finalSecondsLeft: 300, finalTargets: [], finalSubmitted: false,
+    canOperateHunter: false,
+    finalClock: "5:00", lastMission: null, myInTeam: false,
+    canVoteSuccess: false, canVoteFail: false, canClaimGood: false, canClaimEvil: false,
+    hunterVoteValue: "", traitorSide: "", traitorTargets: [],
+    hasBots: false, botPlayers: [], debugVisible: false, syncing: false,
+    nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
+    ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
+    ceremonySubtitle: "", ceremonyTarget: null
+  },
+
+  pollTimer: null,
+  clockTimer: null,
+  ceremonyTimer: null,
+  nightTimer: null,
+  selectionTimer: null,
+  ceremonyQueue: [],
+  loading: false,
+  stateGeneration: 0,
+
+  onLoad(options) {
+    this.setData({ roomId: options.roomId })
+    this.loadState(true)
+    this.pollTimer = setInterval(() => this.loadState(false), 900)
+    this.clockTimer = setInterval(() => this.updateClock(), 200)
+  },
+
+  onUnload() {
+    if (this.pollTimer) clearInterval(this.pollTimer)
+    if (this.clockTimer) clearInterval(this.clockTimer)
+    if (this.ceremonyTimer) clearTimeout(this.ceremonyTimer)
+    if (this.nightTimer) clearTimeout(this.nightTimer)
+    if (this.selectionTimer) clearTimeout(this.selectionTimer)
+  },
+
+  loadState(showError) {
+    if (this.loading || this.data.syncing) return Promise.resolve()
+    const generation = this.stateGeneration
+    this.loading = true
+    return roomStore.getState(this.data.roomId).then(result => {
+      if (generation !== this.stateGeneration || this.data.syncing) return
+      this.applyState(result)
+    }).catch(error => {
+      if (showError) this.showError(error)
+    }).finally(() => { this.loading = false })
+  },
+
+  applyState(result) {
+    const room = result.room
+    if (room.status === "finished") {
+      wx.redirectTo({ url: `/pages/result/result?roomId=${room._id}` })
+      return
+    }
+    const game = room.game
+    if (!game) return
+    const previousGame = this.data.game
+    const previousPhase = this.data.phase
+    const privateView = result.private || {}
+    const phaseChanged = this.data.phase !== room.phase
+    const tableType = room.tableType || "round"
+    const decoratedPlayers = game.players.map((player, index) => ({
+      ...player,
+      ...tableLayout.seatPosition(index, game.players.length, tableType, room.seatLayout, room.tableSides),
+      selected: this.data.selectedTeam.indexOf(player.id) >= 0,
+      finalSelected: this.data.finalTargets.indexOf(player.id) >= 0,
+      initial: player.name ? player.name.slice(0, 1) : String(player.id),
+      canLead: !player.hasLed && !player.hadAmulet,
+      canReceiveAmulet: !player.hasLed && !player.hadAmulet,
+      canInspect: !player.hadAmulet && !player.fadedAmulet && (!game.amulet || player.id !== game.amulet.ownerId)
+    }))
+    const leader = decoratedPlayers.find(player => player.id === game.leaderId) || null
+    const identity = game.identity || { readyIds: [], rememberedIds: [] }
+    const amulet = game.amulet || null
+    const myRole = privateView.role ? gameUtil.getRoleInfo(privateView.role) : null
+    const missionSize = gameUtil.currentMissionSize(game)
+    const needsAmulet = gameUtil.shouldGiveAmulet(game.playerCount, game.round)
+    const finalStage = game.final ? game.final.stage : ""
+    const finalStageChanged = this.data.finalStage !== finalStage
+    const retainedTraitorSide = finalStageChanged ? "" : this.data.traitorSide
+    const finalSelectionMode = this.resolveFinalSelectionMode(finalStage, privateView, retainedTraitorSide)
+    const lastMission = game.missions.length ? game.missions[game.missions.length - 1] : null
+    const nightCeremony = ttsData.buildNightCeremonyFromSettings(room.settings || {})
+    const nightStep = Math.min(this.data.nightStep, Math.max(nightCeremony.length - 1, 0))
+    const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
+    const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
+    const history = this.buildGameHistory(game, decoratedPlayers)
+    this.setData({
+      room, game, privateView, isHost: !!result.isHost, phase: room.phase, phaseName: phaseNames[room.phase] || "圆桌进行中",
+      myRole, myRoleGuide: privateView.role ? roleGuideData.getRoleGuide(privateView.role) : roleGuideData.defaultGuide,
+      identityReady: identity.readyIds.indexOf(privateView.id) >= 0,
+      identityRemembered: identity.rememberedIds.indexOf(privateView.id) >= 0,
+      identityReadyCount: identity.readyIds.length, identityRememberedCount: identity.rememberedIds.length,
+      canClaimGood: (privateView.inspectionOptions || []).indexOf("good") >= 0,
+      canClaimEvil: (privateView.inspectionOptions || []).indexOf("evil") >= 0,
+      nightCeremony, nightStep, currentNightLine: nightCeremony[nightStep] || {},
+      nightDirective: ttsData.pickNightDisplay(Number(game.firstLeaderId || 0) + Number(game.playerCount || 0)),
+      leader, isLeader: privateView.id === game.leaderId,
+      canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && leader.name.indexOf("测试骑士") === 0),
+      missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
+      missionTrack: this.buildMissionTrack(game), decoratedPlayers,
+      tableOrientation: tableGeometry.orientation,
+      tableWidth: tableGeometry.width,
+      tableHeight: tableGeometry.height,
+      voteCount: game.current.voteCount || 0,
+      votePercent: game.current.team.length ? Math.round((game.current.voteCount || 0) / game.current.team.length * 100) : 0,
+      amulet, isAmuletOwner: !!amulet && amulet.ownerId === privateView.id,
+      isInspectionTarget: !!privateView.isInspectionTarget,
+      inspectionResultName: privateView.inspectionResult ? gameUtil.factionLabel(privateView.inspectionResult) : "",
+      canClaimGalahad: !!privateView.canClaimGalahad,
+      finalStage, finalSelectionMode, traitorSide: retainedTraitorSide, finalSubmitted: !!privateView.finalSubmitted,
+      canOperateHunter: privateView.role === "hunter" || !!privateView.canControlBotHunter,
+      lastMission,
+      missionResultCards: this.buildMissionResultCards(lastMission),
+      myInTeam: game.current.team.indexOf(privateView.id) >= 0,
+      canVoteSuccess: (privateView.voteOptions || []).indexOf("success") >= 0,
+      canVoteFail: (privateView.voteOptions || []).indexOf("fail") >= 0,
+      hasBots: decoratedPlayers.some(player => player.name.indexOf("测试骑士") === 0 && game.current.team.indexOf(player.id) >= 0 && (privateView.botVotedIds || []).indexOf(player.id) < 0),
+      botPlayers: decoratedPlayers.filter(player => player.name.indexOf("测试骑士") === 0 && game.current.team.indexOf(player.id) >= 0 && (privateView.botVotedIds || []).indexOf(player.id) < 0),
+      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && leader.name.indexOf("测试骑士") === 0))) : this.data.tableVisible,
+      tableMode: phaseChanged && room.phase === "mission" ? "team" : this.data.tableMode,
+      tableTitle: phaseChanged && room.phase === "mission" ? "选择同行骑士" : this.data.tableTitle,
+      tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名同行骑士` : this.data.tableHint,
+      selectedTeam: phaseChanged ? game.current.team.slice() : this.data.selectedTeam,
+      magicTargetId: phaseChanged ? game.current.magicTargetId : this.data.magicTargetId,
+      finalTargets: phaseChanged || finalStageChanged ? [] : this.data.finalTargets,
+      nextLeaderId: phaseChanged ? null : this.data.nextLeaderId,
+      nextAmuletId: phaseChanged ? null : this.data.nextAmuletId,
+      needsAmulet,
+      historyMissions: history.missions,
+      historyAmulets: history.amulets,
+      syncing: false
+    })
+    this.refreshSelections()
+    this.updateClock()
+    this.enqueueCeremonies(ceremonies)
+    if (phaseChanged && room.phase === "night") this.startNightDirectives()
+    if (phaseChanged && room.phase === "missionResult") this.vibrate(lastMission && lastMission.winner === "evil" ? "heavy" : "medium")
+  },
+
+  buildStateCeremonies(previousGame, previousPhase, game, phase, players) {
+    if (!previousGame) return []
+    const events = []
+    const findPlayer = id => players.find(player => player.id === Number(id)) || null
+    const previousFinalStage = previousGame.final && previousGame.final.stage
+    const finalStage = game.final && game.final.stage
+    if (previousPhase !== "finale" && phase === "finale") {
+      const goodReachedThree = game.goodWins >= 3
+      const finalMission = game.missions && game.missions[game.missions.length - 1]
+      if (finalMission) events.push({
+        type: finalMission.winner === "good" ? "mission-good" : "mission-evil",
+        symbol: finalMission.winner === "good" ? "成" : "败",
+        title: `第 ${finalMission.round} 次远征${finalMission.winner === "good" ? "成功" : "失败"}`,
+        subtitle: `成功 ${finalMission.successCount} 票 · 失败 ${finalMission.failCount} 票`,
+        target: null
+      })
+      events.push({
+        type: goodReachedThree ? "finale-good" : "finale-evil",
+        symbol: goodReachedThree ? "光" : "影",
+        title: goodReachedThree ? "圣杯三度告捷" : "黑暗三度得手",
+        subtitle: "常规远征结束，最终审判开启",
+        target: null
+      })
+      return events
+    }
+    if (previousFinalStage !== "hunterTargets" && finalStage === "hunterTargets" && game.final.hunterRevealed) {
+      const hunter = players.find(player => player.revealed) || null
+      events.push({
+        type: "hunter", symbol: "杀", title: "盲眼杀手现身",
+        subtitle: hunter ? `${hunter.id}号 ${hunter.name} 发动最后猎杀` : "圆桌禁止交谈，等待最后猎杀",
+        target: hunter
+      })
+      return events
+    }
+    if (previousGame.leaderId !== game.leaderId) {
+      const target = findPlayer(game.leaderId)
+      if (target) events.push({
+        type: "crown", symbol: "👑", title: "皇冠易主",
+        subtitle: `${target.id}号 ${target.name} 接掌远征`, target
+      })
+    }
+    const previousAmuletId = previousGame.amulet && previousGame.amulet.ownerId
+    const amuletId = game.amulet && game.amulet.ownerId
+    if (amuletId && previousAmuletId !== amuletId) {
+      const target = findPlayer(amuletId)
+      if (target) events.push({
+        type: "amulet", symbol: "🧿", title: "护身符授予",
+        subtitle: `${target.id}号 ${target.name} 获得查验权`, target
+      })
+    }
+    if (previousPhase === "mission" && phase === "vote" && game.current.magicTargetId) {
+      const target = findPlayer(game.current.magicTargetId)
+      if (target) events.push({
+        type: "magic", symbol: "🔥", title: "火球落定",
+        subtitle: `${target.id}号 ${target.name} 被魔法约束`, target
+      })
+    }
+    const roundAdvanced = Number(previousGame.round) !== Number(game.round)
+    if (phase === "mission" && (roundAdvanced || previousPhase === "night" || previousPhase === "amulet")) {
+      events.push({
+        type: "round", symbol: String(game.round), title: `第 ${game.round} 轮远征`,
+        subtitle: `${game.missionPreset.sizes[game.round - 1]}名骑士即将出发${game.missionPreset.protectedRounds.indexOf(game.round) >= 0 ? " · 本轮需要两张失败牌" : ""}`,
+        target: null
+      })
+    }
+    return events
+  },
+
+  enqueueCeremonies(events) {
+    if (!events || !events.length) return
+    this.ceremonyQueue = this.ceremonyQueue.concat(events)
+    if (!this.data.ceremonyVisible && !this.ceremonyTimer) this.playNextCeremony()
+  },
+
+  playNextCeremony() {
+    const ceremony = this.ceremonyQueue.shift()
+    if (!ceremony) {
+      this.ceremonyTimer = null
+      return
+    }
+    this.setData({
+      ceremonyVisible: true,
+      ceremonyType: ceremony.type,
+      ceremonySymbol: ceremony.symbol,
+      ceremonyTitle: ceremony.title,
+      ceremonySubtitle: ceremony.subtitle,
+      ceremonyTarget: ceremony.target
+    })
+    this.vibrate("medium")
+    this.ceremonyTimer = setTimeout(() => {
+      this.setData({ ceremonyVisible: false })
+      this.ceremonyTimer = setTimeout(() => this.playNextCeremony(), 180)
+    }, 1450)
+  },
+
+  vibrate(type) {
+    if (!wx.vibrateShort) return
+    try { wx.vibrateShort({ type: type || "light" }) } catch (error) {}
+  },
+
+  buildMissionTrack(game) {
+    return game.missionPreset.sizes.map((size, index) => {
+      const round = index + 1
+      const mission = game.missions.find(item => item.round === round)
+      return {
+        round, size,
+        state: mission ? (mission.winner === "good" ? "success" : "fail") : (round === game.round ? "current" : "future"),
+        label: mission ? (mission.winner === "good" ? "成" : "败") : String(round),
+        protected: game.missionPreset.protectedRounds.indexOf(round) >= 0
+      }
+    })
+  },
+
+  buildMissionResultCards(mission) {
+    if (!mission) return []
+    const cards = []
+    for (let index = 0; index < Number(mission.successCount || 0); index += 1) cards.push({ id: `success-${index}`, value: "success", label: "成" })
+    for (let index = 0; index < Number(mission.failCount || 0); index += 1) cards.push({ id: `fail-${index}`, value: "fail", label: "败" })
+    return cards.map((card, index) => ({ ...card, delay: index * 150 }))
+  },
+
+  buildGameHistory(game, players) {
+    const byId = id => players.find(player => Number(player.id) === Number(id))
+    const playerLabel = id => {
+      const player = byId(id)
+      return player ? `${player.id}号 ${player.name}` : `${id}号`
+    }
+    const missions = (game.missions || []).map(mission => ({
+      round: mission.round,
+      leader: playerLabel(mission.leaderId),
+      team: (mission.team || []).map(playerLabel).join("、"),
+      magic: playerLabel(mission.magicTargetId),
+      result: mission.winner === "good" ? "远征成功" : "远征失败",
+      resultClass: mission.winner === "good" ? "good" : "evil",
+      votes: `成功 ${mission.successCount} · 失败 ${mission.failCount}`
+    }))
+    const amulets = (game.amuletHistory || []).map((item, index) => ({
+      id: `${item.round}-${index}`,
+      round: item.round,
+      owner: playerLabel(item.ownerId),
+      target: playerLabel(item.targetId)
+    }))
+    return { missions, amulets }
+  },
+
+  updateClock() {
+    const game = this.data.game
+    if (!game) return
+    const now = Date.now()
+    if (this.data.phase === "reveal") {
+      const identity = game.identity || {}
+      let identityMode = "prepare"
+      let roleVisible = false
+      let identityCountdown = 3
+      let identitySecondsLeft = 40
+      if (identity.revealAt) {
+        if (now < identity.revealAt) {
+          identityMode = "countdown"
+          identityCountdown = Math.max(1, Math.ceil((identity.revealAt - now) / 1000))
+        } else if (now < identity.closeAt) {
+          identityMode = "reading"
+          roleVisible = true
+          identitySecondsLeft = Math.max(0, Math.ceil((identity.closeAt - now) / 1000))
+        } else identityMode = "remember"
+      }
+      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft })
+    }
+    if (this.data.finalStage === "discussion" && game.final) {
+      const finalSecondsLeft = Math.max(0, Math.ceil((game.final.discussionEndsAt - now) / 1000))
+      const minutes = Math.floor(finalSecondsLeft / 60)
+      const seconds = finalSecondsLeft % 60
+      this.setData({ finalSecondsLeft, finalClock: `${minutes}:${seconds < 10 ? "0" : ""}${seconds}` })
+    }
+  },
+
+  confirmIdentity() {
+    this.sendAction("identityReady")
+  },
+
+  submitLeaderClaim(event) {
+    if (this.data.privateView.leaderClaimSubmitted) return
+    const claim = event.currentTarget.dataset.faction
+    this.sendAction("identityClaim", { claim })
+  },
+
+  startIdentity() { this.sendAction("startIdentity") },
+  rememberIdentity() {
+    this.sendAction("identityRemembered")
+  },
+  enterNight() { this.sendAction("enterNight") },
+  startNightDirectives() {
+    if (this.nightTimer) clearTimeout(this.nightTimer)
+    this.setData({ nightSecondsLeft: 5, nightFinished: false })
+    this.scheduleNightTick()
+  },
+  scheduleNightTick() {
+    this.nightTimer = setTimeout(() => {
+      if (this.data.phase !== "night") return
+      if (this.data.nightSecondsLeft > 1) {
+        this.setData({ nightSecondsLeft: this.data.nightSecondsLeft - 1 })
+        this.scheduleNightTick()
+        return
+      }
+      this.setData({ nightFinished: true, nightSecondsLeft: 0 })
+      if (this.data.isHost) this.enterMission()
+    }, 1000)
+  },
+  enterMission() { this.sendAction("enterMission") },
+
+  openTable(event) {
+    const mode = event.currentTarget.dataset.mode || "status"
+    const titles = { team: "选择同行骑士", magic: "交付魔法指示物", leader: "移交皇冠", amuletOwner: "交付护身符", inspect: "选择查验对象", final: "选择两位玩家", status: "圆桌座位" }
+    const hints = {
+      team: `选择${this.data.missionSize}名同行骑士`, magic: "只能选择本轮同行骑士",
+      leader: "已担任队长或曾持护身符者不可接任", amuletOwner: "不可与新队长为同一人",
+      inspect: "不可查验持符者、曾持符者或已被查验者", final: "每位玩家私密选择两人"
+    }
+    this.setData({ tableVisible: true, tableMode: mode, tableTitle: titles[mode], tableHint: hints[mode] || "查看本局玩家" })
+  },
+
+  openHistory() { this.setData({ historyVisible: true }) },
+  closeHistory() { this.setData({ historyVisible: false }) },
+
+  closeTable() {
+    if (this.data.syncing) return
+    this.setData({ tableVisible: false })
+  },
+  stopPropagation() {},
+
+  resolveFinalSelectionMode(finalStage, privateView, traitorSide) {
+    if (finalStage === "hunterTargets" && (privateView.role === "hunter" || privateView.canControlBotHunter)) return "hunter"
+    if (finalStage !== "identify") return ""
+    if (privateView.role === "traitor" && !privateView.traitorDecision) return traitorSide === "good" ? "traitor" : ""
+    return privateView.finalSubmitted ? "" : "identify"
+  },
+
+  tapSeat(event) {
+    const id = Number(event.currentTarget.dataset.id)
+    const player = this.data.decoratedPlayers.find(item => item.id === id)
+    const mode = event.currentTarget.dataset.mode || this.data.tableMode
+    if (mode === "team") {
+      const selected = this.data.selectedTeam.slice()
+      const index = selected.indexOf(id)
+      if (index >= 0) selected.splice(index, 1)
+      else if (selected.length < this.data.missionSize) selected.push(id)
+      else return wx.showToast({ title: `最多选${this.data.missionSize}人`, icon: "none" })
+      this.setData({ selectedTeam: selected, teamPulseId: index < 0 ? id : 0 })
+      if (this.selectionTimer) clearTimeout(this.selectionTimer)
+      this.selectionTimer = setTimeout(() => {
+        this.setData({ teamPulseId: 0 })
+        this.refreshSelections()
+      }, 560)
+      this.vibrate("light")
+    }
+    if (mode === "magic") {
+      if (this.data.selectedTeam.indexOf(id) < 0) return wx.showToast({ title: "只能给同行骑士", icon: "none" })
+      this.setData({ magicTargetId: id })
+      this.vibrate("medium")
+    }
+    if (mode === "leader") {
+      if (!player.canLead) return wx.showToast({ title: player.hasLed ? "已担任过队长" : "曾持有护身符", icon: "none" })
+      this.setData({ nextLeaderId: id, nextAmuletId: id === this.data.nextAmuletId ? null : this.data.nextAmuletId })
+      this.vibrate("medium")
+    }
+    if (mode === "amuletOwner") {
+      const handoffLeaderId = this.data.game.galahadLeaderId || this.data.nextLeaderId
+      if (!player.canReceiveAmulet || id === handoffLeaderId) return wx.showToast({ title: "该玩家不能获得护身符", icon: "none" })
+      this.setData({ nextAmuletId: id })
+      this.vibrate("medium")
+    }
+    if (mode === "inspect") {
+      if (!player.canInspect) return wx.showToast({ title: "该玩家不能被查验", icon: "none" })
+      this.sendAction("selectAmuletTarget", { targetId: id }, null, { tableVisible: false })
+      return
+    }
+    if (mode === "final") {
+      const targets = this.data.finalTargets.slice()
+      const index = targets.indexOf(id)
+      if (index >= 0) targets.splice(index, 1)
+      else if (targets.length < 2) targets.push(id)
+      else return wx.showToast({ title: "只能选择两人", icon: "none" })
+      this.setData({ finalTargets: targets })
+    }
+    this.refreshSelections()
+  },
+
+  refreshSelections() {
+    const decoratedPlayers = (this.data.decoratedPlayers || []).map(player => ({
+      ...player,
+      selected: this.data.selectedTeam.indexOf(player.id) >= 0,
+      finalSelected: this.data.finalTargets.indexOf(player.id) >= 0,
+      justSelected: Number(this.data.teamPulseId) === Number(player.id)
+    }))
+    this.setData({
+      decoratedPlayers,
+      teamPlayers: decoratedPlayers.filter(player => this.data.selectedTeam.indexOf(player.id) >= 0),
+      nextLeaderPlayer: decoratedPlayers.find(player => player.id === Number(this.data.game && this.data.game.galahadLeaderId || this.data.nextLeaderId)) || null,
+      nextAmuletPlayer: decoratedPlayers.find(player => player.id === Number(this.data.nextAmuletId)) || null
+    })
+  },
+
+  chooseMagicMode() {
+    if (this.data.selectedTeam.length !== this.data.missionSize) return wx.showToast({ title: "队伍还没选齐", icon: "none" })
+    this.openTable({ currentTarget: { dataset: { mode: "magic" } } })
+  },
+
+  startVote() {
+    if (this.data.selectedTeam.length !== this.data.missionSize || !this.data.magicTargetId) return wx.showToast({ title: "请完成队伍和魔法选择", icon: "none" })
+    this.sendAction("startVote", { team: this.data.selectedTeam, magicTargetId: this.data.magicTargetId })
+  },
+
+  submitVote(event) {
+    if (this.data.privateView.hasVoted || this.data.myVotePending) return
+    this.setData({ myVotePending: true })
+    this.sendAction("submitVote", { value: event.currentTarget.dataset.value }, { myVotePending: false })
+  },
+
+  submitBotVotes() { this.sendAction("submitBotVotes") },
+
+  claimGalahad() { this.sendAction("claimGalahad") },
+
+  handoff() {
+    if (!this.data.nextLeaderId && !this.data.game.galahadLeaderId) return wx.showToast({ title: "请选择下一位队长", icon: "none" })
+    if (this.data.needsAmulet && !this.data.nextAmuletId) return wx.showToast({ title: "本轮需要分配护身符", icon: "none" })
+    this.sendAction("handoff", { nextLeaderId: this.data.nextLeaderId || this.data.game.galahadLeaderId, amuletOwnerId: this.data.nextAmuletId || null })
+  },
+
+  inspectionClaim(event) { this.sendAction("inspectionClaim", { claim: event.currentTarget.dataset.faction }) },
+  completeAmulet() { this.sendAction("completeAmulet") },
+
+  finishDiscussion() { this.sendAction("finishDiscussion", { force: false }) },
+  forceFinishDiscussion() { this.sendAction("finishDiscussion", { force: true }) },
+  hunterVote(event) { this.sendAction("hunterVote", { value: event.currentTarget.dataset.value }) },
+  revealHunter() { this.sendAction("hunterDecision", { hunt: true }) },
+  silenceHunter() { this.sendAction("hunterDecision", { hunt: false }) },
+
+  submitHunterTargets() {
+    if (this.data.finalTargets.length !== 2) return wx.showToast({ title: "请选择两位猎杀目标", icon: "none" })
+    this.sendAction("hunterTargets", { targets: this.data.finalTargets })
+  },
+
+  chooseTraitorSide(event) {
+    const side = event.currentTarget.dataset.side
+    this.setData({
+      traitorSide: side,
+      finalSelectionMode: side === "good" ? "traitor" : "",
+      finalTargets: []
+    })
+    if (side === "evil") this.sendAction("traitorDecision", { side: "evil" })
+  },
+
+  submitTraitorDecision() {
+    if (this.data.finalTargets.length !== 2) return wx.showToast({ title: "请选择两位正义玩家", icon: "none" })
+    this.sendAction("traitorDecision", { side: "good", targets: this.data.finalTargets })
+  },
+
+  submitFinalIdentify() {
+    if (this.data.finalTargets.length !== 2) return wx.showToast({ title: "请私密指认两位玩家", icon: "none" })
+    this.sendAction("finalIdentify", { targets: this.data.finalTargets })
+  },
+
+  toggleDebug() { this.setData({ debugVisible: !this.data.debugVisible }) },
+
+  sendSequence(actions) {
+    if (this.data.syncing) return
+    this.stateGeneration += 1
+    this.setData({ syncing: true })
+    actions.reduce((promise, item) => promise.then(() => roomStore.action(this.data.roomId, item[0], item[1])), Promise.resolve())
+      .then(result => this.applyState(result)).catch(error => {
+        this.showError(error)
+        this.stateGeneration += 1
+      }).finally(() => this.setData({ syncing: false }))
+  },
+
+  sendAction(action, payload, after, successAfter) {
+    if (this.data.syncing) return Promise.resolve()
+    this.stateGeneration += 1
+    this.setData({ syncing: true })
+    let succeeded = false
+    return roomStore.action(this.data.roomId, action, payload).then(result => {
+      succeeded = true
+      this.applyState(result)
+      if (successAfter) this.setData(successAfter)
+    }).catch(error => {
+      this.showError(error)
+      this.stateGeneration += 1
+    }).finally(() => {
+      this.setData({ syncing: false, ...(after || {}) })
+      if (!succeeded) this.loadState(false)
+    })
+  },
+
+  showError(error) { wx.showToast({ title: error.message || "操作失败", icon: "none", duration: 2600 }) }
+})

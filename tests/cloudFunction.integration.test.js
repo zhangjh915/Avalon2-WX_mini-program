@@ -1,0 +1,642 @@
+const assert = require("assert")
+const Module = require("module")
+const gameUtil = require("../miniprogram/utils/game")
+const core = require("../cloudfunctions/avalonGame/gameCore")
+
+function clone(value) {
+  if (value === undefined) return undefined
+  return JSON.parse(JSON.stringify(value))
+}
+
+function createCloudMock() {
+  const collections = new Map()
+  let openid = "host"
+  let nextId = 1
+  const setMarker = Symbol("set")
+  const command = { set: value => ({ [setMarker]: true, value }) }
+
+  function records(name) {
+    if (!collections.has(name)) collections.set(name, new Map())
+    return collections.get(name)
+  }
+
+  function isSet(value) {
+    return !!(value && value[setMarker])
+  }
+
+  function applyPath(target, path, value) {
+    const parts = path.split(".")
+    let cursor = target
+    for (let index = 0; index < parts.length - 1; index += 1) {
+      const part = parts[index]
+      if (cursor[part] === undefined) cursor[part] = {}
+      if (cursor[part] === null || typeof cursor[part] !== "object" || Array.isArray(cursor[part])) {
+        throw new Error(`Cannot create field '${parts[index + 1]}' in element {${part}: ${cursor[part]}}`)
+      }
+      cursor = cursor[part]
+    }
+    cursor[parts[parts.length - 1]] = clone(value)
+  }
+
+  function flattenUpdate(value, prefix, output) {
+    if (isSet(value)) {
+      output.push([prefix, value.value])
+      return
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const keys = Object.keys(value)
+      if (keys.length) {
+        keys.forEach(key => flattenUpdate(value[key], prefix ? `${prefix}.${key}` : key, output))
+        return
+      }
+    }
+    output.push([prefix, value])
+  }
+
+  function docApi(name, id) {
+    return {
+      async get() {
+        const value = records(name).get(String(id))
+        if (!value) throw new Error(`document ${name}/${id} not found`)
+        return { data: clone(value) }
+      },
+      async set({ data }) {
+        const normalized = {}
+        Object.keys(data).forEach(key => {
+          normalized[key] = isSet(data[key]) ? clone(data[key].value) : clone(data[key])
+        })
+        normalized._id = normalized._id || String(id)
+        records(name).set(String(id), normalized)
+        return { stats: { created: 1 } }
+      },
+      async update({ data }) {
+        const current = records(name).get(String(id))
+        if (!current) throw new Error(`document ${name}/${id} not found`)
+        const updates = []
+        Object.keys(data).forEach(key => flattenUpdate(data[key], key, updates))
+        updates.forEach(([path, value]) => applyPath(current, path, value))
+        records(name).set(String(id), current)
+        return { stats: { updated: 1 } }
+      }
+    }
+  }
+
+  function collectionApi(name) {
+    return {
+      doc(id) { return docApi(name, id) },
+      async add({ data }) {
+        const id = `room-${nextId++}`
+        records(name).set(id, { ...clone(data), _id: id })
+        return { _id: id }
+      },
+      where(query) {
+        return {
+          limit() { return this },
+          async get() {
+            const data = Array.from(records(name).values()).filter(item => Object.keys(query).every(key => item[key] === query[key]))
+            return { data: clone(data) }
+          }
+        }
+      }
+    }
+  }
+
+  const database = {
+    command,
+    collection: collectionApi,
+    async runTransaction(handler) {
+      return handler({ collection: collectionApi })
+    }
+  }
+
+  return {
+    sdk: {
+      DYNAMIC_CURRENT_ENV: "test",
+      init() {},
+      database: () => database,
+      getWXContext: () => ({ OPENID: openid })
+    },
+    setOpenid(value) { openid = value },
+    get(name, id) { return records(name).get(String(id)) },
+    reset() {
+      collections.clear()
+      openid = "host"
+      nextId = 1
+    }
+  }
+}
+
+const cloudMock = createCloudMock()
+const originalLoad = Module._load
+Module._load = function patchedLoad(request, parent, isMain) {
+  if (request === "wx-server-sdk") return cloudMock.sdk
+  return originalLoad.call(this, request, parent, isMain)
+}
+const cloudFunction = require("../cloudfunctions/avalonGame/index")
+Module._load = originalLoad
+
+async function action(name, payload, openid) {
+  cloudMock.setOpenid(openid || "host")
+  return cloudFunction.main({ action: name, ...(payload || {}) })
+}
+
+async function expectFailure(promise, message) {
+  let error = null
+  try { await promise } catch (caught) { error = caught }
+  assert.ok(error, `expected failure: ${message}`)
+  assert.match(error.message, message)
+}
+
+function room(roomId) {
+  return cloudMock.get("avalon_rooms", roomId)
+}
+
+function secret(roomId) {
+  return cloudMock.get("avalon_game_secrets", roomId)
+}
+
+async function createStartedRoom(playerCount, roleCounts, options) {
+  const created = await action("createRoom", {
+    playerCount,
+    roleCounts: roleCounts || gameUtil.buildDefaultRoleCounts(playerCount, false),
+    unknownRoles: !!(options && options.unknownRoles),
+    hunterVoteVariant: !!(options && options.hunterVoteVariant),
+    tableType: options && options.tableType || "round"
+  })
+  await action("takeSeat", { roomId: created.roomId, seatNo: 1, name: "房主" })
+  await action("fillBots", { roomId: created.roomId })
+  const originalRandom = Math.random
+  Math.random = () => 0.5
+  try { await action("startGame", { roomId: created.roomId }) } finally { Math.random = originalRandom }
+  return created.roomId
+}
+
+async function createHumanRoom(playerCount, roleCounts) {
+  const created = await action("createRoom", {
+    playerCount,
+    roleCounts: roleCounts || gameUtil.buildDefaultRoleCounts(playerCount, false),
+    unknownRoles: false,
+    hunterVoteVariant: false,
+    tableType: "round"
+  })
+  for (let seatNo = 1; seatNo <= playerCount; seatNo += 1) {
+    await action("takeSeat", { roomId: created.roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
+  }
+  const originalRandom = Math.random
+  Math.random = () => 0
+  try { await action("startGame", { roomId: created.roomId }, "host") } finally { Math.random = originalRandom }
+  return created.roomId
+}
+
+async function finishIdentity(roomId) {
+  const host = secret(roomId).players.find(player => player.openid === "host")
+  await action("identityReady", { roomId })
+  await action("startIdentity", { roomId })
+  if (host.id === room(roomId).game.firstLeaderId && host.role === "deceiver") {
+    await action("identityClaim", { roomId, claim: "good" })
+  }
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  await action("identityRemembered", { roomId })
+  await action("enterNight", { roomId })
+  await action("enterMission", { roomId })
+  assert.strictEqual(room(roomId).phase, "mission")
+}
+
+function chooseTeam(roomId, winner) {
+  const state = room(roomId)
+  const privateState = secret(roomId)
+  const size = state.game.missionPreset.sizes[state.game.round - 1]
+  const threshold = state.game.missionPreset.protectedRounds.includes(state.game.round) ? 2 : 1
+  const players = privateState.players
+  const combinations = (items, count, start = 0, chosen = [], result = []) => {
+    if (chosen.length === count) result.push(chosen.slice())
+    else for (let index = start; index <= items.length - (count - chosen.length); index += 1) {
+      chosen.push(items[index])
+      combinations(items, count, index + 1, chosen, result)
+      chosen.pop()
+    }
+    return result
+  }
+  for (const team of combinations(players, size)) {
+    for (const magicCandidate of team) {
+      const previousTeam = state.game.current.team
+      const previousTarget = state.game.current.magicTargetId
+      state.game.current.team = team.map(player => player.id)
+      state.game.current.magicTargetId = magicCandidate.id
+      const options = team.map(player => core.legalVoteOptions(state.game, player))
+      state.game.current.team = previousTeam
+      state.game.current.magicTargetId = previousTarget
+      const works = winner === "good"
+        ? options.every(values => values.includes("success"))
+        : options.filter(values => values.includes("fail")).length >= threshold
+      if (works) return { team: team.map(player => player.id), magicTargetId: magicCandidate.id, threshold }
+    }
+  }
+  assert.fail(`${state.playerCount}人第${state.game.round}轮找不到可产生${winner === "good" ? "成功" : "失败"}结果的合法车队：${players.map(player => player.role).join("/")}`)
+}
+
+async function playMission(roomId, winner) {
+  const selection = chooseTeam(roomId, winner)
+  await action("startVote", { roomId, team: selection.team, magicTargetId: selection.magicTargetId })
+  const game = room(roomId).game
+  const privateState = secret(roomId)
+  const teamPlayers = selection.team.map(id => core.getPlayer(privateState, id))
+  const options = new Map(teamPlayers.map(player => [player.id, core.legalVoteOptions(game, player)]))
+  const mandatoryFailers = winner === "evil" ? teamPlayers.filter(player => !options.get(player.id).includes("success")) : []
+  const optionalFailers = winner === "evil"
+    ? teamPlayers.filter(player => options.get(player.id).includes("fail") && !mandatoryFailers.includes(player))
+    : []
+  const failers = mandatoryFailers.concat(optionalFailers.slice(0, Math.max(0, selection.threshold - mandatoryFailers.length))).map(player => player.id)
+  if (winner === "evil") assert.ok(failers.length >= selection.threshold)
+  for (const player of teamPlayers) {
+    const value = failers.includes(player.id) ? "fail" : "success"
+    if (player.bot) await action("submitBotVote", { roomId, playerId: player.id, value })
+    else await action("submitVote", { roomId, value }, player.openid)
+  }
+  const lastMission = room(roomId).game.missions.slice(-1)[0]
+  assert.strictEqual(lastMission.winner, winner)
+}
+
+function handoffTargets(roomId) {
+  const state = room(roomId)
+  const privateState = secret(roomId)
+  const eligible = privateState.players.filter(player => !player.hasLed && !player.hadAmulet)
+  assert.ok(eligible.length)
+  const nextLeader = eligible[0]
+  const needsAmulet = core.needsAmulet(state.playerCount, state.game.round)
+  const amuletOwner = needsAmulet ? eligible.find(player => player.id !== nextLeader.id) : null
+  if (needsAmulet) assert.ok(amuletOwner)
+  return { nextLeaderId: nextLeader.id, amuletOwnerId: amuletOwner && amuletOwner.id }
+}
+
+async function playFiveRoundGame(playerCount) {
+  cloudMock.reset()
+  const roomId = await createStartedRoom(playerCount)
+  await finishIdentity(roomId)
+  const winners = ["evil", "good", "evil", "good", "evil"]
+  for (let index = 0; index < winners.length; index += 1) {
+    await playMission(roomId, winners[index])
+    if (index < winners.length - 1) {
+      const targets = handoffTargets(roomId)
+      await action("handoff", { roomId, ...targets })
+      assert.strictEqual(room(roomId).game.round, index + 2)
+      assert.strictEqual(room(roomId).phase, "mission")
+    }
+  }
+  assert.strictEqual(room(roomId).phase, "finale")
+  await action("finishDiscussion", { roomId, force: true })
+  if (room(roomId).game.final.stage === "hunterDecision") {
+    await action("hunterDecision", { roomId, hunt: false })
+  }
+  if (room(roomId).game.final.stage === "identify") {
+    const targets = secret(roomId).players.filter(player => player.openid !== "host").slice(0, 2).map(player => player.id)
+    await action("finalIdentify", { roomId, targets })
+  }
+  assert.strictEqual(room(roomId).status, "finished")
+  assert.strictEqual(room(roomId).game.winner, "evil")
+  const result = await action("getResult", { roomId })
+  assert.strictEqual(result.players.length, playerCount)
+}
+
+async function testHumanAmuletFlow() {
+  cloudMock.reset()
+  const roomId = await createStartedRoom(8)
+  await finishIdentity(roomId)
+  await playMission(roomId, "good")
+  await action("handoff", { roomId, ...handoffTargets(roomId) })
+  await playMission(roomId, "evil")
+  const privateState = secret(roomId)
+  const host = privateState.players.find(player => player.openid === "host")
+  host.hasLed = false
+  const nextLeader = privateState.players.find(player => player.bot && !player.hasLed && !player.hadAmulet)
+  await action("handoff", { roomId, nextLeaderId: nextLeader.id, amuletOwnerId: host.id })
+  assert.strictEqual(room(roomId).phase, "amulet")
+  const target = secret(roomId).players.find(player => player.bot && !player.hadAmulet && !player.fadedAmulet)
+  await action("selectAmuletTarget", { roomId, targetId: target.id })
+  assert.strictEqual(room(roomId).game.amulet.status, "result")
+  await action("completeAmulet", { roomId })
+  assert.strictEqual(room(roomId).phase, "mission")
+}
+
+async function testInvalidClicks() {
+  cloudMock.reset()
+  const roomId = await createStartedRoom(5)
+  await expectFailure(action("startGame", { roomId }), /游戏已经开始/)
+  await expectFailure(action("enterMission", { roomId }), /当前不能开始远征/)
+  await finishIdentity(roomId)
+  const selection = chooseTeam(roomId, "good")
+  const nonTeamPlayer = secret(roomId).players.find(player => !selection.team.includes(player.id))
+  await expectFailure(action("startVote", { roomId, team: selection.team.slice(1), magicTargetId: selection.magicTargetId }), /本轮需要/)
+  await expectFailure(action("startVote", { roomId, team: selection.team, magicTargetId: nonTeamPlayer.id }), /只能给同行骑士/)
+  await action("startVote", { roomId, team: selection.team, magicTargetId: selection.magicTargetId })
+  const invalidVote = nonTeamPlayer.bot
+    ? action("submitBotVote", { roomId, playerId: nonTeamPlayer.id, value: "success" })
+    : action("submitVote", { roomId, value: "success" }, nonTeamPlayer.openid)
+  await expectFailure(invalidVote, /不在本轮任务队伍/)
+}
+
+async function testUnknownRoles() {
+  cloudMock.reset()
+  const counts = gameUtil.buildDefaultRoleCounts(8, true)
+  const roomId = await createStartedRoom(8, counts, { unknownRoles: true })
+  assert.strictEqual(secret(roomId).players.length, 8)
+  assert.strictEqual(secret(roomId).removedRoles.length, 4)
+}
+
+async function testFirstLeaderDeceiverClaim() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "priest", "squire", "morgan", "hunter", "deceiver"])
+  const roomId = await createHumanRoom(6, counts)
+  const privateState = secret(roomId)
+  const firstLeader = privateState.players.find(player => player.id === room(roomId).game.firstLeaderId)
+  firstLeader.role = "deceiver"
+  firstLeader.roleName = "骗徒"
+  firstLeader.faction = "evil"
+  secret(roomId).priestClaim = null
+  const leaderOpenid = firstLeader.id === 1 ? "host" : `user-${firstLeader.id}`
+  const other = privateState.players.find(player => player.id !== firstLeader.id)
+  const otherOpenid = other.id === 1 ? "host" : `user-${other.id}`
+  assert.strictEqual(core.privateView(room(roomId).game, privateState, otherOpenid).needsLeaderClaim, false)
+  await expectFailure(action("identityClaim", { roomId, claim: "good" }, otherOpenid), /只有担任首任领袖的骗徒/)
+  for (const player of privateState.players) await action("identityReady", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
+  await action("startIdentity", { roomId }, "host")
+  room(roomId).game.identity.revealAt = Date.now() - 1
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /请先选择/)
+  await action("identityClaim", { roomId, claim: "good" }, leaderOpenid)
+  assert.strictEqual(secret(roomId).priestClaim, "good")
+  await action("identityRemembered", { roomId }, leaderOpenid)
+}
+
+async function testDeceiverChoosesAgainWhenInspected() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "priest", "squire", "morgan", "hunter", "deceiver"])
+  const roomId = await createHumanRoom(6, counts)
+  const privateState = secret(roomId)
+  const game = room(roomId).game
+  const deceiver = privateState.players.find(player => player.role === "deceiver")
+  const owner = privateState.players.find(player => player.id !== deceiver.id)
+  const deceiverOpenid = deceiver.id === 1 ? "host" : `user-${deceiver.id}`
+
+  game.firstLeaderId = owner.id
+  assert.strictEqual(core.privateView(game, privateState, deceiverOpenid).needsLeaderClaim, false)
+  room(roomId).phase = "amulet"
+  game.amulet = { ownerId: owner.id, status: "claim", firstOfGame: true }
+  privateState.currentInspection = { targetId: deceiver.id, displayedFaction: null }
+
+  const before = await action("getState", { roomId }, deceiverOpenid)
+  assert.strictEqual(before.private.isInspectionTarget, true)
+  assert.deepStrictEqual(before.private.inspectionOptions, ["good", "evil"])
+  await action("inspectionClaim", { roomId, claim: "evil" }, deceiverOpenid)
+  assert.strictEqual(secret(roomId).currentInspection.displayedFaction, "evil")
+  assert.strictEqual(room(roomId).game.amulet.status, "result")
+}
+
+async function testTableLayoutSettings() {
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 8,
+    roleCounts: gameUtil.buildDefaultRoleCounts(8, false),
+    tableType: "long",
+    seatLayout: { top: 3, right: 1, bottom: 3, left: 1 }
+  })
+  assert.strictEqual(room(created.roomId).tableType, "long")
+  assert.deepStrictEqual(room(created.roomId).seatLayout, { top: 3, right: 1, bottom: 3, left: 1 })
+  const legacy = await action("createRoom", {
+    playerCount: 8,
+    roleCounts: gameUtil.buildDefaultRoleCounts(8, false),
+    tableType: "long",
+    tableSides: { top: 3, bottom: 5 }
+  })
+  assert.deepStrictEqual(room(legacy.roomId).seatLayout, { top: 3, right: 0, bottom: 5, left: 0 })
+  await expectFailure(action("createRoom", {
+    playerCount: 8,
+    roleCounts: gameUtil.buildDefaultRoleCounts(8, false),
+    tableType: "long",
+    seatLayout: { top: 3, bottom: 4 }
+  }), /必须全部分配/)
+  const migrated = await action("createRoom", {
+    playerCount: 8,
+    roleCounts: gameUtil.buildDefaultRoleCounts(8, false),
+    tableType: "long",
+    seatLayout: { top: 3, bottom: 3, topLeft: 2 }
+  })
+  assert.deepStrictEqual(room(migrated.roomId).seatLayout, { top: 5, right: 0, bottom: 3, left: 0 })
+}
+
+async function testHunterFlow() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "loyal", "loyal", "morgan", "hunter", "shapeshifter"])
+  const roomId = await createStartedRoom(6, counts)
+  await finishIdentity(roomId)
+  for (const winner of ["good", "evil", "good", "evil", "good"]) {
+    await playMission(roomId, winner)
+    if (room(roomId).phase === "missionResult") await action("handoff", { roomId, ...handoffTargets(roomId) })
+  }
+  assert.strictEqual(room(roomId).game.final.stage, "discussion")
+  await action("finishDiscussion", { roomId, force: true })
+  const hunter = secret(roomId).players.find(player => player.role === "hunter")
+  assert.strictEqual(room(roomId).game.final.stage, "hunterTargets")
+  if (hunter.bot) {
+    const hostState = await action("getState", { roomId })
+    assert.strictEqual(hostState.private.canControlBotHunter, true)
+    const good = secret(roomId).players.filter(player => player.faction === "good")
+    await action("hunterTargets", { roomId, targets: good.slice(0, 2).map(player => player.id) })
+    assert.strictEqual(room(roomId).status, "finished")
+  } else {
+    const good = secret(roomId).players.filter(player => player.faction === "good")
+    const hunterOpenid = hunter.id === 1 ? "host" : `user-${hunter.id}`
+    await action("hunterTargets", { roomId, targets: good.slice(0, 2).map(player => player.id) }, hunterOpenid)
+    assert.strictEqual(room(roomId).status, "finished")
+  }
+}
+
+async function testRealMultiplayerFlow() {
+  cloudMock.reset()
+  const roomId = await createHumanRoom(6)
+  const players = secret(roomId).players
+  for (const player of players) {
+    const openid = player.id === 1 ? "host" : `user-${player.id}`
+    await action("identityReady", { roomId }, openid)
+  }
+  await action("startIdentity", { roomId }, "host")
+  const firstLeader = players.find(player => player.id === room(roomId).game.firstLeaderId)
+  if (firstLeader.role === "deceiver") await action("identityClaim", { roomId, claim: "good" }, firstLeader.id === 1 ? "host" : `user-${firstLeader.id}`)
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  for (const player of players) {
+    await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
+  }
+  await action("enterNight", { roomId }, "host")
+  await action("enterMission", { roomId }, "host")
+  assert.strictEqual(room(roomId).game.leaderId, 1)
+  const team = [1, 2]
+  await expectFailure(action("startVote", { roomId, team, magicTargetId: 2 }, "user-2"), /只有当前队长/)
+  await action("startVote", { roomId, team, magicTargetId: 2 }, "host")
+  await action("submitVote", { roomId, value: core.automaticVote(room(roomId).game, players[0]) }, "host")
+  await action("submitVote", { roomId, value: core.automaticVote(room(roomId).game, players[1]) }, "user-2")
+  assert.strictEqual(room(roomId).phase, "missionResult")
+  const nextLeader = players.find(player => !player.hasLed && !player.hadAmulet)
+  await expectFailure(action("handoff", { roomId, nextLeaderId: nextLeader.id }, `user-${nextLeader.id}`), /只有当前队长/)
+  await action("handoff", { roomId, nextLeaderId: nextLeader.id }, "host")
+  assert.strictEqual(room(roomId).game.leaderId, nextLeader.id)
+}
+
+async function testHumanInspectionClaim() {
+  cloudMock.reset()
+  const roomId = await createHumanRoom(6)
+  const privateState = secret(roomId)
+  const host = privateState.players[0]
+  const claim = core.displayedFaction(host)
+  for (const player of privateState.players) {
+    const openid = player.id === 1 ? "host" : `user-${player.id}`
+    await action("identityReady", { roomId }, openid)
+  }
+  await action("startIdentity", { roomId }, "host")
+  const firstLeader = privateState.players.find(player => player.id === room(roomId).game.firstLeaderId)
+  if (firstLeader.role === "deceiver") await action("identityClaim", { roomId, claim: "good" }, firstLeader.id === 1 ? "host" : `user-${firstLeader.id}`)
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  for (const player of privateState.players) await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
+  await action("enterNight", { roomId }, "host")
+  await action("enterMission", { roomId }, "host")
+  for (let round = 1; round <= 2; round += 1) {
+    const game = room(roomId).game
+    const leader = secret(roomId).players.find(player => player.id === game.leaderId)
+    const leaderOpenid = leader.id === 1 ? "host" : `user-${leader.id}`
+    const size = game.missionPreset.sizes[round - 1]
+    const team = secret(roomId).players.slice(0, size)
+    const magicTargetId = team[0].id
+    await action("startVote", { roomId, team: team.map(player => player.id), magicTargetId }, leaderOpenid)
+    for (const player of team) {
+      await action("submitVote", { roomId, value: core.automaticVote(room(roomId).game, player) }, player.id === 1 ? "host" : `user-${player.id}`)
+    }
+    if (round === 1) {
+      const next = secret(roomId).players.find(player => !player.hasLed && !player.hadAmulet)
+      await action("handoff", { roomId, nextLeaderId: next.id }, leaderOpenid)
+    } else {
+      const eligible = secret(roomId).players.filter(player => !player.hasLed && !player.hadAmulet)
+      const next = eligible[0]
+      const owner = eligible[1]
+      await action("handoff", { roomId, nextLeaderId: next.id, amuletOwnerId: owner.id }, leaderOpenid)
+      assert.strictEqual(room(roomId).phase, "amulet")
+      const target = secret(roomId).players.find(player => player.id !== owner.id && !player.hadAmulet && !player.fadedAmulet)
+      const ownerOpenid = owner.id === 1 ? "host" : `user-${owner.id}`
+      const targetOpenid = target.id === 1 ? "host" : `user-${target.id}`
+      await expectFailure(action("selectAmuletTarget", { roomId, targetId: target.id }, targetOpenid), /只有护身符持有者/)
+      await action("selectAmuletTarget", { roomId, targetId: target.id }, ownerOpenid)
+      assert.strictEqual(room(roomId).game.amulet.status, "claim")
+      await expectFailure(action("inspectionClaim", { roomId, claim }, ownerOpenid), /不是当前被查验者/)
+      const displayed = core.displayedFaction(target)
+      await action("inspectionClaim", { roomId, claim: displayed }, targetOpenid)
+      assert.strictEqual(room(roomId).game.amulet.status, "result")
+      const publicInspection = room(roomId).game.amuletHistory.slice(-1)[0]
+      assert.deepStrictEqual(publicInspection, { round: room(roomId).game.round, ownerId: owner.id, targetId: target.id })
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(publicInspection, "displayedFaction"), false)
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(publicInspection, "trueFaction"), false)
+      await action("completeAmulet", { roomId }, ownerOpenid)
+      assert.strictEqual(room(roomId).phase, "mission")
+    }
+  }
+}
+
+async function testBotConvenienceActions() {
+  cloudMock.reset()
+  const roomId = await createStartedRoom(8)
+  await finishIdentity(roomId)
+  const game = room(roomId).game
+  const size = game.missionPreset.sizes[game.round - 1]
+  const bots = secret(roomId).players.filter(player => player.bot)
+  const evilBots = bots.filter(player => player.faction === "evil")
+  const team = evilBots.concat(bots.filter(player => player.faction === "good")).slice(0, size)
+  const magicTarget = team.find(player => player.faction === "good") || team[team.length - 1]
+  await action("startVote", { roomId, team: team.map(player => player.id), magicTargetId: magicTarget.id })
+  await action("submitBotVotes", { roomId })
+  assert.strictEqual(room(roomId).phase, "missionResult")
+  await expectFailure(action("submitBotVotes", { roomId }), /当前不是任务投票阶段/)
+  const targets = handoffTargets(roomId)
+  await action("handoff", { roomId, ...targets })
+  assert.strictEqual(room(roomId).phase, "mission")
+}
+
+async function testHunterDecisionBranches() {
+  const counts = gameUtil.countRoles(["loyal", "loyal", "loyal", "morgan", "hunter", "shapeshifter"])
+  for (const hunt of [false, true]) {
+    cloudMock.reset()
+    const roomId = await createHumanRoom(6, counts)
+    const hunter = secret(roomId).players.find(player => player.role === "hunter")
+    const hunterOpenid = hunter.id === 1 ? "host" : `user-${hunter.id}`
+    room(roomId).phase = "finale"
+    room(roomId).game.final = { trigger: "evilMissions", stage: "hunterDecision", discussionEndsAt: 0, hunterRevealed: false, submittedCount: 0 }
+    secret(roomId).finalHunterId = hunter.id
+    if (!hunt) {
+      await action("hunterDecision", { roomId, hunt: false }, hunterOpenid)
+      assert.strictEqual(room(roomId).status, "playing")
+      assert.strictEqual(room(roomId).game.final.stage, "identify")
+    } else {
+      await action("hunterDecision", { roomId, hunt: true }, hunterOpenid)
+      assert.strictEqual(room(roomId).game.final.stage, "hunterTargets")
+      const good = secret(roomId).players.filter(player => player.faction === "good")
+      await expectFailure(action("hunterTargets", { roomId, targets: [good[0].id, good[0].id] }, hunterOpenid), /两位不同玩家/)
+      await action("hunterTargets", { roomId, targets: good.slice(0, 2).map(player => player.id) }, hunterOpenid)
+      assert.strictEqual(room(roomId).status, "finished")
+    }
+  }
+}
+
+async function testGoodMissionHunterCannotStaySilent() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "loyal", "loyal", "morgan", "hunter", "shapeshifter"])
+  const roomId = await createHumanRoom(6, counts)
+  const hunter = secret(roomId).players.find(player => player.role === "hunter")
+  const hunterOpenid = hunter.id === 1 ? "host" : `user-${hunter.id}`
+  room(roomId).phase = "finale"
+  room(roomId).game.final = { trigger: "goodMissions", stage: "hunterDecision", discussionEndsAt: 0, hunterRevealed: false, submittedCount: 0 }
+  secret(roomId).finalHunterId = hunter.id
+  await expectFailure(action("hunterDecision", { roomId, hunt: false }, hunterOpenid), /必须发动猎杀/)
+}
+
+async function testHunterVoteVariant() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "loyal", "loyal", "morgan", "hunter", "shapeshifter"])
+  const created = await action("createRoom", { playerCount: 6, roleCounts: counts, hunterVoteVariant: true, tableType: "round" })
+  for (let seatNo = 1; seatNo <= 6; seatNo += 1) await action("takeSeat", { roomId: created.roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
+  const originalRandom = Math.random
+  Math.random = () => 0
+  try { await action("startGame", { roomId: created.roomId }) } finally { Math.random = originalRandom }
+  const roomId = created.roomId
+  const hunter = secret(roomId).players.find(player => player.role === "hunter")
+  secret(roomId).finalHunterId = hunter.id
+  room(roomId).phase = "finale"
+  room(roomId).game.final = { trigger: "evilMissions", stage: "discussion", discussionEndsAt: Date.now() + 10000, hunterRevealed: false, submittedCount: 0 }
+  await expectFailure(action("finishDiscussion", { roomId, force: false }), /5分钟讨论尚未结束/)
+  await action("finishDiscussion", { roomId, force: true })
+  assert.strictEqual(room(roomId).game.final.stage, "hunterVote")
+  for (const player of secret(roomId).players) {
+    const openid = player.id === 1 ? "host" : `user-${player.id}`
+    const value = player.faction === "evil" && player.id !== hunter.id ? "fail" : "success"
+    await action("hunterVote", { roomId, value }, openid)
+  }
+  assert.ok(["hunterTargets", "identify", "resolved"].includes(room(roomId).game.final.stage))
+}
+
+async function run() {
+  for (const playerCount of [5, 6, 7, 8, 9, 10]) await playFiveRoundGame(playerCount)
+  await testHumanAmuletFlow()
+  await testInvalidClicks()
+  await testUnknownRoles()
+  await testFirstLeaderDeceiverClaim()
+  await testDeceiverChoosesAgainWhenInspected()
+  await testTableLayoutSettings()
+  await testHunterFlow()
+  await testRealMultiplayerFlow()
+  await testHumanInspectionClaim()
+  await testBotConvenienceActions()
+  await testHunterDecisionBranches()
+  await testGoodMissionHunterCannotStaySilent()
+  await testHunterVoteVariant()
+  console.log("cloud function integration tests passed")
+}
+
+run().catch(error => {
+  console.error(error)
+  process.exitCode = 1
+})

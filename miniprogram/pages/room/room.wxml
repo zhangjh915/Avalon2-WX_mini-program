@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="lobby-header">
+    <view class="lobby-title-row">
+      <view><view class="lobby-kicker">远征候场</view><view class="title">{{room.playerCount}} 人局</view></view>
+      <view class="lobby-progress">{{seatedCount}} / {{room.playerCount}}</view>
+    </view>
+    <view class="room-code-row"><view class="room-code-label">房间号</view><view class="code">{{room.code}}</view></view>
+  </view>
+
+  <view class="role-config-button" bindtap="openRoleViewer" aria-role="button">
+    <view class="role-config-icon"><view class="role-card-glyph"></view></view>
+    <view class="role-config-copy"><view class="role-config-title">查看角色配置</view><view class="role-config-meta">{{rolePoolCount}} 张{{room.settings.unknownRoles ? '候选角色' : '角色牌'}} · {{settingsSummary}}</view></view>
+    <view class="role-config-arrow">›</view>
+  </view>
+
+  <view class="lobby-section table-section">
+    <view class="section-row"><view class="section-title">选择座位</view><view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view></view>
+    <view class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
+      <view class="{{tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{tableType === 'long' ? 'width:' + tableWidth + '%;height:' + tableHeight + '%;' : ''}}">
+        <view class="table-emblem">杯</view>
+      </view>
+      <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="chooseSeat" data-seat="{{item.seatNo}}">
+        <view class="seat-avatar">{{item.name ? item.initial : ''}}</view>
+        <view class="seat-caption"><text>{{item.seatNo}}号</text><text wx:if="{{item.name}}"> {{item.name}}</text></view>
+        <view wx:if="{{item.isMine}}" class="mine-dot"></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{isHost}}" class="lobby-actions">
+    <button class="btn secondary" bindtap="fillTestSeats" disabled="{{writing}}">补满测试玩家</button>
+    <button class="btn" bindtap="startGame" disabled="{{writing}}">开始游戏</button>
+  </view>
+  <view wx:else class="waiting-host">
+    <view class="waiting-dot"></view><view>等待房主开始游戏</view>
+  </view>
+  <view wx:if="{{writing}}" class="sync-indicator">座位同步中</view>
+
+  <view wx:if="{{roleViewerVisible}}" class="role-viewer">
+    <view class="role-viewer-head">
+      <view><view class="role-viewer-kicker">本局配置</view><view class="role-viewer-title">候选角色</view></view>
+      <view class="modal-close light-close" bindtap="closeRoleViewer" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+    </view>
+    <view class="role-faction-tabs">
+      <view class="role-faction-tab {{roleFactionFilter === 'good' ? 'active good' : ''}}" data-faction="good" bindtap="selectRoleFaction">正义 {{goodRoleCount}}</view>
+      <view class="role-faction-tab {{roleFactionFilter === 'evil' ? 'active evil' : ''}}" data-faction="evil" bindtap="selectRoleFaction">邪恶 {{evilRoleCount}}</view>
+    </view>
+    <scroll-view class="role-candidate-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <view wx:for="{{filteredRoleCandidates}}" wx:key="role" class="role-candidate-row {{item.faction}}">
+        <view class="role-candidate-head">
+          <view class="role-candidate-name">{{item.name}}<text wx:if="{{item.count > 1}}" class="role-candidate-count"> x{{item.count}}</text></view>
+          <view class="role-candidate-pack">{{item.packName}}</view>
+        </view>
+        <view class="role-candidate-skill">{{item.desc}}</view>
+        <view wx:if="{{item.pairName}}" class="role-candidate-note">与 {{item.pairName}} 一同加入</view>
+      </view>
+    </scroll-view>
+    <button class="role-viewer-done" bindtap="closeRoleViewer">返回候场</button>
+  </view>
+</view>

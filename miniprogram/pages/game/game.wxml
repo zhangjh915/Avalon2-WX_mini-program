@@ -1,0 +1,198 @@
+<view class="page">
+  <view class="panel">
+    <view class="title">{{game.roomName}}</view>
+    <view class="subtitle">第 {{game.round}} 轮 · {{game.roleSetName}} · 正义 {{game.goodWins}} : {{game.evilWins}} 邪恶</view>
+    <view class="wrap" style="margin-top: 14rpx;">
+      <view class="tag dark">阶段：{{phaseName}}</view>
+      <view class="tag">主持：{{hostLine.text}}</view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="section-title">圆桌</view>
+    <view class="grid">
+      <view wx:for="{{game.players}}" wx:key="id" class="player-card {{item.id === game.leaderId ? 'active' : ''}}">
+        <view class="player-name">{{item.id}}号 {{item.name}}</view>
+        <view class="muted">{{item.title}}</view>
+        <view class="wrap" style="margin-top: 10rpx;">
+          <view wx:if="{{item.id === game.leaderId}}" class="tag dark">皇冠</view>
+          <view wx:if="{{item.retired}}" class="tag">退伍</view>
+          <view wx:if="{{item.hadAmulet}}" class="tag">护身符</view>
+          <view wx:if="{{item.brokenAmulet}}" class="tag">破损</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'reveal'}}" class="panel">
+    <view class="section-title">身份确认</view>
+    <view class="muted">把手机依次交给玩家。长按对应按钮查看身份，松手隐藏。</view>
+    <view class="wrap" style="margin-top: 16rpx;">
+      <button wx:for="{{game.players}}" wx:key="id" class="btn secondary" data-id="{{item.id}}" bindlongpress="showRole" bindtouchend="hideRole">{{item.id}}号查看</button>
+    </view>
+    <view wx:if="{{revealedPlayer}}" class="panel" style="margin-top: 18rpx; margin-bottom: 0;">
+      <view class="section-title">{{revealedPlayer.id}}号 {{revealedPlayer.name}}</view>
+        <view class="wrap">
+          <view class="tag {{revealedPlayer.faction === 'good' ? 'good' : 'evil'}}">{{revealedPlayer.factionName}}</view>
+          <view class="tag dark">{{revealedPlayer.roleName}}</view>
+          <view class="tag">{{revealedPlayer.rolePack === 'expansion' ? '扩展包' : '标准版'}}</view>
+        </view>
+      <view class="subtitle" style="margin-top: 14rpx;">{{revealedRoleDesc}}</view>
+    </view>
+    <button class="btn" style="margin-top: 18rpx;" bindtap="goNight">身份确认完成</button>
+  </view>
+
+  <view wx:if="{{phase === 'night'}}" class="panel">
+    <view class="section-title">首夜信息</view>
+    <view class="muted">请按主持旁白完成闭眼流程。以下信息仅在需要时私密查看。</view>
+    <view wx:if="{{revealSteps.length}}" class="panel" style="margin-top: 16rpx; margin-bottom: 16rpx;">
+      <view class="section-title">本局揭露台词</view>
+      <view wx:for="{{revealSteps}}" wx:key="roleName" style="margin-bottom: 14rpx;">
+        <view class="tag">{{item.roleName}}</view>
+        <view class="muted" style="margin-top: 8rpx;">{{item.text}}</view>
+      </view>
+    </view>
+    <button class="btn secondary" bindtap="toggleEvilInfo">查看/隐藏邪恶方确认</button>
+    <view wx:if="{{showEvilInfo}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">邪恶方可见信息</view>
+      <view class="muted">常规邪恶方互认。盲眼杀手、幻形妖、边缘人、邪恶兰斯洛特等有特殊信息边界。</view>
+      <view class="wrap" style="margin-top: 12rpx;">
+        <view wx:for="{{visibleEvils}}" wx:key="id" class="tag evil">{{item.id}}号 {{item.roleName}}</view>
+      </view>
+      <view wx:if="{{knownToEvil.length}}" class="muted" style="margin-top: 12rpx;">邪恶方额外知道：</view>
+      <view wx:if="{{knownToEvil.length}}" class="wrap" style="margin-top: 12rpx;">
+        <view wx:for="{{knownToEvil}}" wx:key="id" class="tag evil">{{item.id}}号 {{item.roleName}}</view>
+      </view>
+    </view>
+    <button class="btn secondary" style="margin-top: 16rpx;" bindtap="togglePriestInfo">查看/隐藏教士信息</button>
+    <view wx:if="{{showPriestInfo}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">教士看到</view>
+      <view class="tag {{firstLeaderFaction === '正义方' ? 'good' : 'evil'}}">首任队长是{{firstLeaderFaction}}</view>
+    </view>
+    <button wx:if="{{nightInfo.arthurMorganId}}" class="btn secondary" style="margin-top: 16rpx;" bindtap="toggleArthurInfo">查看/隐藏亚瑟信息</button>
+    <view wx:if="{{showArthurInfo && nightInfo.arthurMorganId}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">亚瑟看到</view>
+      <view class="tag evil">摩根勒菲是 {{nightInfo.arthurMorganId}}号</view>
+    </view>
+    <button wx:if="{{nightInfo.percivalPriestId}}" class="btn secondary" style="margin-top: 16rpx;" bindtap="togglePercivalInfo">查看/隐藏帕西瓦里信息</button>
+    <view wx:if="{{showPercivalInfo && nightInfo.percivalPriestId}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">帕西瓦里看到</view>
+      <view class="tag good">教士是 {{nightInfo.percivalPriestId}}号</view>
+    </view>
+    <button wx:if="{{nightInfo.outsiderEvilIds.length}}" class="btn secondary" style="margin-top: 16rpx;" bindtap="toggleOutsiderInfo">查看/隐藏边缘人信息</button>
+    <view wx:if="{{showOutsiderInfo && nightInfo.outsiderEvilIds.length}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">边缘人看到</view>
+      <view class="wrap">
+        <view wx:for="{{nightInfo.outsiderEvilIds}}" wx:key="*this" class="tag evil">{{item}}号邪恶方</view>
+      </view>
+    </view>
+    <button wx:if="{{nightInfo.lancelotIds.length}}" class="btn secondary" style="margin-top: 16rpx;" bindtap="toggleLancelotInfo">查看/隐藏兰斯洛特信息</button>
+    <view wx:if="{{showLancelotInfo && nightInfo.lancelotIds.length}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">兰斯洛特互认</view>
+      <view class="wrap">
+        <view wx:for="{{nightInfo.lancelotIds}}" wx:key="*this" class="tag">{{item}}号兰斯洛特</view>
+      </view>
+    </view>
+    <button class="btn" style="margin-top: 18rpx;" bindtap="startMission">开始第一轮任务</button>
+  </view>
+
+  <view wx:if="{{phase === 'amulet'}}" class="panel">
+    <view class="section-title">护身符查验</view>
+    <view class="muted">{{amuletOwner.name}} 持有护身符，请私密选择查验对象。</view>
+    <view wx:if="{{!pendingDeceiverTargetId && !amuletResult}}" class="grid" style="margin-top: 16rpx;">
+      <button wx:for="{{legalAmuletTargets}}" wx:key="id" class="btn secondary" data-id="{{item.id}}" bindtap="checkAmulet">{{item.id}}号 {{item.name}}</button>
+    </view>
+    <view wx:if="{{pendingDeceiverTargetId}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">骗徒回应</view>
+      <view class="muted">目标是骗徒。请把手机交给该玩家，秘密选择要向护身符持有者展示的阵营。</view>
+      <view class="wrap" style="margin-top: 16rpx;">
+        <button class="btn" data-faction="good" bindtap="chooseDeceiverClaim">显示正义方</button>
+        <button class="btn danger" data-faction="evil" bindtap="chooseDeceiverClaim">显示邪恶方</button>
+      </view>
+    </view>
+    <view wx:if="{{amuletResult}}" class="panel" style="margin-top: 16rpx; margin-bottom: 0;">
+      <view class="section-title">查验结果</view>
+      <view class="tag {{amuletResult.result === 'good' ? 'good' : 'evil'}}">{{amuletResult.targetId}}号是{{amuletResult.resultName}}</view>
+      <button class="btn" style="margin-top: 16rpx;" bindtap="startMission">进入任务</button>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'mission'}}" class="panel">
+    <view class="section-title">队长指定同行骑士</view>
+    <view class="muted">当前队长：{{leader.name}}。本轮需要 {{missionSize}} 人同行{{protectedText}}。</view>
+    <view wx:if="{{roundNotices.length}}" class="panel" style="margin-top: 16rpx; margin-bottom: 16rpx;">
+      <view class="section-title">角色提醒</view>
+      <view wx:for="{{roundNotices}}" wx:key="index" class="muted" style="margin-bottom: 8rpx;">{{item}}</view>
+    </view>
+    <view class="grid" style="margin-top: 16rpx;">
+      <button wx:for="{{game.players}}" wx:key="id" class="btn {{item.selected ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="toggleTeam">{{item.id}}号 {{item.name}}</button>
+    </view>
+    <view class="spacer"></view>
+    <view class="section-title">魔法指示物</view>
+    <view class="muted">请从同行骑士中选择一名封印对象。</view>
+    <view class="wrap" style="margin-top: 16rpx;">
+      <button wx:for="{{teamPlayers}}" wx:key="id" class="btn {{item.id === game.current.magicTargetId ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="setMagic">{{item.id}}号</button>
+    </view>
+    <button class="btn" style="margin-top: 18rpx;" bindtap="goVote">进入私密投票</button>
+  </view>
+
+  <view wx:if="{{phase === 'vote'}}" class="panel">
+    <view class="section-title">私密任务投票</view>
+    <view class="muted">把手机交给当前投票玩家。可选项会根据身份与魔法指示物自动限制。</view>
+    <view wx:if="{{currentVoter}}" class="panel" style="margin-top: 16rpx;">
+      <view class="section-title">{{currentVoter.id}}号 {{currentVoter.name}} 投票</view>
+      <view class="wrap">
+        <button wx:for="{{voteOptions}}" wx:key="*this" class="btn {{item === 'fail' ? 'danger' : ''}}" data-value="{{item}}" bindtap="submitVote">{{item === 'success' ? '成功' : '失败'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'missionResult'}}" class="panel">
+    <view class="section-title">任务结果</view>
+    <view class="wrap">
+      <view class="tag good">成功票 {{lastMission.successCount}}</view>
+      <view class="tag evil">失败票 {{lastMission.failCount}}</view>
+      <view class="tag dark">{{lastMission.winnerName}}赢得本轮</view>
+    </view>
+    <button wx:if="{{needsFinale}}" class="btn" style="margin-top: 18rpx;" bindtap="goFinale">进入终局</button>
+    <view wx:else>
+      <view class="section-title" style="margin-top: 18rpx;">移交皇冠</view>
+      <view class="grid">
+        <button wx:for="{{legalLeaders}}" wx:key="id" class="btn secondary" data-id="{{item.id}}" bindtap="selectNextLeader">{{item.id}}号 {{item.name}}</button>
+      </view>
+      <view class="section-title" style="margin-top: 18rpx;">分配护身符</view>
+      <view class="muted">可跳过。护身符不能交给退伍者、曾获得者，也不能和下一任队长相同。</view>
+      <view class="grid" style="margin-top: 14rpx;">
+        <button wx:for="{{legalAmuletOwners}}" wx:key="id" class="btn {{item.id === nextAmuletId ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="selectAmuletOwner">{{item.id}}号 {{item.name}}</button>
+      </view>
+      <button class="btn" style="margin-top: 18rpx;" bindtap="nextRound">进入下一轮</button>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'finale'}}" class="panel">
+    <view class="section-title">终局翻盘</view>
+    <view wx:if="{{game.goodWins >= 3}}">
+      <view class="muted">正义方任务三胜。盲眼猎手可尝试狙击教士和任意一名好人角色。</view>
+      <view class="grid" style="margin-top: 16rpx;">
+        <button wx:for="{{game.players}}" wx:key="id" class="btn {{item.finalSelected ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="toggleFinalTarget">{{item.id}}号 {{item.name}}</button>
+      </view>
+      <button class="btn danger" style="margin-top: 18rpx;" bindtap="resolveHunter">提交猎杀</button>
+    </view>
+    <view wx:else>
+      <view class="muted">邪恶方任务三胜。正义方私密指认所有邪恶方，不可误指好人。可选择启用公爵容错删除一个目标。</view>
+      <view class="grid" style="margin-top: 16rpx;">
+        <button wx:for="{{game.players}}" wx:key="id" class="btn {{item.finalSelected ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="toggleFinalTarget">{{item.id}}号 {{item.name}}</button>
+      </view>
+      <view class="wrap" style="margin-top: 16rpx;">
+        <button class="btn {{useDuke ? '' : 'secondary'}}" bindtap="toggleDuke">启用公爵容错</button>
+      </view>
+      <view wx:if="{{useDuke}}">
+        <view class="section-title" style="margin-top: 18rpx;">选择删除目标</view>
+        <view class="wrap">
+          <button wx:for="{{finalTargets}}" wx:key="id" class="btn {{item.id === dukeRemoveId ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="selectDukeRemove">{{item.id}}号</button>
+        </view>
+      </view>
+      <button class="btn danger" style="margin-top: 18rpx;" bindtap="resolveGoodIdentify">提交最终指认</button>
+    </view>
+  </view>
+</view>

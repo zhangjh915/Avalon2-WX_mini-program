@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阿瓦隆2规则与玩法确认清单</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20242b;
+      --muted: #68707d;
+      --paper: #f4f3ef;
+      --surface: #ffffff;
+      --line: #d8d7d2;
+      --navy: #24344d;
+      --blue: #2f6690;
+      --green: #2f7358;
+      --green-soft: #e8f3ed;
+      --red: #a4453f;
+      --red-soft: #f8eae8;
+      --amber: #95631c;
+      --amber-soft: #fbf1dc;
+      --shadow: 0 10px 30px rgba(32, 36, 43, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.6;
+      letter-spacing: 0;
+    }
+
+    button, textarea { font: inherit; letter-spacing: 0; }
+    button { cursor: pointer; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(216, 215, 210, 0.9);
+      background: rgba(244, 243, 239, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    .topbar-inner,
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar-inner {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand strong { font-size: 17px; color: var(--navy); }
+    .brand span { font-size: 13px; color: var(--muted); }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tool-button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 12px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .tool-button.primary {
+      border-color: var(--navy);
+      background: var(--navy);
+      color: #fff;
+    }
+
+    main { padding: 36px 0 80px; }
+
+    .intro {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 28px;
+      align-items: end;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      color: var(--navy);
+      font-size: 30px;
+      line-height: 1.25;
+    }
+
+    .intro p { max-width: 760px; margin: 0; color: var(--muted); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 78px);
+      gap: 8px;
+    }
+
+    .summary-item {
+      padding: 10px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .summary-item strong { display: block; font-size: 22px; line-height: 1.2; }
+    .summary-item span { color: var(--muted); font-size: 12px; }
+    .summary-item.accept strong { color: var(--green); }
+    .summary-item.reject strong { color: var(--red); }
+    .summary-item.pending strong { color: var(--amber); }
+
+    .confirmed {
+      margin: 26px 0 30px;
+      padding: 18px 20px;
+      border-left: 4px solid var(--green);
+      background: var(--green-soft);
+    }
+
+    .confirmed h2 { margin: 0 0 8px; font-size: 16px; color: #245c47; }
+    .confirmed ul { margin: 0; padding-left: 20px; color: #315f4e; }
+
+    .filters {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 0 0 18px;
+      scrollbar-width: thin;
+    }
+
+    .filter-button {
+      flex: none;
+      min-height: 34px;
+      padding: 5px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .filter-button.active {
+      border-color: var(--blue);
+      background: #e9f0f5;
+      color: #244f70;
+      font-weight: 600;
+    }
+
+    .section { margin: 0 0 34px; }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 0 12px;
+    }
+
+    .section-heading h2 { margin: 0; color: var(--navy); font-size: 19px; }
+    .section-heading span { color: var(--muted); font-size: 13px; }
+
+    .decision-list { display: grid; gap: 10px; }
+
+    .decision {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 2px 9px rgba(32, 36, 43, 0.035);
+      overflow: hidden;
+    }
+
+    .decision[data-state="accept"] { border-left: 4px solid var(--green); }
+    .decision[data-state="reject"] { border-left: 4px solid var(--red); }
+    .decision[data-state="pending"] { border-left: 4px solid var(--amber); }
+
+    .decision-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      padding: 18px 18px 14px;
+    }
+
+    .decision-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .decision h3 { margin: 0; font-size: 16px; line-height: 1.4; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge.recommended { background: var(--green-soft); color: var(--green); }
+    .badge.caution { background: var(--amber-soft); color: var(--amber); }
+    .badge.security { background: var(--red-soft); color: var(--red); }
+
+    .decision p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .rule-source {
+      display: block;
+      margin-top: 7px;
+      color: #7a808a;
+      font-size: 12px;
+    }
+
+    .choice-group {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(68px, 1fr));
+      align-self: start;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .choice {
+      min-height: 38px;
+      border: 0;
+      border-right: 1px solid var(--line);
+      padding: 6px 10px;
+      background: #fafafa;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .choice:last-child { border-right: 0; }
+    .choice[data-choice="accept"].selected { background: var(--green-soft); color: var(--green); font-weight: 700; }
+    .choice[data-choice="reject"].selected { background: var(--red-soft); color: var(--red); font-weight: 700; }
+    .choice[data-choice="pending"].selected { background: var(--amber-soft); color: var(--amber); font-weight: 700; }
+
+    .feedback-wrap {
+      border-top: 1px solid #ecebe7;
+      padding: 12px 18px 16px;
+      background: #fcfcfb;
+    }
+
+    .feedback-wrap label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 11px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47, 102, 144, 0.12); }
+
+    .empty-state {
+      display: none;
+      padding: 44px 20px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      z-index: 30;
+      transform: translate(-50%, 20px);
+      padding: 10px 15px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 760px) {
+      .topbar-inner { align-items: flex-start; padding: 12px 0; }
+      .brand span { display: none; }
+      .tool-button { padding: 6px 9px; }
+      main { padding-top: 24px; }
+      .intro { grid-template-columns: 1fr; align-items: start; }
+      h1 { font-size: 25px; }
+      .summary { grid-template-columns: repeat(3, 1fr); }
+      .decision-main { grid-template-columns: 1fr; gap: 14px; }
+      .choice-group { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      .topbar-inner, main { width: min(100% - 20px, 1120px); }
+      .topbar-inner { display: block; }
+      .brand { margin-bottom: 8px; }
+      .toolbar { justify-content: flex-start; }
+      .decision-main, .feedback-wrap { padding-left: 14px; padding-right: 14px; }
+      .choice { padding-inline: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><strong>圆桌规则评审</strong><span>阿瓦隆2 · 开发前确认</span></div>
+      <div class="toolbar">
+        <button class="tool-button" id="applyRecommendations" type="button">按建议选择</button>
+        <button class="tool-button" id="copyResults" type="button">复制结果</button>
+        <button class="tool-button primary" id="downloadResults" type="button">下载结果</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div>
+        <h1>规则与玩法确认清单</h1>
+        <p>逐条选择“采用 / 不采用 / 待定”，并在每项下方留言。所有内容会自动保存在当前浏览器；完成后点击“复制结果”或“下载结果”即可。</p>
+      </div>
+      <div class="summary" aria-label="选择统计">
+        <div class="summary-item accept"><strong id="acceptCount">0</strong><span>采用</span></div>
+        <div class="summary-item reject"><strong id="rejectCount">0</strong><span>不采用</span></div>
+        <div class="summary-item pending"><strong id="pendingCount">0</strong><span>待定</span></div>
+      </div>
+    </section>
+
+    <section class="confirmed">
+      <h2>已确定的产品原则</h2>
+      <ul>
+        <li>不加入导演剪辑版，也不实现其随机抽掉正义角色的机制。</li>
+        <li>任务人数以完整说明书的基础面板为准。</li>
+        <li>仅7人及以上的第4轮为保护轮，需要2张失败票才会失败。</li>
+        <li>房主可自定义本局使用的角色，独立支持“未知角色变体”。</li>
+        <li>手机承担私密信息和操作，主体讨论与嘴炮仍在线下进行。</li>
+      </ul>
+    </section>
+
+    <nav class="filters" aria-label="筛选清单">
+      <button class="filter-button active" data-filter="all" type="button">全部</button>
+      <button class="filter-button" data-filter="pending" type="button">只看待定</button>
+      <button class="filter-button" data-filter="accept" type="button">只看采用</button>
+      <button class="filter-button" data-filter="reject" type="button">只看不采用</button>
+      <button class="filter-button" data-filter="commented" type="button">只看已留言</button>
+    </nav>
+
+    <div id="sections"></div>
+    <div class="empty-state" id="emptyState">当前筛选条件下没有项目。</div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const decisions = [
+      {
+        section: "模式与人数",
+        id: "four-player",
+        title: "暂不开放4人模式",
+        detail: "PDF将4人的任务3、4标为“3/2”与“2/3”，却没有解释切换条件；且邪恶方2次任务失败即进入终局。建议首版只开放5至10人，等实体面板或英文原规则确认后补上。",
+        source: "说明书：任务人数表、游戏结束触发条件",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "来源缺口"
+      },
+      {
+        section: "模式与人数",
+        id: "official-quick-presets",
+        title: "保留“官方基础配置”一键选择",
+        detail: "自定义角色作为主入口，同时提供说明书的基础角色表作为快速开局模板；不把它叫做“标准版”，避免与规则模式混淆。",
+        source: "说明书：游戏设置中的固定角色配置表",
+        recommend: "accept"
+      },
+      {
+        section: "模式与人数",
+        id: "role-validation",
+        title: "自定义角色时执行阵营数量与依赖校验",
+        detail: "房主可任意换角色，但必须保持对应人数的正义/邪恶数量；摩根勒菲必选，两位兰斯洛特必须成对，不满足时禁止开局并说明原因。",
+        source: "说明书：可选角色可替换原有角色，摩根勒菲不可替换",
+        recommend: "accept"
+      },
+      {
+        section: "未知角色变体",
+        id: "unknown-roles-availability",
+        title: "把未知角色变体做成高级开关",
+        detail: "默认关闭。开启后，系统按说明书多准备角色并秘密移出部分角色，让玩家无法确定哪些能力真正在场。",
+        source: "说明书：未知角色变体",
+        recommend: "accept"
+      },
+      {
+        section: "未知角色变体",
+        id: "unknown-roles-exact",
+        title: "未知角色变体严格按原规则抽掉角色",
+        detail: "5人局先抽掉1张正义角色；6人及以上的正义和邪恶牌堆各多准备2张，各秘密抽掉2张，再将摩根勒菲混入发牌。手机端不公开被移出的角色。",
+        source: "说明书：未知角色变体分人数流程",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "需确认自定义交互"
+      },
+      {
+        section: "未知角色变体",
+        id: "removed-role-hunt",
+        title: "被秘密移出的角色仍可作为猎杀答案",
+        detail: "说明书明确说被抽掉的角色也可能被盲眼杀手识别。这与当前“选两位玩家”的手机终局不完全兼容，开启变体时需让杀手选“玩家+未知角色”候选项。",
+        source: "说明书：未知角色变体注意事项",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "终局特例"
+      },
+      {
+        section: "首夜与私密信息",
+        id: "phone-private-info",
+        title: "能用手机传递的单向信息不要求现实举手",
+        detail: "亚瑟、教士、帕西瓦里、边缘人、盲眼杀手等私密信息直接显示在对应手机上，TTS只负责统一闭眼、倒计时和营造仪式感，减少动作和时长泄密。",
+        source: "产品适配：用手机替代部分实体手势",
+        recommend: "accept"
+      },
+      {
+        section: "首夜与私密信息",
+        id: "evil-physical-recognition",
+        title: "保留普通邪恶方的现实睁眼相认",
+        detail: "摩根勒菲与普通爪牙仍按TTS在现实中同时睁眼。手机也会显示应知的队友，但现实相认能让座位与人脸对应更准确。幻形妖等信息隔离角色不参与。",
+        source: "说明书：6人及以上揭露阶段",
+        recommend: "accept"
+      },
+      {
+        section: "首夜与私密信息",
+        id: "hunter-known-by-evil",
+        title: "普通邪恶方在手机上得知盲眼杀手",
+        detail: "我们不使用导演剪辑版，因此按基础可选角色规则：杀手不知道邪恶队友，其他普通邪恶方知道杀手。为避免杀手举手造成场外信息，这条只在手机上私密告知。",
+        source: "说明书：盲眼杀手揭露指令；非导演剪辑版",
+        recommend: "accept"
+      },
+      {
+        section: "首夜与私密信息",
+        id: "lancelot-phone-only",
+        title: "两位兰斯洛特仅通过手机相认",
+        detail: "实体规则要求两人同时睁眼；数字化后可分别私密告知对方座位，避免额外的首夜动作。如果你更看重实体仪式，可选不采用并在留言里说明。",
+        source: "说明书：兰斯洛特揭露指令",
+        recommend: "accept"
+      },
+      {
+        section: "领袖与任务",
+        id: "retire-on-appointment",
+        title: "玩家成为领袖时立即获得退伍标记",
+        detail: "首任领袖开局就同时获得皇冠和退伍标记；后续新领袖被指定时同样立即获得。退伍表示“已担任过/正在担任”，不是任务结束后才发。",
+        source: "说明书：初始领袖确定、过渡阶段",
+        recommend: "accept"
+      },
+      {
+        section: "领袖与任务",
+        id: "leader-eligibility",
+        title: "退伍者和曾获得护身符者都不能接任领袖",
+        detail: "领袖交接时，系统直接禁用持有退伍标记或护身符标记的座位，并在点击时说明不可选原因。",
+        source: "说明书：过渡阶段—新任领袖选定",
+        recommend: "accept"
+      },
+      {
+        section: "领袖与任务",
+        id: "magic-any-player",
+        title: "魔法指示物可以交给场上任意玩家",
+        detail: "不限于任务队伍成员。如果给了未上车的玩家，该指示物本轮实际不会影响任务票，但这是领袖允许做出的选择。",
+        source: "说明书：队伍编成阶段—从队伍中或其他玩家中选择",
+        recommend: "accept"
+      },
+      {
+        section: "领袖与任务",
+        id: "mission-vote-server",
+        title: "任务票改为云函数私密提交与统计",
+        detail: "客户端只能看到自己的可选票和最终总数，不再把每位玩家的票与身份放在所有人可读的房间文档中。这不改变界面，但会改动后端结构。",
+        source: "技术安全：当前房间文档可包含逐人任务票",
+        recommend: "accept",
+        flag: "security",
+        flagText: "防作弊"
+      },
+      {
+        section: "护身符",
+        id: "amulet-schedule",
+        title: "护身符只在说明书指定轮次强制出现",
+        detail: "6人局在任务2后出现1次；7人局在任务2、3后出现；8人及以上在任务2、3、4后出现。其他轮次不显示分配入口，指定轮次不允许跳过。",
+        source: "说明书：护身符放置规则",
+        recommend: "accept"
+      },
+      {
+        section: "护身符",
+        id: "amulet-owner-rules",
+        title: "护身符不能给退伍者、曾持有者或新领袖",
+        detail: "新领袖与护身符持有者在同一过渡阶段选定，两者必须不同；退伍者和历史上已拿过护身符的玩家不可再获得。",
+        source: "说明书：过渡阶段—护身符相关操作",
+        recommend: "accept"
+      },
+      {
+        section: "护身符",
+        id: "amulet-target-rules",
+        title: "护身符可查验退伍领袖，但不能查已持符或已被查玩家",
+        detail: "完整说明书对查验目标只排除“持有护身符”与“已被护身符检视”的玩家，没有排除退伍领袖。这与部分网络教学说法不同，建议以完整说明书为准。",
+        source: "说明书：护身符持有者行动",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "与帖吧不同"
+      },
+      {
+        section: "护身符",
+        id: "faded-amulet-target-only",
+        title: "只给被查验者添加“褪色护身符”标记",
+        detail: "查验者保留普通护身符标记，被查验者获得褪色标记。两种标记都会让该玩家之后不能再成为查验目标。",
+        source: "说明书：指示物说明、护身符行动",
+        recommend: "accept"
+      },
+      {
+        section: "护身符",
+        id: "amulet-timing",
+        title: "在交接后立即完成私密查验，然后再开始下轮讨论",
+        detail: "将“下次任务开始前”实现为独立的护身符阶段：新领袖已确定，持符者先查验，结束后才进入组队讨论。这样查验结果能成为本轮谈资。",
+        source: "说明书只写“下次任务开始前”，此项是产品时序解释",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "需统一时序"
+      },
+      {
+        section: "护身符",
+        id: "inspection-claims",
+        title: "捋乱者和骗徒的显示阵营由角色规则决定",
+        detail: "捋乱者被教士或护身符检视时必须显示邪恶；骗徒在两种检视中都能私密选择显示正义或邪恶。如果首任领袖是骗徒，首夜需先等他提交显示结果。",
+        source: "说明书：捋乱者、骗徒角色能力",
+        recommend: "accept"
+      },
+      {
+        section: "护身符",
+        id: "guard-result",
+        title: "守卫在手机上同步看到第一次护身符的对外显示结果",
+        detail: "第一位被护身符检视的玩家提交显示阵营后，持符者与守卫同时收到该结果。若目标是骗徒，两人看到骗徒选择的同一结果，而非真实阵营。",
+        source: "说明书：守卫可私密同步检视第一个目标",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "确认看到的结果"
+      },
+      {
+        section: "终局流程",
+        id: "finale-both-triggers",
+        title: "只要本局有盲眼杀手，任一阵营任务达到胜利条件后都先进入猎杀判定",
+        detail: "正义完成3次任务时，杀手仍可猎杀翻盘；邪恶造成3次失败时，先进入终局，杀手决定是否猎杀，放弃后才进入正义方最后机会。",
+        source: "说明书：游戏结束触发条件、最终任务",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "finale-timer",
+        title: "终局保留5分钟全员自由讨论倒计时",
+        detail: "系统进入单独的终局讨论页，TTS宣布开始与结束。时间到后自动锁定讨论阶段，进入盲眼杀手决策。",
+        source: "说明书：最终任务讨论部分",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "hunter-decline",
+        title: "盲眼杀手可选择现身猎杀或保持沉默",
+        detail: "手机上给杀手两个私密选项。现身则进入两目标猎杀并禁止其他人发言；放弃猎杀则进入正义方最后指认。",
+        source: "说明书：猎杀行动为二选一环节",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "hunter-target-rules",
+        title: "猎杀必须选两位正义玩家，有教士时必须包含教士",
+        detail: "两个目标均为正义方才算猎杀成功；本局有教士时，提交前校验其中一位必须是教士。若第一个目标是亚瑟，邪恶方立即获胜。",
+        source: "说明书：盲眼杀手、亚瑟能力",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "private-two-targets",
+        title: "最后指认改为每位玩家私密提交两个目标",
+        detail: "所有人同时在自己手机上选两人，邪恶方也正常提交以隐藏阵营。服务端在全部提交后只使用正义玩家的结果进行判定，不提前公开任何人的选择。",
+        source: "说明书：所有玩家同时用手指向两位玩家",
+        recommend: "accept",
+        flag: "security",
+        flagText: "私密提交"
+      },
+      {
+        section: "终局流程",
+        id: "collective-identification",
+        title: "正义方全部指认合并后，必须覆盖全部邪恶且不含正义",
+        detail: "判定不是“每个好人都猜中”，而是将所有正义玩家的手指目标取并集：并集必须覆盖所有需被指认的邪恶方，且不能包含任何正义方。",
+        source: "说明书：正义方最后机会胜负判定",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "all-evil-leaders",
+        title: "如果本局每一次任务领袖都是邪恶方，正义方自动获胜",
+        detail: "系统根据历史领袖记录自动检查。满足时不再依赖最后指认结果，并在结算页标明该特殊胜利原因。",
+        source: "说明书：正义方最后机会特例",
+        recommend: "accept"
+      },
+      {
+        section: "终局流程",
+        id: "finale-role-abilities",
+        title: "首版完整实现公爵、大公、学徒、叛徒和揭露者的终局能力",
+        detail: "终局需要保留“每位玩家的两只手”这个数据结构，才能正确处理公爵放下某人一只手、大公改变一只手指向、学徒延后第二只手、叛徒转阵营以及揭露者免指认。",
+        source: "说明书：各特殊角色能力",
+        recommend: "accept",
+        flag: "caution",
+        flagText: "开发量较大"
+      },
+      {
+        section: "可选变体",
+        id: "hunter-vote-variant",
+        title: "增加“猎杀投票变体”开关",
+        detail: "默认关闭。开启后，终局前全员投任务牌：0或1张失败则取消猎杀，2张及以上则强制盲眼杀手现身。该变体用来减少杀手过于保守或激进的极端玩法。",
+        source: "说明书：猎杀变体",
+        recommend: "reject",
+        flag: "caution",
+        flagText: "建议后续版本"
+      },
+      {
+        section: "数据与安全",
+        id: "private-role-storage",
+        title: "身份和额外信息不存在全员可读的房间文档中",
+        detail: "按玩家拆分私密身份数据，由云函数根据当前微信用户返回本人可见内容。否则玩家可通过调试或请求数据看到全部身份。",
+        source: "技术安全：当前 game.players 包含所有角色",
+        recommend: "accept",
+        flag: "security",
+        flagText: "防作弊"
+      },
+      {
+        section: "数据与安全",
+        id: "server-authority",
+        title: "规则判定与关键状态转换以云函数为准",
+        detail: "客户端可以先用乐观动画立即响应点击，但开局、发角色、投票结算、护身符检视和终局胜负由服务端验证，防止客户端修改数据作弊。",
+        source: "技术安全与多人同步一致性",
+        recommend: "accept",
+        flag: "security",
+        flagText: "服务端权威"
+      }
+    ];
+
+    const sectionNotes = {
+      "模式与人数": "决定开房入口和首版支持边界",
+      "未知角色变体": "与自定义角色及终局的兼容方式",
+      "首夜与私密信息": "实体仪式与手机传递的取舍",
+      "领袖与任务": "日常每轮最核心的状态机",
+      "护身符": "出现轮次、合法目标和特殊角色",
+      "终局流程": "当前实现与完整说明书差异最大的部分",
+      "可选变体": "不影响默认对局的高级规则",
+      "数据与安全": "真人对局前需要确定的防作弊边界"
+    };
+
+    const storageKey = "avalon2-rule-review-v1";
+    let filter = "all";
+    let saved = loadSaved();
+
+    function loadSaved() {
+      try { return JSON.parse(localStorage.getItem(storageKey)) || {}; }
+      catch (error) { return {}; }
+    }
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify(saved));
+      updateSummary();
+    }
+
+    function getState(id) {
+      return saved[id] && saved[id].state ? saved[id].state : "pending";
+    }
+
+    function getComment(id) {
+      return saved[id] && saved[id].comment ? saved[id].comment : "";
+    }
+
+    function render() {
+      const sectionNames = [...new Set(decisions.map(item => item.section))];
+      const root = document.getElementById("sections");
+      root.innerHTML = sectionNames.map(section => {
+        const items = decisions.filter(item => item.section === section);
+        return `
+          <section class="section" data-section="${escapeHtml(section)}">
+            <div class="section-heading">
+              <h2>${escapeHtml(section)}</h2>
+              <span>${escapeHtml(sectionNotes[section] || "")}</span>
+            </div>
+            <div class="decision-list">
+              ${items.map(renderDecision).join("")}
+            </div>
+          </section>`;
+      }).join("");
+      bindEvents();
+      applyFilter();
+      updateSummary();
+    }
+
+    function renderDecision(item) {
+      const state = getState(item.id);
+      const flag = item.flag ? `<span class="badge ${item.flag}">${escapeHtml(item.flagText)}</span>` : "";
+      return `
+        <article class="decision" data-id="${item.id}" data-state="${state}" data-recommend="${item.recommend}">
+          <div class="decision-main">
+            <div>
+              <div class="decision-title-row">
+                <h3>${escapeHtml(item.title)}</h3>
+                <span class="badge recommended">建议${item.recommend === "accept" ? "采用" : "不采用"}</span>
+                ${flag}
+              </div>
+              <p>${escapeHtml(item.detail)}</p>
+              <span class="rule-source">${escapeHtml(item.source)}</span>
+            </div>
+            <div class="choice-group" role="group" aria-label="${escapeHtml(item.title)}">
+              ${choiceButton(item.id, "accept", "✓ 采用", state)}
+              ${choiceButton(item.id, "reject", "× 不采用", state)}
+              ${choiceButton(item.id, "pending", "? 待定", state)}
+            </div>
+          </div>
+          <div class="feedback-wrap">
+            <label for="comment-${item.id}">你的意见</label>
+            <textarea id="comment-${item.id}" data-comment="${item.id}" placeholder="可填写修改方式、例外情况或不采用的原因……">${escapeHtml(getComment(item.id))}</textarea>
+          </div>
+        </article>`;
+    }
+
+    function choiceButton(id, choice, label, state) {
+      return `<button type="button" class="choice ${choice === state ? "selected" : ""}" data-id="${id}" data-choice="${choice}" aria-pressed="${choice === state}">${label}</button>`;
+    }
+
+    function bindEvents() {
+      document.querySelectorAll(".choice").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.id;
+          saved[id] = saved[id] || {};
+          saved[id].state = button.dataset.choice;
+          save();
+          const article = document.querySelector(`.decision[data-id="${id}"]`);
+          article.dataset.state = button.dataset.choice;
+          article.querySelectorAll(".choice").forEach(item => {
+            const selected = item.dataset.choice === button.dataset.choice;
+            item.classList.toggle("selected", selected);
+            item.setAttribute("aria-pressed", String(selected));
+          });
+          applyFilter();
+        });
+      });
+
+      document.querySelectorAll("textarea[data-comment]").forEach(textarea => {
+        textarea.addEventListener("input", () => {
+          const id = textarea.dataset.comment;
+          saved[id] = saved[id] || {};
+          saved[id].comment = textarea.value;
+          save();
+          if (filter === "commented") applyFilter();
+        });
+      });
+    }
+
+    function updateSummary() {
+      const counts = { accept: 0, reject: 0, pending: 0 };
+      decisions.forEach(item => { counts[getState(item.id)] += 1; });
+      document.getElementById("acceptCount").textContent = counts.accept;
+      document.getElementById("rejectCount").textContent = counts.reject;
+      document.getElementById("pendingCount").textContent = counts.pending;
+    }
+
+    function applyFilter() {
+      let visibleCount = 0;
+      document.querySelectorAll(".decision").forEach(article => {
+        const id = article.dataset.id;
+        const visible = filter === "all" || getState(id) === filter || (filter === "commented" && getComment(id).trim());
+        article.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      document.querySelectorAll(".section").forEach(section => {
+        section.hidden = !section.querySelector(".decision:not([hidden])");
+      });
+      document.getElementById("emptyState").style.display = visibleCount ? "none" : "block";
+    }
+
+    document.querySelectorAll(".filter-button").forEach(button => {
+      button.addEventListener("click", () => {
+        filter = button.dataset.filter;
+        document.querySelectorAll(".filter-button").forEach(item => item.classList.toggle("active", item === button));
+        applyFilter();
+      });
+    });
+
+    document.getElementById("applyRecommendations").addEventListener("click", () => {
+      if (!window.confirm("要将所有项目设为当前建议吗？已填写的留言不会被删除。")) return;
+      decisions.forEach(item => {
+        saved[item.id] = saved[item.id] || {};
+        saved[item.id].state = item.recommend;
+      });
+      save();
+      render();
+      showToast("已按建议完成选择");
+    });
+
+    document.getElementById("copyResults").addEventListener("click", async () => {
+      const text = buildMarkdown();
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("结果已复制");
+      } catch (error) {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+        showToast("结果已复制");
+      }
+    });
+
+    document.getElementById("downloadResults").addEventListener("click", () => {
+      const blob = new Blob([buildMarkdown()], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "阿瓦隆2规则确认结果.md";
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast("结果文件已生成");
+    });
+
+    function buildMarkdown() {
+      const stateLabels = { accept: "采用", reject: "不采用", pending: "待定" };
+      const lines = [
+        "# 阿瓦隆2规则与玩法确认结果",
+        "",
+        `导出时间：${new Date().toLocaleString("zh-CN")}`,
+        "",
+        "## 已确定原则",
+        "",
+        "- 不加入导演剪辑版。",
+        "- 任务人数按完整说明书的基础面板。",
+        "- 仅7人及以上第4轮为保护轮。",
+        "- 以房主自定义角色为主，支持未知角色变体。",
+        ""
+      ];
+      [...new Set(decisions.map(item => item.section))].forEach(section => {
+        lines.push(`## ${section}`, "");
+        decisions.filter(item => item.section === section).forEach(item => {
+          const state = getState(item.id);
+          lines.push(`- [${state === "accept" ? "x" : " "}] **${stateLabels[state]}** ${item.title}`);
+          const comment = getComment(item.id).trim();
+          if (comment) lines.push(`  - 反馈：${comment.replace(/\n/g, " ")}`);
+        });
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    render();
+  </script>
+</body>
+</html>

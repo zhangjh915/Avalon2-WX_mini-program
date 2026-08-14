@@ -1,0 +1,7 @@
+button {
+  margin: 0;
+}
+
+.panel .panel {
+  background: #f9f0e3;
+}
