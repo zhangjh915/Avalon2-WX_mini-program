@@ -57,24 +57,31 @@ async function main() {
     problems.push(`[console.error] ${text}`)
   })
 
+  let currentRoomId = ""
   let shotIndex = 0
-  // 截图接口在这个版本的 automator 上偶发超时，失败不应中断整局
+  let shotFailures = 0
+  let shotDisabled = false
+  // 开发者工具的渲染通道用久了会整体失去响应（重启开发者工具才能恢复）。
+  // 截图失败本身不影响流程校验，但反复重试会拖慢节奏，进而打乱后续阶段的时序，
+  // 因此连续失败两次就整局停掉截图，只保留流程与数据校验。
   async function shot(name) {
+    if (shotDisabled) return null
     shotIndex += 1
     const file = path.join(SHOT_DIR, `${String(shotIndex).padStart(2, "0")}-${name}.png`)
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        await withTimeout(mp.screenshot({ path: file }), 8000, "截图")
-        log(`截图 ${path.basename(file)}`)
-        return file
-      } catch (error) {
-        if (attempt === 3) {
-          log(`截图 ${name} 失败（已重试 3 次）：${error.message}`)
-          return null
-        }
-        // 页面刚跳转时 webview 会被重建，截图接口需要等它稳定
-        await sleep(attempt * 2000)
+    try {
+      await withTimeout(mp.screenshot({ path: file }), 6000, "截图")
+      log(`截图 ${path.basename(file)}`)
+      shotFailures = 0
+      return file
+    } catch (error) {
+      shotFailures += 1
+      log(`截图 ${name} 失败：${error.message}`)
+      if (shotFailures >= 2) {
+        shotDisabled = true
+        problems.push("[截图不可用] 渲染通道无响应，重启开发者工具后重跑可恢复")
+        log("连续截图失败，本局后续不再截图（重启开发者工具可恢复）")
       }
+      return null
     }
   }
 
@@ -129,6 +136,17 @@ async function main() {
     return call("getState", { roomId })
   }
 
+  // 幂等地推进阶段：界面自身也会在某些阶段自动推进，
+  // 直接调用可能撞上「当前不能…」的合法拒绝，这里先看阶段再决定。
+  async function advanceTo(targetPhase, action) {
+    const before = await state(currentRoomId)
+    if (before.room.phase === targetPhase) {
+      log(`阶段已是 ${targetPhase}，跳过 ${action}`)
+      return
+    }
+    await call(action, { roomId: currentRoomId })
+  }
+
   try {
     // ---- 建房与入座 ----
     await go("reLaunch", "/pages/index/index")
@@ -145,6 +163,7 @@ async function main() {
       devMode: true
     })
     const roomId = created.roomId
+    currentRoomId = roomId
     log(`房间已创建 code=${created.code} id=${roomId}`)
 
     await call("takeSeat", { roomId, seatNo: 1, name: "自动巡检" })
@@ -170,11 +189,13 @@ async function main() {
     log("等待身份阅读时长（约 40 秒）")
     await sleep(41000)
     await call("identityRemembered", { roomId })
-    await call("enterNight", { roomId })
+    // 首夜结束后 play 页自己会替房主推进到组队阶段，
+    // 脚本这里可能已经晚了一步，因此只在阶段还没走到时才补推。
+    await advanceTo("night", "enterNight")
     await sleep(1500)
     await shot("night")
 
-    await call("enterMission", { roomId })
+    await advanceTo("mission", "enterMission")
     await sleep(1200)
     await shot("mission-round-1")
 
@@ -201,8 +222,19 @@ async function main() {
 
       const resolved = await state(roomId)
       const mission = resolved.room.game.missions[resolved.room.game.missions.length - 1]
-      log(`第 ${mission.round} 轮：${mission.winner === "good" ? "成功" : "失败"}（成功 ${mission.successCount} / 失败 ${mission.failCount}）`)
+      log(`第 ${mission.round} 轮 服务端：${mission.winner === "good" ? "成功" : "失败"}（成功 ${mission.successCount} / 失败 ${mission.failCount}）`)
       await sleep(1800)
+      // 同时记录界面自己的 lastMission，用来核对“服务端数据”与“界面显示”是否一致
+      const shown = await withTimeout(mp.evaluate(() => {
+        const pages = getCurrentPages()
+        const page = pages[pages.length - 1]
+        const m = page.data.lastMission || {}
+        return { round: m.round, s: m.successCount, f: m.failCount, cards: (page.data.missionResultCards || []).map(c => c.label).join("") }
+      }), 10000, "读取界面结算数据")
+      log(`第 ${mission.round} 轮 界面：成功 ${shown.s} / 失败 ${shown.f}（第 ${shown.round} 轮，翻牌 ${shown.cards}）`)
+      if (shown.s !== mission.successCount || shown.f !== mission.failCount) {
+        problems.push(`[数据不一致] 第 ${mission.round} 轮 服务端 ${mission.successCount}/${mission.failCount}，界面 ${shown.s}/${shown.f}`)
+      }
       await shot(`mission-${mission.round}-result`)
 
       if (resolved.room.phase !== "missionResult") break
