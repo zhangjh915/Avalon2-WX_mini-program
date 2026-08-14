@@ -1,7 +1,8 @@
 {
 	"scripts": {
-		"test": "node tests/gameCore.test.js && node tests/tableLayout.test.js && node tests/balance.test.js && node tests/indexConfig.test.js && node tests/roomLobby.test.js && node tests/cloudFunction.integration.test.js && node tests/uiBindings.test.js && node tests/uiAnimations.test.js && node tests/stateSync.test.js",
-		"test:cloud-live": "node tests/cloud.live.e2e.js"
+		"test": "./scripts/run-tests.sh",
+		"test:cloud-live": "node tests/cloud.live.e2e.js",
+		"test:e2e": "./scripts/run-e2e.sh"
 	},
 	"devDependencies": {
 		"miniprogram-automator": "^0.12.1"

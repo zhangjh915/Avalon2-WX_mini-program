@@ -19,7 +19,7 @@ else
   exit 1
 fi
 
-cd "$(dirname "$0")" || exit 1
+cd "$(dirname "$0")/.." || exit 1
 
 TESTS=(
   gameCore

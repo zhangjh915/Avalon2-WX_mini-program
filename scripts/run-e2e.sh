@@ -6,7 +6,7 @@
 
 set -u
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CLI="/Applications/wechatwebdevtools.app/Contents/MacOS/cli"
 DEVTOOLS_NODE="/Applications/wechatwebdevtools.app/Contents/Frameworks/nwjs Framework.framework/Helpers/wechatwebdevtools Helper (Renderer).app/Contents/MacOS/node"
 PORT="${AUTOMATION_PORT:-9420}"
