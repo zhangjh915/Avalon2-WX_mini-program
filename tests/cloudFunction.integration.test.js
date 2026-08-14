@@ -535,6 +535,31 @@ async function testHumanInspectionClaim() {
       assert.strictEqual(Object.prototype.hasOwnProperty.call(publicInspection, "trueFaction"), false)
       await action("completeAmulet", { roomId }, ownerOpenid)
       assert.strictEqual(room(roomId).phase, "mission")
+
+      // 「我的密录」：查验结果在阶段过去之后仍然要能被查验者本人查到，
+      // 但只能是对外显示的阵营，且其他玩家看不到。
+      const ownerView = (await action("getState", { roomId }, ownerOpenid)).private
+      assert.deepStrictEqual(ownerView.inspectionHistory, [{
+        round: room(roomId).game.round,
+        ownerId: owner.id,
+        targetId: target.id,
+        displayedFaction: displayed
+      }], "查验者本人应能回看自己的查验结果")
+
+      const outsiderId = secret(roomId).players.find(player =>
+        player.id !== owner.id && player.id !== target.id && player.role !== "guard").id
+      const outsiderView = (await action("getState", { roomId }, outsiderId === 1 ? "host" : `user-${outsiderId}`)).private
+      assert.deepStrictEqual(outsiderView.inspectionHistory, [], "无关玩家不应看到任何查验结果")
+
+      // 真实阵营绝不能下发，否则捣乱者/骗徒的伪装形同虚设
+      const serialized = JSON.stringify(ownerView)
+      assert.ok(!/trueFaction/.test(serialized), "私密视图不得包含真实阵营字段")
+
+      // 出牌记录只包含自己的
+      const ownerVotes = ownerView.voteHistory || []
+      assert.ok(ownerVotes.every(item => ["success", "fail"].indexOf(item.value) >= 0), "出牌记录格式应为成功/失败")
+      const teamIds = room(roomId).game.missions.map(mission => mission.team).flat()
+      if (teamIds.indexOf(owner.id) < 0) assert.strictEqual(ownerVotes.length, 0, "没上过车就不该有出牌记录")
     }
   }
 }

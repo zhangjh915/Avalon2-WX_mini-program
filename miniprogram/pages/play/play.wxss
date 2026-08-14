@@ -1713,3 +1713,20 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 @keyframes rider-board { 0% { opacity: 0; transform: translateY(42rpx) scale(.72); } 70% { opacity: 1; transform: translateY(-5rpx) scale(1.08); } 100% { transform: translateY(0) scale(1); } }
 @keyframes seat-board { 0% { transform: scale(.7); box-shadow: 0 0 0 0 rgba(47,115,88,.35); } 65% { transform: scale(1.18); box-shadow: 0 0 0 16rpx rgba(47,115,88,.08); } 100% { transform: scale(1); } }
 @keyframes mission-card-flip { 0% { opacity: 0; transform: translateY(-38rpx) rotateY(0); } 28% { opacity: 1; transform: translateY(0) rotateY(0); } 100% { opacity: 1; transform: translateY(0) rotateY(180deg); } }
+
+/* 我的密录：随时可回看自己的身份、查验与出牌 */
+.header-tools { display: flex; align-items: center; gap: 10rpx; }
+.dossier-glyph { font-size: 26rpx; font-weight: 900; line-height: 1; }
+.dossier-identity { margin-bottom: 18rpx; padding: 24rpx 22rpx; border: 2rpx solid #48554f; border-left-width: 8rpx; border-radius: 6rpx; background: #1d2824; }
+.dossier-identity.role-good { border-left-color: #2f7358; }
+.dossier-identity.role-evil { border-left-color: #8b3f45; }
+.dossier-identity .role-faction { color: #8e9993; font-size: 22rpx; }
+.dossier-identity .role-name-display { margin: 6rpx 0 10rpx; color: #f0f2ef; font-size: 40rpx; font-weight: 900; }
+.dossier-identity .role-description { color: #b9c2bc; font-size: 25rpx; line-height: 1.6; }
+.dossier-section { margin-top: 22rpx; }
+.dossier-row { display: flex; align-items: center; gap: 14rpx; padding: 16rpx 4rpx; border-bottom: 2rpx solid #26302b; font-size: 25rpx; }
+.dossier-round { color: #8e9993; font-size: 22rpx; white-space: nowrap; }
+.dossier-main { flex: 1; color: #dfe4e0; }
+.dossier-tag { padding: 4rpx 14rpx; border: 2rpx solid; border-radius: 4rpx; font-size: 22rpx; font-weight: 700; white-space: nowrap; }
+.dossier-tag.faction-good,.dossier-tag.vote-success { border-color: #4f9a80; color: #8ecdb3; }
+.dossier-tag.faction-evil,.dossier-tag.vote-fail { border-color: #c1656b; color: #e09b9e; }

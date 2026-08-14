@@ -25,6 +25,7 @@ Page({
     tableHeight: 34,
     tableVisible: false, tableMode: "team", tableTitle: "选择同行骑士", tableHint: "",
     historyVisible: false, historyMissions: [], historyAmulets: [],
+    dossierVisible: false, myInspections: [], myVotes: [],
     decoratedPlayers: [], selectedTeam: [], magicTargetId: null, teamPlayers: [],
     nextLeaderId: null, nextAmuletId: null, needsAmulet: false,
     voteCount: 0, votePercent: 0, myVotePending: false,
@@ -160,6 +161,7 @@ Page({
     const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
     const history = this.buildGameHistory(game, decoratedPlayers)
+    const dossier = this.buildDossier(privateView, decoratedPlayers)
     this.setData({
       room, game, privateView, isHost: !!result.isHost, phase: room.phase, phaseName: phaseNames[room.phase] || "圆桌进行中",
       myRole, myRoleGuide: privateView.role ? roleGuideData.getRoleGuide(privateView.role) : roleGuideData.defaultGuide,
@@ -205,6 +207,8 @@ Page({
       needsAmulet,
       historyMissions: history.missions,
       historyAmulets: history.amulets,
+      myInspections: dossier.myInspections,
+      myVotes: dossier.myVotes,
       syncing: false
     })
     this.refreshSelections()
@@ -335,6 +339,31 @@ Page({
     return cards.map((card, index) => ({ ...card, delay: index * 150 }))
   },
 
+  // 「我的密录」：把服务端下发的私密记录整理成可读文案。
+  // 这里只用 privateView 里的数据，不做任何本地推断，避免显示出玩家本不该知道的信息。
+  buildDossier(privateView, players) {
+    const label = id => {
+      const player = players.find(item => Number(item.id) === Number(id))
+      return player ? `${player.id}号 ${player.name}` : `${id}号`
+    }
+    const myInspections = (privateView.inspectionHistory || []).map((item, index) => ({
+      id: `${item.round}-${index}`,
+      round: item.round,
+      // 守卫看到的是别人查的那一次，所以要写清楚是谁查的
+      text: Number(item.ownerId) === Number(privateView.id)
+        ? `你查验了 ${label(item.targetId)}`
+        : `${label(item.ownerId)} 查验了 ${label(item.targetId)}`,
+      faction: item.displayedFaction,
+      factionName: gameUtil.factionLabel(item.displayedFaction)
+    }))
+    const myVotes = (privateView.voteHistory || []).map(item => ({
+      round: item.round,
+      value: item.value,
+      label: item.value === "success" ? "成功" : "失败"
+    }))
+    return { myInspections, myVotes }
+  },
+
   buildGameHistory(game, players) {
     const byId = id => players.find(player => Number(player.id) === Number(id))
     const playerLabel = id => {
@@ -436,6 +465,9 @@ Page({
 
   openHistory() { this.setData({ historyVisible: true }) },
   closeHistory() { this.setData({ historyVisible: false }) },
+
+  openDossier() { this.setData({ dossierVisible: true }) },
+  closeDossier() { this.setData({ dossierVisible: false }) },
 
   closeTable() {
     if (this.data.syncing) return

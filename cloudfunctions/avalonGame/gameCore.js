@@ -274,6 +274,30 @@ function privateNightInfo(game, secret, player) {
   return info
 }
 
+// 本人有权回看的护身符查验记录。
+// 只给「对外显示的阵营」，绝不给真实阵营——捣乱者和骗徒的伪装必须一直有效。
+// 守卫按规则额外知道本局第一次查验的对外结果。
+function myInspectionHistory(secret, player) {
+  return (secret.amuletHistory || [])
+    .map((item, index) => ({ item, index }))
+    .filter(({ item, index }) => item.ownerId === player.id || (player.role === "guard" && index === 0))
+    .map(({ item }) => ({
+      round: item.round,
+      ownerId: item.ownerId,
+      targetId: item.targetId,
+      displayedFaction: item.displayedFaction
+    }))
+}
+
+// 本人历轮打出的任务牌，供自己回看（其他人永远看不到）。
+function myVoteHistory(secret, player) {
+  return Object.keys(secret.votes || {})
+    .map(Number)
+    .filter(round => Object.prototype.hasOwnProperty.call(secret.votes[String(round)], String(player.id)))
+    .sort((a, b) => a - b)
+    .map(round => ({ round, value: secret.votes[String(round)][String(player.id)] }))
+}
+
 function privateView(game, secret, openid) {
   const player = playerForOpenId(secret, openid)
   if (!player) return null
@@ -292,6 +316,9 @@ function privateView(game, secret, openid) {
     faction: player.faction,
     factionName: player.faction === "good" ? "正义方" : "邪恶方",
     nightInfo: privateNightInfo(game, secret, player),
+    // 供「我的密录」随时回看：身份、首夜信息之外，还要能查到自己的查验与出牌
+    inspectionHistory: myInspectionHistory(secret, player),
+    voteHistory: myVoteHistory(secret, player),
     voteOptions: legalVoteOptions(game, player),
     needsLeaderClaim: player.id === game.firstLeaderId && player.role === "deceiver",
     leaderClaimSubmitted: player.id === game.firstLeaderId && player.role === "deceiver" && !!secret.priestClaim,
