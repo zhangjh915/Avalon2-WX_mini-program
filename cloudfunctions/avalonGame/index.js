@@ -444,7 +444,7 @@ async function missionAction(event, openid) {
   if (team.some(id => !core.getPlayer(state.secret, id))) fail("队伍中包含无效座位")
   const magicTargetId = Number(event.magicTargetId)
   if (team.indexOf(magicTargetId) < 0) fail("魔法指示物只能给同行骑士")
-  game.current = { team, magicTargetId, voteCount: 0 }
+  game.current = { team, magicTargetId, voteCount: 0, votedIds: [] }
   state.secret.votes[String(game.round)] = {}
   state.room.phase = "vote"
   await Promise.all([
@@ -476,6 +476,7 @@ async function submitVote(event, openid, botPlayerId) {
     roundVotes[String(player.id)] = event.value
     state.secret.votes[String(game.round)] = roundVotes
     game.current.voteCount = Object.keys(roundVotes).length
+    game.current.votedIds = Object.keys(roundVotes).map(Number)
     if (game.current.voteCount >= game.current.team.length) {
       core.resolveMission(game, state.secret)
       if (core.shouldEnterFinale(game)) {
@@ -513,6 +514,7 @@ async function submitBotVotes(event, openid) {
     })
     state.secret.votes[String(game.round)] = roundVotes
     game.current.voteCount = Object.keys(roundVotes).length
+    game.current.votedIds = Object.keys(roundVotes).map(Number)
     if (game.current.voteCount >= game.current.team.length) {
       core.resolveMission(game, state.secret)
       if (core.shouldEnterFinale(game)) {
@@ -559,7 +561,7 @@ async function handoff(event, openid) {
   game.leaderId = nextLeader.id
   game.round += 1
   game.galahadLeaderId = null
-  game.current = { team: [], magicTargetId: null, voteCount: 0 }
+  game.current = { team: [], magicTargetId: null, voteCount: 0, votedIds: [] }
   if (needAmulet) {
     const noPreviousAmulet = !state.secret.firstAmuletUsed
     game.amulet = { ownerId: amuletOwner.id, status: "select", firstOfGame: noPreviousAmulet }

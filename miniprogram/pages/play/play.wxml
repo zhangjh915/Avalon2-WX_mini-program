@@ -14,6 +14,11 @@
         <view class="table-icon-button" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view>
       </view>
     </view>
+    <view wx:if="{{waitingHint}}" class="waiting-bar">
+      <view class="waiting-dot"></view>
+      <text class="waiting-bar-text">{{waitingHint.text}}</text>
+      <text wx:if="{{waitingHint.progress}}" class="waiting-bar-progress">{{waitingHint.progress}}</text>
+    </view>
     <view wx:if="{{leader && phase !== 'reveal' && phase !== 'night' && phase !== 'finale'}}" class="leader-line">
       <view class="leader-crown"><text class="symbol-icon crown-icon">👑</text></view><text>{{leader.id}}号 {{leader.name}}</text>
       <text class="leader-rule">{{missionSize}}人任务 {{protectedText}}</text>
@@ -76,12 +81,15 @@
 
     <view wx:if="{{phase === 'night'}}" class="phase-content ceremony-content">
       <view class="ceremony-mark">夜</view>
-      <view class="directive-kicker">{{nightDirective.subtitle}}</view>
-      <view class="ceremony-step">主持音频占位 · {{nightSecondsLeft}}s</view>
-      <view wx:if="{{!nightFinished}}" class="ceremony-text">{{nightDirective.title}}</view>
-      <view wx:else class="ceremony-text">指令播放完毕，远征即将开始。</view>
-      <view class="directive-progress"><view style="width: {{nightSecondsLeft * 20}}%;"></view></view>
-      <button wx:if="{{isHost}}" class="text-command" bindtap="enterMission">跳过指令</button>
+      <view class="ceremony-step">首夜仪式 · 第 {{nightStep + 1}} / {{nightCeremony.length}} 步</view>
+      <view class="ceremony-text">{{currentNightLine.text}}</view>
+      <view class="directive-progress"><view style="width: {{nightProgressPercent}}%;"></view></view>
+      <view wx:if="{{isHost}}" class="night-controls">
+        <button class="secondary-action" bindtap="prevNightStep" disabled="{{nightStep === 0}}">上一步</button>
+        <button wx:if="{{!nightLastStep}}" class="primary-action" bindtap="nextNightStep">念完了，下一步</button>
+        <button wx:else class="launch-action" bindtap="enterMission">天亮，开始远征</button>
+      </view>
+      <view wx:else class="waiting-copy">请按主持的指令行动，节奏由房主掌握。</view>
     </view>
 
     <view wx:if="{{phase === 'mission'}}" class="phase-content">
@@ -283,6 +291,11 @@
         </view>
       </scroll-view>
     </view>
+  </view>
+
+  <view wx:if="{{bannerVisible}}" class="event-banner banner-{{bannerType}}">
+    <text class="banner-symbol">{{bannerSymbol}}</text>
+    <text class="banner-text">{{bannerText}}</text>
   </view>
 
   <view wx:if="{{ceremonyVisible}}" class="ceremony-overlay ceremony-{{ceremonyType}}" catchtap="stopPropagation">

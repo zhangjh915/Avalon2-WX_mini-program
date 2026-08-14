@@ -16,7 +16,7 @@ Page({
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
     roleVisible: false, identityMode: "prepare", identityCountdown: 3, identitySecondsLeft: 40,
     identityReady: false, identityRemembered: false, identityReadyCount: 0, identityRememberedCount: 0,
-    nightCeremony: [], currentNightLine: {}, nightStep: 0, nightSecondsLeft: 5, nightFinished: false,
+    nightCeremony: [], currentNightLine: {}, nightStep: 0, nightLastStep: false, nightProgressPercent: 0,
     nightDirective: { title: "天黑请闭眼", subtitle: "请听指令" },
     leader: null, isLeader: false, missionSize: 0, protectedText: "", missionTrack: [],
     canControlLeader: false,
@@ -26,6 +26,7 @@ Page({
     tableVisible: false, tableMode: "team", tableTitle: "选择同行骑士", tableHint: "",
     historyVisible: false, historyMissions: [], historyAmulets: [],
     dossierVisible: false, myInspections: [], myVotes: [],
+    waitingHint: null,
     decoratedPlayers: [], selectedTeam: [], magicTargetId: null, teamPlayers: [],
     nextLeaderId: null, nextAmuletId: null, needsAmulet: false,
     voteCount: 0, votePercent: 0, myVotePending: false,
@@ -38,6 +39,7 @@ Page({
     hunterVoteValue: "", traitorSide: "", traitorTargets: [],
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
+    bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
   },
@@ -45,6 +47,7 @@ Page({
   pollTimer: null,
   clockTimer: null,
   ceremonyTimer: null,
+  bannerTimer: null,
   nightTimer: null,
   selectionTimer: null,
   ceremonyQueue: [],
@@ -83,6 +86,7 @@ Page({
   onUnload() {
     this.stopTimers()
     if (this.ceremonyTimer) clearTimeout(this.ceremonyTimer)
+    if (this.bannerTimer) clearTimeout(this.bannerTimer)
     if (this.nightTimer) clearTimeout(this.nightTimer)
     if (this.selectionTimer) clearTimeout(this.selectionTimer)
   },
@@ -162,6 +166,7 @@ Page({
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
     const history = this.buildGameHistory(game, decoratedPlayers)
     const dossier = this.buildDossier(privateView, decoratedPlayers)
+    const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     this.setData({
       room, game, privateView, isHost: !!result.isHost, phase: room.phase, phaseName: phaseNames[room.phase] || "圆桌进行中",
       myRole, myRoleGuide: privateView.role ? roleGuideData.getRoleGuide(privateView.role) : roleGuideData.defaultGuide,
@@ -171,6 +176,9 @@ Page({
       canClaimGood: (privateView.inspectionOptions || []).indexOf("good") >= 0,
       canClaimEvil: (privateView.inspectionOptions || []).indexOf("evil") >= 0,
       nightCeremony, nightStep, currentNightLine: nightCeremony[nightStep] || {},
+      // 轮询每次都会重算 nightStep（保留房主已推进到的位置），派生字段要跟着一起更新
+      nightLastStep: nightStep >= nightCeremony.length - 1,
+      nightProgressPercent: nightCeremony.length ? Math.round((nightStep + 1) / nightCeremony.length * 100) : 0,
       nightDirective: ttsData.pickNightDisplay(Number(game.firstLeaderId || 0) + Number(game.playerCount || 0)),
       leader, isLeader: privateView.id === game.leaderId,
       devMode,
@@ -208,6 +216,7 @@ Page({
       historyMissions: history.missions,
       historyAmulets: history.amulets,
       myInspections: dossier.myInspections,
+      waitingHint,
       myVotes: dossier.myVotes,
       syncing: false
     })
@@ -286,10 +295,31 @@ Page({
     return events
   },
 
+  // 只有真正的节点值得打断全场（轮次开场、终局、猎杀现身）。
+  // 皇冠交接、护身符、火球这类高频事件降级成顶部横幅：
+  // 线下嘴炮才是主体，每人手机连弹三个全屏动画只会打断讨论。
+  BANNER_TYPES: ["crown", "amulet", "magic"],
+
   enqueueCeremonies(events) {
     if (!events || !events.length) return
-    this.ceremonyQueue = this.ceremonyQueue.concat(events)
+    const banners = events.filter(event => this.BANNER_TYPES.indexOf(event.type) >= 0)
+    const fullscreen = events.filter(event => this.BANNER_TYPES.indexOf(event.type) < 0)
+    if (banners.length) this.showBanner(banners[banners.length - 1])
+    if (!fullscreen.length) return
+    this.ceremonyQueue = this.ceremonyQueue.concat(fullscreen)
     if (!this.data.ceremonyVisible && !this.ceremonyTimer) this.playNextCeremony()
+  },
+
+  showBanner(event) {
+    if (this.bannerTimer) clearTimeout(this.bannerTimer)
+    this.setData({
+      bannerVisible: true,
+      bannerType: event.type,
+      bannerSymbol: event.symbol,
+      bannerText: event.subtitle || event.title
+    })
+    this.vibrate("light")
+    this.bannerTimer = setTimeout(() => this.setData({ bannerVisible: false }), 2600)
   },
 
   playNextCeremony() {
@@ -337,6 +367,59 @@ Page({
     for (let index = 0; index < Number(mission.successCount || 0); index += 1) cards.push({ id: `success-${index}`, value: "success", label: "成" })
     for (let index = 0; index < Number(mission.failCount || 0); index += 1) cards.push({ id: `fail-${index}`, value: "fail", label: "败" })
     return cards.map((card, index) => ({ ...card, delay: index * 150 }))
+  },
+
+  // 常驻「现在等谁」：8-10 人局最常见的卡顿是全场等一个人，但没人知道等谁。
+  // 只用公开信息（谁提交过，不含提交内容），等价于线下交牌时本来就看得见的动作。
+  buildWaitingHint(room, game, players) {
+    const byId = id => players.find(item => Number(item.id) === Number(id))
+    const nameOf = id => {
+      const player = byId(id)
+      return player ? `${player.id}号 ${player.name}` : `${id}号`
+    }
+    const listing = ids => {
+      if (!ids.length) return ""
+      if (ids.length <= 2) return ids.map(nameOf).join("、")
+      return `${nameOf(ids[0])} 等 ${ids.length} 人`
+    }
+    const allIds = players.map(player => player.id)
+    const identity = game.identity || { readyIds: [], rememberedIds: [] }
+    const missing = done => allIds.filter(id => (done || []).indexOf(id) < 0)
+
+    if (room.phase === "reveal") {
+      if (!identity.revealAt) {
+        const pending = missing(identity.readyIds)
+        return pending.length ? { text: `等待 ${listing(pending)} 准备`, progress: `${identity.readyIds.length}/${allIds.length}` } : null
+      }
+      const pending = missing(identity.rememberedIds)
+      return pending.length ? { text: `等待 ${listing(pending)} 确认身份`, progress: `${identity.rememberedIds.length}/${allIds.length}` } : null
+    }
+    if (room.phase === "mission") return { text: `等待 ${nameOf(game.leaderId)} 组建远征队`, progress: "" }
+    if (room.phase === "vote") {
+      const pending = (game.current.team || []).filter(id => (game.current.votedIds || []).indexOf(id) < 0)
+      return pending.length
+        ? { text: `等待 ${listing(pending)} 提交任务牌`, progress: `${game.current.voteCount || 0}/${(game.current.team || []).length}` }
+        : null
+    }
+    if (room.phase === "missionResult") return { text: `等待 ${nameOf(game.galahadLeaderId || game.leaderId)} 交接皇冠`, progress: "" }
+    if (room.phase === "amulet" && game.amulet) {
+      if (game.amulet.status === "select") return { text: `等待 ${nameOf(game.amulet.ownerId)} 选择查验对象`, progress: "" }
+      if (game.amulet.status === "claim") return { text: "等待被查验者选择展示阵营", progress: "" }
+      return { text: `等待 ${nameOf(game.amulet.ownerId)} 收起护身符`, progress: "" }
+    }
+    if (room.phase === "finale" && game.final) {
+      if (game.final.stage === "identify") {
+        const submitted = Number(game.final.submittedCount || 0)
+        return submitted < allIds.length ? { text: "等待全员提交最后指认", progress: `${submitted}/${allIds.length}` } : null
+      }
+      if (game.final.stage === "hunterVote") {
+        const voted = Number(game.final.hunterVoteCount || 0)
+        return { text: "等待全员提交猎杀票", progress: `${voted}/${allIds.length}` }
+      }
+      if (game.final.stage === "hunterDecision") return { text: "等待盲眼杀手做出决定", progress: "" }
+      if (game.final.stage === "hunterTargets") return { text: "等待盲眼杀手选择猎杀目标", progress: "" }
+    }
+    return null
   },
 
   // 「我的密录」：把服务端下发的私密记录整理成可读文案。
@@ -433,22 +516,35 @@ Page({
     this.sendAction("identityRemembered")
   },
   enterNight() { this.sendAction("enterNight") },
+
+  // 首夜由房主逐条念、逐条推进。
+  // 早先是 5 秒定时自动跳过，主持根本跟不上，也没法回看上一条指令；
+  // 主持体验是这个产品的核心价值，节奏必须握在人手里。
   startNightDirectives() {
-    if (this.nightTimer) clearTimeout(this.nightTimer)
-    this.setData({ nightSecondsLeft: 5, nightFinished: false })
-    this.scheduleNightTick()
+    this.applyNightStep(0)
   },
-  scheduleNightTick() {
-    this.nightTimer = setTimeout(() => {
-      if (this.data.phase !== "night") return
-      if (this.data.nightSecondsLeft > 1) {
-        this.setData({ nightSecondsLeft: this.data.nightSecondsLeft - 1 })
-        this.scheduleNightTick()
-        return
-      }
-      this.setData({ nightFinished: true, nightSecondsLeft: 0 })
-      if (this.data.isHost) this.enterMission()
-    }, 1000)
+
+  applyNightStep(step) {
+    const ceremony = this.data.nightCeremony || []
+    const total = Math.max(ceremony.length, 1)
+    const nightStep = Math.min(Math.max(step, 0), total - 1)
+    this.setData({
+      nightStep,
+      currentNightLine: ceremony[nightStep] || {},
+      nightLastStep: nightStep >= total - 1,
+      nightProgressPercent: Math.round((nightStep + 1) / total * 100)
+    })
+  },
+
+  nextNightStep() {
+    if (this.data.nightLastStep) return
+    this.applyNightStep(this.data.nightStep + 1)
+    this.vibrate("light")
+  },
+
+  prevNightStep() {
+    if (this.data.nightStep <= 0) return
+    this.applyNightStep(this.data.nightStep - 1)
   },
   enterMission() { this.sendAction("enterMission") },
 

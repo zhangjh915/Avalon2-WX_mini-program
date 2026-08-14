@@ -31,6 +31,7 @@ TESTS=(
   uiBindings
   uiAnimations
   stateSync
+  waitingHint
 )
 
 failed=0

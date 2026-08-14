@@ -174,7 +174,7 @@ function createGame(settings, seats) {
       missions: [],
       amuletHistory: [],
       identity: { readyIds: [], revealAt: 0, closeAt: 0, rememberedIds: [] },
-      current: { team: [], magicTargetId: null, voteCount: 0 },
+      current: { team: [], magicTargetId: null, voteCount: 0, votedIds: [] },
       amulet: null,
       final: null,
       winner: null

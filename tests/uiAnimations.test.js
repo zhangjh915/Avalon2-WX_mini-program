@@ -132,6 +132,32 @@ assert.strictEqual(history.missions[0].team, "1号 甲、3号 丙")
 assert.strictEqual(history.missions[0].magic, "3号 丙")
 assert.deepStrictEqual(history.amulets[0], { id: "2-0", round: 2, owner: "2号 乙", target: "1号 甲" })
 
+// 高频事件走不打断的顶部横幅，只有真正的节点才全屏打断线下讨论
+const ceremonyContext = {
+  data: { ceremonyVisible: false },
+  setData(value) { this.data = { ...this.data, ...value } },
+  BANNER_TYPES: definition.BANNER_TYPES,
+  enqueueCeremonies: definition.enqueueCeremonies,
+  showBanner: definition.showBanner,
+  playNextCeremony: definition.playNextCeremony,
+  vibrate() {},
+  ceremonyQueue: []
+}
+ceremonyContext.enqueueCeremonies([
+  { type: "crown", symbol: "👑", title: "皇冠易主", subtitle: "2号 乙 接掌远征" },
+  { type: "amulet", symbol: "🧿", title: "护身符授予", subtitle: "3号 丙 获得查验权" }
+])
+assert.strictEqual(ceremonyContext.data.bannerVisible, true, "皇冠与护身符应走横幅")
+assert.strictEqual(ceremonyContext.data.ceremonyVisible, false, "高频事件不应全屏打断")
+assert.strictEqual(ceremonyContext.ceremonyQueue.length, 0)
+
+ceremonyContext.ceremonyQueue = []
+ceremonyContext.data.ceremonyVisible = false
+ceremonyContext.enqueueCeremonies([
+  { type: "round", symbol: "2", title: "第 2 轮远征", subtitle: "4名骑士即将出发" }
+])
+assert.strictEqual(ceremonyContext.data.ceremonyVisible, true, "轮次开场仍然全屏")
+
 delete global.Page
 delete global.wx
 console.log("UI animation tests passed")
