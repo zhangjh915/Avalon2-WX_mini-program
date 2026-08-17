@@ -12,3 +12,6 @@ tmp/
 # 系统与日志
 .DS_Store
 *.log
+
+# 生图试验产物（体积大且是一次性对比用；最终选定的资产放 miniprogram/assets/ 并提交）
+docs/assets/generated/
