@@ -158,6 +158,23 @@ ceremonyContext.enqueueCeremonies([
 ])
 assert.strictEqual(ceremonyContext.data.ceremonyVisible, true, "轮次开场仍然全屏")
 
+// 翻牌不能依赖 backface-visibility：微信渲染器里它配合 preserve-3d 不可靠，
+// 换成图片素材后正反面叠加会非常明显。必须是两段 scaleX。
+const fs2 = require("fs")
+const playWxss = fs2.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "play", "play.wxss"), "utf8")
+const cardRules = playWxss.split("\n").filter(line => /^\.mission-(result-card|card-back|card-front)/.test(line)).join("\n")
+assert.ok(!/backface-visibility/.test(cardRules), "翻牌不应再依赖 backface-visibility")
+assert.ok(!/preserve-3d/.test(cardRules), "翻牌不应再使用 preserve-3d")
+assert.match(cardRules, /card-face-out/, "牌背需要收起动画")
+assert.match(cardRules, /card-face-in/, "牌面需要展开动画")
+assert.match(playWxss, /@keyframes card-face-out \{ from \{ transform: scaleX\(1\)/, "牌背应从 scaleX(1) 收到 0")
+assert.match(playWxss, /@keyframes card-face-in \{ from \{ transform: scaleX\(0\)/, "牌面应从 scaleX(0) 展开")
+// 两面必须错开，否则会同时可见
+assert.match(cardRules, /\.mission-card-front[^\n]*--flip-delay[^\n]*\+ 540ms/, "牌面必须在牌背收完之后才展开")
+
+const playWxmlFlip = fs2.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "play", "play.wxml"), "utf8")
+assert.match(playWxmlFlip, /--flip-delay: \{\{item\.delay\}\}ms/, "逐张延迟需要通过 CSS 变量传给两面")
+
 delete global.Page
 delete global.wx
 console.log("UI animation tests passed")

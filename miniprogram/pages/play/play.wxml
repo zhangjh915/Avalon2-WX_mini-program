@@ -124,7 +124,7 @@
 
     <view wx:if="{{phase === 'missionResult'}}" class="phase-content">
       <view class="mission-card-reveal">
-        <view wx:for="{{missionResultCards}}" wx:key="id" class="mission-result-card card-{{item.value}}" style="animation-delay: {{item.delay}}ms;"><view class="mission-card-back">杯</view><view class="mission-card-front">{{item.label}}</view></view>
+        <view wx:for="{{missionResultCards}}" wx:key="id" class="mission-result-card card-{{item.value}}" style="--flip-delay: {{item.delay}}ms; animation-delay: {{item.delay}}ms;"><view class="mission-card-back">杯</view><view class="mission-card-front">{{item.label}}</view></view>
       </view>
       <view class="result-title">{{lastMission.winner === 'good' ? '远征成功' : '远征失败'}}</view>
       <view class="waiting-copy">成功 {{lastMission.successCount}} · 失败 {{lastMission.failCount}}</view>

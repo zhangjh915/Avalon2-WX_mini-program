@@ -34,7 +34,9 @@ fi
 MODEL="$1"; LABEL="$2"; SIZE="$3"; COUNT="$4"; PROMPT="$5"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/docs/assets/generated"
+# DIR 可选，用来把产物归到子目录，避免所有资产堆在一个文件夹里：
+#   DIR=任务牌背/A-扁平烫金 ./scripts/gen-image.sh …
+OUT="$ROOT/docs/assets/generated/${DIR:-}"
 mkdir -p "$OUT"
 
 ENDPOINT="https://openproxy-cn.zuoyebang.cc/openproxy/rp/v1/images/generations"
