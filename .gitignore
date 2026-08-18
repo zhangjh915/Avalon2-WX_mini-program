@@ -20,3 +20,7 @@ docs/assets/generated/
 # （任务牌很小，仍然入包入库；这两个目录同时排除打包，见 project.config.json 的 packOptions.ignore）
 miniprogram/assets/roles/
 miniprogram/assets/cards/identity/
+
+# Python 缓存（脚本互相 import 时产生）
+__pycache__/
+*.pyc

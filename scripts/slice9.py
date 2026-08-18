@@ -77,6 +77,31 @@ def tile_to(strip, w, h, axis):
     return out
 
 
+def fade_inward(im, f, side):
+    """把边条**朝内的那一侧** f 像素做成 alpha 渐隐。
+
+    不做这一步，边条的内边界和中心是一刀切，而源图自身有轻微的光照梯度，
+    两边木纹亮度对不上就会露出一道台阶。渐隐后中心的木纹从边条底下渐渐透出来，
+    台阶被抹平。只动 alpha，不动颜色。
+    """
+    if f <= 0:
+        return im
+    a = np.asarray(im.getchannel("A"), np.float32) / 255.0
+    w, h = im.size
+    ramp = np.clip(np.arange(f, dtype=np.float32) / f, 0, 1)
+    if side == "top":            # 内侧是下边
+        a[h - f:, :] *= ramp[::-1, None]
+    elif side == "bottom":       # 内侧是上边
+        a[:f, :] *= ramp[:, None]
+    elif side == "left":         # 内侧是右边
+        a[:, w - f:] *= ramp[::-1][None, :]
+    else:                        # right，内侧是左边
+        a[:, :f] *= ramp[None, :]
+    out = im.copy()
+    out.putalpha(Image.fromarray((a * 255).round().astype(np.uint8), "L"))
+    return out
+
+
 def cover(im, w, h):
     """保持比例缩放到刚好盖满 w x h，居中裁切。只丢边，不变形。"""
     k = max(w / im.width, h / im.height)
@@ -86,7 +111,7 @@ def cover(im, w, h):
                    (r.width - w) // 2 + w, (r.height - h) // 2 + h))
 
 
-def compose(parts, inset_src, inset_out, w, h):
+def compose(parts, inset_src, inset_out, w, h, feather=0):
     """按目标尺寸合成，模拟落地时多重 background 的效果。
 
     切片尺寸（源图像素）和渲染尺寸（落地物理像素）是两回事：源图上切 220px 的角，
@@ -100,16 +125,18 @@ def compose(parts, inset_src, inset_out, w, h):
     sc = lambda im: im.resize((max(1, round(im.width * k)),
                                max(1, round(im.height * k))), Image.LANCZOS)
     out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    # 中心向四周多铺 feather 像素，垫在边条底下，供渐隐时透出来
+    e = min(feather, inset_out)
     cw, ch = w - inset_out * 2, h - inset_out * 2
-    out.alpha_composite(cover(parts["center"], cw, ch), (inset_out, inset_out))
-    out.alpha_composite(tile_to(sc(mirror_tile(parts["edge_top"], "x")), cw, inset_out, "x"),
-                        (inset_out, 0))
-    out.alpha_composite(tile_to(sc(mirror_tile(parts["edge_bottom"], "x")), cw, inset_out, "x"),
-                        (inset_out, h - inset_out))
-    out.alpha_composite(tile_to(sc(mirror_tile(parts["edge_left"], "y")), inset_out, ch, "y"),
-                        (0, inset_out))
-    out.alpha_composite(tile_to(sc(mirror_tile(parts["edge_right"], "y")), inset_out, ch, "y"),
-                        (w - inset_out, inset_out))
+    out.alpha_composite(cover(parts["center"], cw + e * 2, ch + e * 2),
+                        (inset_out - e, inset_out - e))
+    for name, side, pos, size, axis in [
+            ("edge_top", "top", (inset_out, 0), (cw, inset_out), "x"),
+            ("edge_bottom", "bottom", (inset_out, h - inset_out), (cw, inset_out), "x"),
+            ("edge_left", "left", (0, inset_out), (inset_out, ch), "y"),
+            ("edge_right", "right", (w - inset_out, inset_out), (inset_out, ch), "y")]:
+        strip = tile_to(sc(mirror_tile(parts[name], axis)), size[0], size[1], axis)
+        out.alpha_composite(fade_inward(strip, e, side), pos)
     for key, pos in [("corner_tl", (0, 0)), ("corner_tr", (w - inset_out, 0)),
                      ("corner_bl", (0, h - inset_out)),
                      ("corner_br", (w - inset_out, h - inset_out))]:
@@ -127,6 +154,8 @@ def main():
     ap.add_argument("--preview-h", type=int, default=300, help="预览图的高（物理像素）")
     ap.add_argument("--render-inset", type=int, default=54,
                     help="落地时切角渲染成多少物理像素（= CSS 给角的 background-size）")
+    ap.add_argument("--feather", type=int, default=18,
+                    help="边条内侧的渐隐宽度（物理像素），抹平边条与中心的木纹台阶")
     args = ap.parse_args()
 
     if args.inset < MIN_INSET:
@@ -150,8 +179,8 @@ def main():
 
     ratios = args.preview or [1.19, 1.9, 2.89]
     H = args.preview_h
-    tiles = [(r, compose(parts, args.inset, args.render_inset, round(H * r), H))
-             for r in ratios]
+    tiles = [(r, compose(parts, args.inset, args.render_inset, round(H * r), H,
+                         args.feather)) for r in ratios]
     pad = 20
     sheet = Image.new("RGB",
                       (pad + max(t.width for _, t in tiles) + pad,

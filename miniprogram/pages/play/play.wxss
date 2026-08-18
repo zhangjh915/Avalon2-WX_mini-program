@@ -1491,9 +1491,14 @@ button::after {
 .fire-icon { color: #ef6c3f; }
 .amulet-icon { color: #4c9cce; }
 .leader-rule { margin-left: auto; color: #8f9c96; font-size: 20rpx; }
-.identity-waiting,.submitted-state { display: flex; width: 100%; min-height: 440rpx; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.sigil-placeholder,.submitted-seal { display: flex; width: 112rpx; height: 112rpx; margin-bottom: 22rpx; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; color: #dbc582; font-size: 40rpx; font-weight: 900; }
-.sigil-placeholder.sealed,.submitted-seal.spectator { border-color: #647169; color: #9da8a1; }
+/* 不要 min-height：prepare 模式下 .submitted-state 嵌在 .identity-waiting 里，
+   两个 440rpx 叠加白吃 229pt，直接把按钮顶出屏幕。高度让内容自己决定。 */
+.identity-waiting { display: flex; width: 100%; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+/* 已提交状态压成紧凑横排，不再是撑满的居中块 */
+.submitted-state { display: flex; margin: 8rpx 0; align-items: center; justify-content: center; gap: 14rpx; text-align: center; }
+.submitted-state .waiting-title { margin: 0; font-size: 27rpx; }
+.submitted-seal { display: flex; width: 64rpx; height: 64rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; color: #dbc582; font-size: 28rpx; font-weight: 900; }
+.submitted-seal.spectator { border-color: #647169; color: #9da8a1; }
 .waiting-title { color: #f1ede5; font-size: 32rpx; font-weight: 900; text-align: center; }
 .waiting-copy,.action-copy { max-width: 650rpx; margin: 14rpx auto 22rpx; color: #9eaaa4; font-size: 24rpx; line-height: 1.65; text-align: center; }
 .identity-progress { margin-top: 18rpx; color: #9ca7a1; font-size: 22rpx; font-variant-numeric: tabular-nums; text-align: center; }
@@ -1760,7 +1765,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
    实测卡片被永久钉在起始帧（matrix(0.94,0,0,0.94,0,14)），
    表现为一直小 6%、下偏 14pt。入场效果由外层 .role-reveal-wrap 的淡入提供。 */
 /* 已确认记住后把牌扣回去，压暗表示不再可读 */
-.identity-card-back.sealed { opacity: .55; }
 
 /* 卡片下方的身份文字 */
 
@@ -1796,7 +1800,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .reading-clock { margin-top: 14rpx; }
 
 /* 未揭示/已记住阶段用小尺寸卡背，给下面的按钮和进度留出空间 */
-.identity-card-back { display: block; width: 24vh; height: 32vh; margin: 0 auto 20rpx; border-radius: 10rpx; background: #1b2420; box-shadow: 0 14rpx 32rpx rgba(0,0,0,.38); }
+.identity-card-back { display: block; width: 18vh; height: 24vh; margin: 0 auto 20rpx; border-radius: 10rpx; background: #1b2420; box-shadow: 0 14rpx 32rpx rgba(0,0,0,.38); }
 .identity-card-back.sealed { opacity: .5; }
 
 /* 密录里的身份牌：小图 + 文字并排，任何阶段都能回看 */

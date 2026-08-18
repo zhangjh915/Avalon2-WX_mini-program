@@ -273,9 +273,8 @@
           <view wx:for="{{privateView.nightInfo}}" wx:key="*this" class="intel-line">{{item}}</view>
         </view>
 
-        <view class="dossier-section">
+        <view wx:if="{{myInspections.length}}" class="dossier-section">
           <view class="intel-title">我的查验</view>
-          <view wx:if="{{!myInspections.length}}" class="history-empty">本局你还没有查验过任何人</view>
           <view wx:for="{{myInspections}}" wx:key="id" class="dossier-row">
             <text class="dossier-round">第 {{item.round}} 轮</text>
             <text class="dossier-main">{{item.text}}</text>
@@ -283,9 +282,8 @@
           </view>
         </view>
 
-        <view class="dossier-section">
+        <view wx:if="{{myVotes.length}}" class="dossier-section">
           <view class="intel-title">我的出牌</view>
-          <view wx:if="{{!myVotes.length}}" class="history-empty">本局你还没有上过车</view>
           <view wx:for="{{myVotes}}" wx:key="round" class="dossier-row">
             <text class="dossier-round">第 {{item.round}} 轮</text>
             <text class="dossier-main">你打出的任务牌</text>
