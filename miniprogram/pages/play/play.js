@@ -40,7 +40,7 @@ Page({
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
-    myRoleArt: "", identityBackArt: "",
+    myRoleArt: "", identityBackArt: "", cardFlipped: false,
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -235,6 +235,7 @@ Page({
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
+    if (phaseChanged && room.phase !== "reveal") this.setData({ cardFlipped: false })
     if (phaseChanged && room.phase === "night") this.startNightDirectives()
     if (phaseChanged && room.phase === "missionResult") this.vibrate(lastMission && lastMission.winner === "evil" ? "heavy" : "medium")
   },
@@ -573,6 +574,14 @@ Page({
 
   openHistory() { this.setData({ historyVisible: true }) },
   closeHistory() { this.setData({ historyVisible: false }) },
+
+  // 点击牌背翻开身份牌。翻开后保持，不做来回翻转——
+  // 玩家需要的是看清楚，不是反复动画。
+  flipIdentityCard() {
+    if (this.data.cardFlipped) return
+    this.setData({ cardFlipped: true })
+    this.vibrate("medium")
+  },
 
   openDossier() { this.setData({ dossierVisible: true }) },
   closeDossier() { this.setData({ dossierVisible: false }) },

@@ -28,6 +28,9 @@ FLOOR = 0.25
 # 中间线性过渡。实测三张火球的背景 99 分位都 ≤14、物体都 ≥90，
 # 落在 20-90 之间的只有 0.25%-0.66%，就是那一两像素宽的抗锯齿边。
 HARD_LO, HARD_HI = 18, 70
+# flood 模式：低于这个 max 通道值才算候选背景。桌子那批实测背景 99 分位 21-26、
+# 黄铜包边 100+，取 32 能把两者分开。
+FLOOD_T = 32
 
 # 落地时图标真正会贴在上面的两种底色
 BGS = [("页面底 #121816", (18, 24, 22)), ("头像底 #202b27", (32, 43, 39))]
@@ -57,8 +60,33 @@ def cut(path, mode="hard"):
     lum（适合真正的发光体，比如光晕、烛焰）
         alpha = 亮度，把整张图当预乘 alpha 用。柔和的外发光会被完整保留，
         但**暗色部位会被判成半透明**——只在深色底上成立，贴到浅底会发虚。
+
+    flood（适合本身就是暗色的物体，比如深色木桌）
+        从画面四边往里灌连通域，灌到的算背景，其余算物体。
+        亮度类模式在这里必然失败：深色木头的 max 通道 18-23，和近黑背景的
+        15-26 完全重叠，任何阈值都分不开。但物体只要有一圈**闭合的亮边界**
+        （桌子的黄铜包边 100+），灌水就进不去，内部再暗也不影响。
+        前提是物体不接触画面边缘——提示词里的「外切于画面四边」要留出余量。
     """
     rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32) / 255.0
+    if mode == "flood":
+        from scipy import ndimage
+        t = rgb.max(axis=2) * 255.0
+        lab, _ = ndimage.label(t < FLOOD_T)
+        edge = np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])
+        outside = np.isin(lab, [v for v in np.unique(edge) if v])
+        # 二值边界会有锯齿。轻微高斯再重映射，得到一两像素宽的过渡带；
+        # 这不是色彩变换，只作用在 alpha 上，不可能放大任何颜色噪点。
+        alpha = ndimage.gaussian_filter((~outside).astype(np.float32), 0.8)
+        alpha = np.clip((alpha - 0.35) / 0.3, 0, 1)
+        frac = alpha.mean()
+        if not 0.05 < frac < 0.98:
+            raise ValueError("灌水结果可疑：物体占 %.1f%%，"
+                             "多半是亮边界有缺口或物体接触了画面边缘" % (frac * 100))
+        out = np.concatenate([rgb, alpha[..., None]], axis=2)
+        im = Image.fromarray((out * 255).round().astype(np.uint8), "RGBA")
+        box = im.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
+        return im.crop(box) if box else im
     if mode == "hard":
         t = rgb.max(axis=2) * 255.0
         alpha = np.clip((t - HARD_LO) / (HARD_HI - HARD_LO), 0, 1)
@@ -128,8 +156,9 @@ def main():
     ap.add_argument("--check", action="append", default=[],
                     help="界面上的逻辑尺寸（pt），形如 17x17，可重复")
     ap.add_argument("--dpr", action="append", default=[], type=int)
-    ap.add_argument("--mode", choices=["hard", "lum"], default="hard",
-                    help="hard=平涂图标（默认，任何底色都成立）｜lum=发光体（只在深色底成立）")
+    ap.add_argument("--mode", choices=["hard", "lum", "flood"], default="hard",
+                    help="hard=平涂图标（默认）｜lum=发光体（只在深色底成立）"
+                         "｜flood=暗色物体，靠闭合亮边界挡住灌水")
     args = ap.parse_args()
 
     files = []

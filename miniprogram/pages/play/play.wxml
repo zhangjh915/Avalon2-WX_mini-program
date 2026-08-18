@@ -40,32 +40,32 @@
       <view wx:if="{{identityMode === 'countdown'}}" class="identity-countdown"><view class="countdown-number">{{identityCountdown}}</view><view class="waiting-copy">命运即将显现</view></view>
 
       <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
-        <!-- 卡面就是一张牌，不叠任何文字 -->
-        <image class="identity-card-art {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}" src="{{myRoleArt}}" mode="aspectFill" />
-
-        <!-- 身份文字放在卡片下方 -->
-        <view class="identity-caption">
-          <view class="caption-faction {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.factionName}}</view>
-          <view class="caption-name">{{privateView.roleName}}</view>
-          <view class="caption-desc">{{myRole.desc}}</view>
+        <!-- 点击牌背翻牌；两段 scaleX，不用 3D 变换 -->
+        <view class="identity-stage {{cardFlipped ? 'flipped' : ''}}" bindtap="flipIdentityCard">
+          <image class="card-face card-back-face" src="{{identityBackArt}}" mode="aspectFill" />
+          <view class="card-face card-front-face">
+            <image class="card-art" src="{{myRoleArt}}" mode="aspectFill" />
+            <!-- 文字浮在牌面下半部，省出竖向空间，避免整页滚动 -->
+            <view class="card-overlay">
+              <view class="overlay-faction {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.factionName}}</view>
+              <view class="overlay-name">{{privateView.roleName}}</view>
+              <view class="overlay-desc">{{myRole.desc}}</view>
+              <view wx:if="{{privateView.nightInfo.length}}" class="overlay-intel">
+                <view wx:for="{{privateView.nightInfo}}" wx:key="*this" class="overlay-intel-line">{{item}}</view>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{!cardFlipped}}" class="flip-hint">轻触翻开身份牌</view>
         </view>
 
-        <view wx:if="{{privateView.needsLeaderClaim}}" class="leader-claim-box">
-          <view class="intel-title">骗徒 · 首任领袖能力</view>
-          <view wx:if="{{!privateView.leaderClaimSubmitted}}" class="caption-desc">你恰好是首任领袖。现在选择本次向教士展示的阵营。</view>
-          <view wx:if="{{!privateView.leaderClaimSubmitted}}" class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim">邪恶</button></view>
-          <view wx:else class="claim-submitted">已向教士展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
+        <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-box">
+          <view class="intel-title">骗徒 · 请选择向教士展示的阵营</view>
+          <view class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim">邪恶</button></view>
         </view>
+        <view wx:elif="{{privateView.needsLeaderClaim}}" class="claim-submitted">已向教士展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
 
-        <view wx:if="{{privateView.nightInfo.length}}" class="secret-intel">
-          <view class="intel-title">命运密令</view>
-          <view wx:for="{{privateView.nightInfo}}" wx:key="*this" class="intel-line">{{item}}</view>
-        </view>
-
-        <view class="role-guide">
-          <view class="guide-title">本局思路</view>
-          <view class="guide-goal">{{myRoleGuide.goal}}</view>
-          <view wx:for="{{myRoleGuide.tips}}" wx:key="*this" class="guide-tip">{{index + 1}}. {{item}}</view>
+        <view class="reading-actions">
+          <button class="ghost-action" bindtap="openDossier">查看本局思路</button>
         </view>
         <view class="reading-clock">阅读时间 {{identitySecondsLeft}}秒</view>
       </view>
@@ -259,10 +259,13 @@
     <view class="history-page">
       <view class="sheet-head history-head"><view><view class="sheet-title">我的密录</view><view class="sheet-hint">只有你能看到，可随时回看</view></view><view class="modal-close" bindtap="closeDossier" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
       <scroll-view class="history-scroll" scroll-y>
-        <view class="dossier-identity {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}">
-          <view class="role-faction">{{privateView.factionName}}</view>
-          <view class="role-name-display">{{privateView.roleName}}</view>
-          <view class="role-description">{{myRole.desc}}</view>
+        <view class="dossier-card">
+          <image class="dossier-art" src="{{myRoleArt}}" mode="aspectFill" />
+          <view class="dossier-identity {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}">
+            <view class="dossier-faction">{{privateView.factionName}}</view>
+            <view class="dossier-name">{{privateView.roleName}}</view>
+            <view class="dossier-desc">{{myRole.desc}}</view>
+          </view>
         </view>
 
         <view wx:if="{{privateView.nightInfo.length}}" class="secret-intel">
