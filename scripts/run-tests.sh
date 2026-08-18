@@ -33,6 +33,7 @@ TESTS=(
   stateSync
   waitingHint
   env
+  roleArt
 )
 
 failed=0

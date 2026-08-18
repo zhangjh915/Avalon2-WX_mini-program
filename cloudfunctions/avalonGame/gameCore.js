@@ -129,6 +129,29 @@ function prepareRoles(settings) {
   return { roles: shuffle(roles), removed }
 }
 
+// 同一局里可能出现多次的角色，各自准备了多张不同长相的立绘。
+// 数字必须和 miniprogram/assets/roles/<皮肤>/ 下的文件数一致：
+// 有变体的角色文件名是 <key>-v<N>.jpg，没变体的是 <key>.jpg。
+const roleArtVariants = {
+  loyal: 4, minion: 3, duke: 2, archduke: 2, priest: 2, apprentice: 2
+}
+
+// 给同名角色分配互不重复的立绘变体，避免一桌人看到两张一模一样的身份牌。
+// 实例数超过变体数时循环复用（例如 10 人局 6 个忠臣、只有 4 张立绘）。
+function assignArtVariants(players) {
+  const used = {}
+  players.forEach(player => {
+    const total = roleArtVariants[player.role]
+    if (!total) {
+      player.artVariant = 0
+      return
+    }
+    used[player.role] = (used[player.role] || 0) + 1
+    player.artVariant = ((used[player.role] - 1) % total) + 1
+  })
+  return players
+}
+
 function makePlayer(seat, role, index) {
   return {
     id: seat.seatNo,
@@ -139,6 +162,7 @@ function makePlayer(seat, role, index) {
     role,
     roleName: roleInfo[role][0],
     faction: roleInfo[role][1],
+    artVariant: 0,
     hasLed: false,
     hadAmulet: false,
     fadedAmulet: false,
@@ -150,7 +174,7 @@ function createGame(settings, seats) {
   validateSettings(settings)
   const prepared = prepareRoles(settings)
   const orderedSeats = seats.slice().sort((a, b) => a.seatNo - b.seatNo)
-  const players = orderedSeats.map((seat, index) => makePlayer(seat, prepared.roles[index], index))
+  const players = assignArtVariants(orderedSeats.map((seat, index) => makePlayer(seat, prepared.roles[index], index)))
   const firstLeader = players[Math.floor(Math.random() * players.length)]
   firstLeader.hasLed = true
   return {
@@ -313,6 +337,7 @@ function privateView(game, secret, openid) {
     id: player.id,
     role: player.role,
     roleName: player.roleName,
+    artVariant: player.artVariant || 0,
     faction: player.faction,
     factionName: player.faction === "good" ? "正义方" : "邪恶方",
     nightInfo: privateNightInfo(game, secret, player),
@@ -466,6 +491,8 @@ function findFinaleCorrection(secret, traitorConverted) {
 
 module.exports = {
   roleInfo,
+  roleArtVariants,
+  assignArtVariants,
   missionPresets,
   validateSettings,
   createGame,

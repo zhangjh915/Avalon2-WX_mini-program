@@ -47,6 +47,15 @@ async function allocateCode(now) {
   fail("房间码暂时分配不出来，请稍后重试")
 }
 
+// 皮肤在建房时选定并写死，开局后不可更改——否则同一局里不同玩家会看到不同卡背。
+// 任务牌与身份牌是两条独立的轴，可以自由组合。
+const missionSkins = ["a", "b", "c", "d"]
+const roleSkins = ["painted", "fantasy", "woodcut"]
+
+function pickSkin(value, allowed) {
+  return allowed.indexOf(String(value)) >= 0 ? String(value) : allowed[0]
+}
+
 // 测试玩家相关能力只在开发版房间开放，避免正式对局被误触破坏。
 function requireDevRoom(room) {
   if (!room || !room.devMode) fail("测试玩家功能仅在开发版可用")
@@ -263,6 +272,8 @@ async function createRoom(event, openid) {
     status: "lobby",
     playerCount,
     devMode: !!event.devMode,
+    missionSkin: pickSkin(event.missionSkin, missionSkins),
+    roleSkin: pickSkin(event.roleSkin, roleSkins),
     settings: publicSettings(event),
     tableType,
     tableTypeName: tableType === "long" ? "长桌" : "圆桌",
@@ -734,6 +745,7 @@ async function getResult(event, openid) {
       title: player.title,
       role: player.role,
       roleName: player.roleName,
+      artVariant: player.artVariant || 0,
       faction: player.faction,
       factionName: player.faction === "good" ? "正义方" : "邪恶方"
     })),
