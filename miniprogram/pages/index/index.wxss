@@ -142,3 +142,14 @@
 @keyframes overlay-fade-in { from { background: rgba(24,20,17,0); } }
 @keyframes sheet-rise-in { from { opacity: .6; transform: translateY(36rpx); } to { opacity: 1; transform: translateY(0); } }
 @keyframes page-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* 皮肤选择：用真实卡背当预览 */
+.skin-block { margin-top: 26rpx; }
+.skin-row { display: flex; margin-top: 14rpx; gap: 16rpx; }
+.skin-chip { display: flex; flex: 1; padding: 12rpx 0 10rpx; flex-direction: column; align-items: center; border: 2rpx solid #3d4a44; border-radius: 8rpx; background: #1b2420; }
+.skin-chip.chip-on { border-color: #c8aa62; background: #232f28; }
+.skin-thumb { border-radius: 4rpx; background: #141c18; }
+.mission-thumb { width: 72rpx; height: 107rpx; }
+.role-thumb { width: 96rpx; height: 128rpx; }
+.skin-name { margin-top: 10rpx; color: #b9c2bc; font-size: 22rpx; }
+.skin-chip.chip-on .skin-name { color: #e6d7a8; font-weight: 700; }

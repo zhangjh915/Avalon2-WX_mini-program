@@ -114,6 +114,28 @@
       <view><view class="setting-label">测试模式</view><view class="muted">可补满测试玩家并代其投票；正式和同事玩时请关闭</view></view>
       <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
     </view>
+    <view class="skin-block">
+      <view class="setting-label">任务牌卡背</view>
+      <view class="skin-row">
+        <view wx:for="{{missionSkinOptions}}" wx:key="key" class="skin-chip {{item.key === missionSkin ? 'chip-on' : ''}}"
+              data-skin="{{item.key}}" bindtap="selectMissionSkin">
+          <image class="skin-thumb mission-thumb" src="{{item.preview}}" mode="aspectFill" />
+          <text class="skin-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="skin-block">
+      <view class="setting-label">身份牌画风</view>
+      <view class="skin-row">
+        <view wx:for="{{roleSkinOptions}}" wx:key="key" class="skin-chip {{item.key === roleSkin ? 'chip-on' : ''}}"
+              data-skin="{{item.key}}" bindtap="selectRoleSkin">
+          <image class="skin-thumb role-thumb" src="{{item.preview}}" mode="aspectFill" lazy-load />
+          <text class="skin-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
     <button class="btn" bindtap="createRoom" disabled="{{!roleConfigValid}}">创建房间</button>
     </view>
   </view>

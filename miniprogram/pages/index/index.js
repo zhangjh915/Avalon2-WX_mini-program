@@ -2,6 +2,7 @@ const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const env = require("../../utils/env")
+const assets = require("../../utils/assets")
 
 Page({
   data: {
@@ -42,6 +43,10 @@ Page({
     roleErrors: [],
     canUseTestMode: false,
     testMode: false,
+    missionSkin: "a",
+    roleSkin: "painted",
+    missionSkinOptions: [],
+    roleSkinOptions: [],
     roleConfigValid: true
   },
 
@@ -55,7 +60,29 @@ Page({
       canUseTestMode,
       testMode: canUseTestMode && (stored === "" ? true : !!stored)
     })
+    this.setData({
+      // 用真实卡背做预览，比抽象的 A/B/C/D 直观
+      missionSkinOptions: [
+        { key: "a", name: "甲", preview: assets.missionCard("a", "back") },
+        { key: "b", name: "乙", preview: assets.missionCard("b", "back") },
+        { key: "c", name: "丙", preview: assets.missionCard("c", "back") },
+        { key: "d", name: "丁", preview: assets.missionCard("d", "back") }
+      ],
+      roleSkinOptions: [
+        { key: "painted", name: "手绘", preview: assets.identityBack("painted") },
+        { key: "fantasy", name: "幻想华服", preview: assets.identityBack("fantasy") },
+        { key: "woodcut", name: "木刻线刻", preview: assets.identityBack("woodcut") }
+      ]
+    })
     this.resetRoles(false)
+  },
+
+  selectMissionSkin(event) {
+    this.setData({ missionSkin: event.currentTarget.dataset.skin })
+  },
+
+  selectRoleSkin(event) {
+    this.setData({ roleSkin: event.currentTarget.dataset.skin })
   },
 
   toggleTestMode(event) {
@@ -340,7 +367,9 @@ Page({
       tableType: this.data.tableType,
       seatLayout: this.data.tableType === "long" ? this.data.seatLayout : null,
       // 房间在创建时就固定是否为测试房间，开局后不再允许改变
-      devMode: this.data.canUseTestMode && this.data.testMode
+      devMode: this.data.canUseTestMode && this.data.testMode,
+      missionSkin: this.data.missionSkin,
+      roleSkin: this.data.roleSkin
     }).then(({ roomId }) => {
       wx.hideLoading()
       wx.navigateTo({ url: `/pages/room/room?roomId=${roomId}&name=${encodeURIComponent(this.data.playerName)}` })

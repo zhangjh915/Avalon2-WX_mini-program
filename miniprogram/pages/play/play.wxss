@@ -1535,15 +1535,6 @@ button::after {
 .finale-content { width: 100%; }
 .finale-banner { width: 100%; box-sizing: border-box; border-color: #8b555a; background: #2b2021; color: #e2aaa9; }
 .role-reveal-wrap { width: 100%; animation: identity-reveal 420ms ease both; }
-.role-card { width: 100%; min-height: 720rpx; padding: 36rpx 30rpx; border: 3rpx solid #aeb0aa; border-radius: 8rpx; background: #efeee9; box-sizing: border-box; box-shadow: 0 18rpx 44rpx rgba(18, 25, 22, 0.15); }
-.role-card.role-good { border-top: 12rpx solid #2f7358; }
-.role-card.role-evil { border-top: 12rpx solid #a4453f; }
-.role-faction { color: #737771; font-size: 22rpx; font-weight: 800; text-align: center; }
-.role-name-display { margin-top: 6rpx; color: #222825; font-size: 44rpx; font-weight: 900; text-align: center; }
-.role-art-placeholder { display: flex; width: 168rpx; height: 212rpx; margin: 24rpx auto; align-items: center; justify-content: center; border: 3rpx solid #b6b8b2; border-radius: 6rpx; background: #d8d9d4; color: #6d726d; font-size: 56rpx; font-weight: 900; }
-.role-good .role-art-placeholder { background: #dbe9e2; color: #2f7358; }
-.role-evil .role-art-placeholder { background: #eddad8; color: #9c403b; }
-.role-description { color: #454b47; font-size: 25rpx; line-height: 1.65; text-align: center; }
 .secret-intel { margin-top: 26rpx; padding: 20rpx; border-left: 7rpx solid #9a763c; background: #e8e1d2; }
 .intel-title, .guide-title { margin-bottom: 8rpx; color: #443724; font-size: 23rpx; font-weight: 900; }
 .intel-line { color: #554a39; font-size: 24rpx; line-height: 1.55; }
@@ -1755,3 +1746,23 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .banner-amulet { border-bottom-color: #69a991; }
 .banner-magic { border-bottom-color: #c45c4f; }
 @keyframes banner-drop { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── 身份牌：3:4 标准卡牌，卡面只放图 ──
+   660x880rpx = 330x440pt，@3x 正好 990x1320，与云端资产 1:1 匹配。
+   卡面上不叠任何文字：角色名、描述、密令、攻略全部排在卡片下方，
+   否则内容高度约 934rpx，塞不进 880rpx 的 3:4 盒子。 */
+.identity-card-art,.identity-card-back { display: block; width: 660rpx; height: 880rpx; margin: 0 auto; border-radius: 12rpx; background: #1b2420; box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42); }
+.identity-card-art { animation: identity-card-in 460ms cubic-bezier(.2,.75,.2,1) both; }
+.identity-card-art.role-good { box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42), 0 0 0 3rpx #2f7358; }
+.identity-card-art.role-evil { box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42), 0 0 0 3rpx #8b3f45; }
+/* 已确认记住后把牌扣回去，压暗表示不再可读 */
+.identity-card-back.sealed { opacity: .55; }
+@keyframes identity-card-in { from { opacity: 0; transform: translateY(28rpx) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* 卡片下方的身份文字 */
+.identity-caption { margin-top: 24rpx; text-align: center; }
+.caption-faction { font-size: 22rpx; font-weight: 800; letter-spacing: 2rpx; }
+.caption-faction.faction-good { color: #8ecdb3; }
+.caption-faction.faction-evil { color: #e09b9e; }
+.caption-name { margin: 8rpx 0 12rpx; color: #f0f2ef; font-size: 46rpx; font-weight: 900; }
+.caption-desc { color: #b9c2bc; font-size: 25rpx; line-height: 1.65; }

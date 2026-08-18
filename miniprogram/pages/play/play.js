@@ -40,6 +40,7 @@ Page({
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
+    myRoleArt: "", identityBackArt: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -170,6 +171,9 @@ Page({
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
     const missionSkin = room.missionSkin || "a"
+    const roleSkin = room.roleSkin || "painted"
+    // 立绘变体号由服务端在发牌时分配，保证同局同角色不重复
+    const myRoleArt = assets.roleArt(roleSkin, privateView.role, privateView.artVariant)
     this.setData({
       room, game, privateView, isHost: !!result.isHost, phase: room.phase, phaseName: phaseNames[room.phase] || "圆桌进行中",
       myRole, myRoleGuide: privateView.role ? roleGuideData.getRoleGuide(privateView.role) : roleGuideData.defaultGuide,
@@ -220,6 +224,8 @@ Page({
       historyAmulets: history.amulets,
       myInspections: dossier.myInspections,
       waitingHint,
+      myRoleArt,
+      identityBackArt: assets.identityBack(roleSkin),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
       missionCardFail: assets.missionCard(missionSkin, "fail"),
