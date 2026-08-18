@@ -7,7 +7,7 @@
   source ~/.avalon-llm-key
   python3 scripts/gen-ui.py --dry 图标                 # 看计划和预算，不花钱
   python3 scripts/gen-ui.py 图标                       # 跑整组
-  python3 scripts/gen-ui.py 图标 --only fireball       # 只跑其中一条
+  python3 scripts/gen-ui.py 图标 --only crown,amulet    # 只跑指定条目（可重复或逗号分隔）
   python3 scripts/gen-ui.py 图标 --draws 3             # 改抽卡次数（默认 3）
   python3 scripts/gen-ui.py 图标 --show                # 只打印提示词全文，不发请求
 """
@@ -105,9 +105,10 @@ def main():
         i = args.index("--draws")
         draws = int(args[i + 1]); del args[i:i + 2]
     only = None
-    if "--only" in args:
+    while "--only" in args:                 # 可重复，也接受逗号分隔
         i = args.index("--only")
-        only = args[i + 1]; del args[i:i + 2]
+        only = (only or set()) | set(args[i + 1].split(","))
+        del args[i:i + 2]
     groups = [a for a in args if not a.startswith("--")]
     if not groups:
         avail = sorted(p.stem for p in PROMPT_DIR.glob("*.toml"))
@@ -117,9 +118,10 @@ def main():
     for g in groups:
         items, path = load_group(g)
         if only:
-            items = [it for it in items if it[0] == only]
-            if not items:
-                sys.exit("%s 里没有 %s 这一条" % (g, only))
+            missing = only - {it[0] for it in items}
+            if missing:
+                sys.exit("%s 里没有这些条目：%s" % (g, "、".join(sorted(missing))))
+            items = [it for it in items if it[0] in only]
         for key, label, size, prompt in items:
             if show:
                 print("=== %s ｜ %s ｜ %s\n%s\n" % (label, key, size, prompt))

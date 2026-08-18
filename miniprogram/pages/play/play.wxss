@@ -1534,7 +1534,14 @@ button::after {
 .amulet-emblem { border-color: #c8aa62; color: #dec77f; }
 .finale-content { width: 100%; }
 .finale-banner { width: 100%; box-sizing: border-box; border-color: #8b555a; background: #2b2021; color: #e2aaa9; }
-.role-reveal-wrap { width: 100%; animation: identity-reveal 420ms ease both; }
+/* 只做不透明度淡入，不要任何 transform。
+   原先用的 identity-reveal 关键帧含 perspective()+rotateY()，配合 both 填充模式
+   会把 3D 变换永久留在元素上——视觉上是无操作，但强制建立 3D 渲染上下文，
+   整个子树被推到独立合成层，后代元素的 boundingClientRect 全部失真
+   （实测卡面宽度报 0、top 甚至比父容器还小）。卡片自身的 identity-card-in
+   已经提供了入场效果，这层旋转既多余又有害。 */
+.role-reveal-wrap { width: 100%; animation: reveal-fade 320ms ease both; }
+@keyframes reveal-fade { from { opacity: 0; } to { opacity: 1; } }
 .secret-intel { margin-top: 26rpx; padding: 20rpx; border-left: 7rpx solid #9a763c; background: #e8e1d2; }
 .intel-title, .guide-title { margin-bottom: 8rpx; color: #443724; font-size: 23rpx; font-weight: 900; }
 .intel-line { color: #554a39; font-size: 24rpx; line-height: 1.55; }
@@ -1752,12 +1759,14 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
    卡面上不叠任何文字：角色名、描述、密令、攻略全部排在卡片下方，
    否则内容高度约 934rpx，塞不进 880rpx 的 3:4 盒子。 */
 .identity-card-art,.identity-card-back { display: block; width: 660rpx; height: 880rpx; margin: 0 auto; border-radius: 12rpx; background: #1b2420; box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42); }
-.identity-card-art { animation: identity-card-in 460ms cubic-bezier(.2,.75,.2,1) both; }
+/* 卡片本身不做位移缩放动画：对局页每 900ms 轮询一次 setData，
+   元素反复重渲染会让带 fill-mode 的动画不断从头开始，
+   实测卡片被永久钉在起始帧（matrix(0.94,0,0,0.94,0,14)），
+   表现为一直小 6%、下偏 14pt。入场效果由外层 .role-reveal-wrap 的淡入提供。 */
 .identity-card-art.role-good { box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42), 0 0 0 3rpx #2f7358; }
 .identity-card-art.role-evil { box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42), 0 0 0 3rpx #8b3f45; }
 /* 已确认记住后把牌扣回去，压暗表示不再可读 */
 .identity-card-back.sealed { opacity: .55; }
-@keyframes identity-card-in { from { opacity: 0; transform: translateY(28rpx) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 /* 卡片下方的身份文字 */
 .identity-caption { margin-top: 24rpx; text-align: center; }
