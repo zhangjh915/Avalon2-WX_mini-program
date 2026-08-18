@@ -5,6 +5,8 @@ const roleGuideData = require("../../data/roleGuides")
 const ttsData = require("../../data/ttsLines")
 const assets = require("../../utils/assets")
 
+const IDENTITY_READ_MS = 40000
+
 const phaseNames = {
   reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
   vote: "秘密投票", missionResult: "远征结算", finale: "最终审判"
@@ -40,7 +42,7 @@ Page({
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
-    myRoleArt: "", identityBackArt: "", cardFlipped: false,
+    myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -235,7 +237,10 @@ Page({
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
-    if (phaseChanged && room.phase !== "reveal") this.setData({ cardFlipped: false })
+    if (phaseChanged && room.phase !== "reveal") {
+      this.identityFlippedAt = 0
+      this.setData({ cardFlipped: false })
+    }
     if (phaseChanged && room.phase === "night") this.startNightDirectives()
     if (phaseChanged && room.phase === "missionResult") this.vibrate(lastMission && lastMission.winner === "evil" ? "heavy" : "medium")
   },
@@ -494,17 +499,29 @@ Page({
       let roleVisible = false
       let identityCountdown = 3
       let identitySecondsLeft = 40
+      // 阅读计时从「本人翻开牌」那一刻算起，不是从全局揭示时刻算起。
+      // 否则没翻牌的人会被倒计时直接推到下一步，整局都没看到自己的身份。
+      let readingHint = ""
       if (identity.revealAt) {
         if (now < identity.revealAt) {
           identityMode = "countdown"
           identityCountdown = Math.max(1, Math.ceil((identity.revealAt - now) / 1000))
-        } else if (now < identity.closeAt) {
+        } else if (!this.data.cardFlipped) {
+          // 还没翻牌就一直停在这一步，牌始终可点
           identityMode = "reading"
-          roleVisible = true
-          identitySecondsLeft = Math.max(0, Math.ceil((identity.closeAt - now) / 1000))
-        } else identityMode = "remember"
+          readingHint = "翻开后开始计时"
+        } else {
+          // 全局窗口与「本人翻牌后 40 秒」取较晚者，翻得晚的人不会被压缩阅读时间
+          const readEndsAt = Math.max(identity.closeAt, (this.identityFlippedAt || now) + IDENTITY_READ_MS)
+          if (now < readEndsAt) {
+            identityMode = "reading"
+            roleVisible = true
+            identitySecondsLeft = Math.max(0, Math.ceil((readEndsAt - now) / 1000))
+            readingHint = `阅读时间 ${identitySecondsLeft}秒`
+          } else identityMode = "remember"
+        }
       }
-      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft })
+      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint })
     }
     if (this.data.finalStage === "discussion" && game.final) {
       const finalSecondsLeft = Math.max(0, Math.ceil((game.final.discussionEndsAt - now) / 1000))
@@ -579,6 +596,7 @@ Page({
   // 玩家需要的是看清楚，不是反复动画。
   flipIdentityCard() {
     if (this.data.cardFlipped) return
+    this.identityFlippedAt = Date.now()
     this.setData({ cardFlipped: true })
     this.vibrate("medium")
   },

@@ -67,7 +67,7 @@
         <view class="reading-actions">
           <button class="ghost-action" bindtap="openDossier">查看本局思路</button>
         </view>
-        <view class="reading-clock">阅读时间 {{identitySecondsLeft}}秒</view>
+        <view class="reading-clock">{{readingHint}}</view>
       </view>
 
       <view wx:if="{{identityMode === 'remember'}}" class="identity-waiting">

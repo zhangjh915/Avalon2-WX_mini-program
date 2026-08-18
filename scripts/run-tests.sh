@@ -35,6 +35,7 @@ TESTS=(
   env
   roleArt
   assets
+  identityTiming
 )
 
 failed=0
