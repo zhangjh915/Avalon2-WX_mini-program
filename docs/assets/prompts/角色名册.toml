@@ -1,0 +1,111 @@
+# 27 个角色的唯一事实来源，与 cloudfunctions/avalonGame/gameCore.js 的 roleInfo 一致。
+# 各套皮肤的形象描述按 key 对应到这里。
+# 结构键用英文：TOML 的裸键必须是 ASCII。
+
+[roles.arthur]
+name = "亚瑟"
+faction = "good"
+
+[roles.percival]
+name = "帕西瓦里"
+faction = "good"
+
+[roles.priest]
+name = "教士"
+faction = "good"
+
+[roles.loyal]
+name = "亚瑟的忠臣"
+faction = "good"
+
+[roles.duke]
+name = "公爵"
+faction = "good"
+
+[roles.archduke]
+name = "大公"
+faction = "good"
+
+[roles.squire]
+name = "侍从"
+faction = "good"
+
+[roles.apprentice]
+name = "学徒"
+faction = "good"
+
+[roles.troublemaker]
+name = "捣乱者"
+faction = "good"
+
+[roles.galahad]
+name = "加拉哈德"
+faction = "good"
+
+[roles.reluctant]
+name = "不情愿的领袖"
+faction = "good"
+
+[roles.guard]
+name = "守卫"
+faction = "good"
+
+[roles.lancelotGood]
+name = "正义的兰斯洛特"
+faction = "good"
+
+[roles.morgan]
+name = "摩根勒菲"
+faction = "evil"
+
+[roles.minion]
+name = "莫德雷德的爪牙"
+faction = "evil"
+
+[roles.shapeshifter]
+name = "幻形妖"
+faction = "evil"
+
+[roles.crownPrince]
+name = "王储"
+faction = "evil"
+
+[roles.hunter]
+name = "盲眼杀手"
+faction = "evil"
+
+[roles.barbarian]
+name = "野蛮人"
+faction = "evil"
+
+[roles.traitor]
+name = "叛徒"
+faction = "evil"
+
+[roles.revealer]
+name = "揭露者"
+faction = "evil"
+
+[roles.lunatic]
+name = "疯子"
+faction = "evil"
+
+[roles.deceiver]
+name = "骗徒"
+faction = "evil"
+
+[roles.boaster]
+name = "吹嘘者"
+faction = "evil"
+
+[roles.saboteur]
+name = "破坏者"
+faction = "evil"
+
+[roles.outsider]
+name = "边缘人"
+faction = "evil"
+
+[roles.lancelotEvil]
+name = "邪恶的兰斯洛特"
+faction = "evil"

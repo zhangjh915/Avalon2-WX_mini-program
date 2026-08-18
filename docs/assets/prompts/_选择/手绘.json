@@ -1,0 +1,4 @@
+{
+ "_note": "手绘皮肤。27 个角色的选择在早期做的（见 generated/角色插画/_选择记录.md），这里只记卡背。角色提示词还硬编码在 scripts/gen-roles.py，未迁到 prompts/。",
+ "back-王冠双剑": 2
+}

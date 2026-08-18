@@ -10,6 +10,10 @@
 # 例：
 #   ./scripts/gen-image.sh doubao-seedream-5-0-260128 cardback 1728x2304 1 "中世纪任务卡牌背面……"
 #
+# REF=<参考图路径> 走图生图，让新图对齐已定稿资产的质感与构图：
+#   REF=.../cardback-B_5pro_1.jpeg DIR=任务牌正面 ./scripts/gen-image.sh …
+# 参数名只能是 image，其余名字接口会静默忽略（不报错但当纯文生图跑掉）。
+#
 # count 的含义分两种：
 #   默认（抽卡）  发 count 次独立的单图请求，得到同一提示词的 count 个不同方案，
 #                 用来横向挑选。这是选风格阶段想要的。
@@ -55,13 +59,39 @@ if [ "$GROUP" = "1" ]; then
 else
   MODE="独立抽卡 $COUNT 次"
 fi
+if [ -n "${REF:-}" ]; then
+  [ -f "$REF" ] || { echo "参考图不存在：$REF" >&2; exit 1; }
+  MODE="$MODE ｜ 参考图 $(basename "$REF")"
+fi
 echo "模型 $MODEL ｜ 尺寸 $SIZE ｜ 标签 $LABEL ｜ $MODE"
+
+# 配置追加进产物目录的 _配置.md。不记的话过两天就只剩一堆 jpeg，
+# 想知道某张是什么模型、什么提示词、有没有参考图，只能翻聊天记录。
+{
+  echo ""
+  echo "## $LABEL"
+  echo ""
+  echo "| 项 | 值 |"
+  echo "|---|---|"
+  echo "| 时间 | $(date '+%Y-%m-%d %H:%M') |"
+  echo "| 模型 | \`$MODEL\` |"
+  echo "| 尺寸 | \`$SIZE\` |"
+  echo "| 模式 | $MODE |"
+  echo "| 参考图 | ${REF:-（无）} |"
+  echo "| 产物 | \`${LABEL}_${TAG}_*.jpeg\` |"
+  echo ""
+  echo "提示词："
+  echo ""
+  echo '```text'
+  echo "$PROMPT"
+  echo '```'
+} >> "$OUT/_配置.md"
 
 request_once() {
   local want="$1" slot="$2"
   local payload
-  payload=$(MODEL="$MODEL" SIZE="$SIZE" WANT="$want" GROUP="$GROUP" PROMPT="$PROMPT" python3 -c '
-import json, os
+  payload=$(MODEL="$MODEL" SIZE="$SIZE" WANT="$want" GROUP="$GROUP" PROMPT="$PROMPT" REF="${REF:-}" python3 -c '
+import base64, io, json, os
 body = {
     "model": os.environ["MODEL"],
     "prompt": os.environ["PROMPT"],
@@ -75,6 +105,18 @@ if os.environ["GROUP"] == "1":
     body["sequential_image_generation_options"] = {"max_images": int(os.environ["WANT"])}
 # 非组图时整个字段省略：doubao-seedream-5-0-pro 不支持这个参数，
 # 连传 "disabled" 都会报 InvalidParameter；省略则各模型都能接受。
+
+ref = os.environ["REF"]
+if ref:
+    # 参数名只能是 image。image_url / reference_image / init_image / images
+    # 都会被接口静默忽略——不报错，但当纯文生图跑掉，白花一次 token。
+    from PIL import Image
+    im = Image.open(ref).convert("RGB")
+    # 压到 768 宽：原图 1728 宽转出来约 1.1MB，请求体太大
+    im = im.resize((768, round(im.height * 768 / im.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=88)
+    body["image"] = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 print(json.dumps(body, ensure_ascii=False))
 ')
   local response

@@ -15,3 +15,8 @@ tmp/
 
 # 生图试验产物（体积大且是一次性对比用；最终选定的资产放 miniprogram/assets/ 并提交）
 docs/assets/generated/
+
+# 云存储托管的美术资产：体积大且已上传到云端，本地只作为导出中转
+# （任务牌很小，仍然入包入库；这两个目录同时排除打包，见 project.config.json 的 packOptions.ignore）
+miniprogram/assets/roles/
+miniprogram/assets/cards/identity/

@@ -34,6 +34,7 @@ TESTS=(
   waitingHint
   env
   roleArt
+  assets
 )
 
 failed=0

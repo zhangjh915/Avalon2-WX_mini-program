@@ -1,7 +1,16 @@
 {
   "description": "圆桌秘闻 阿瓦隆2微信小程序原型",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "assets/roles"
+      },
+      {
+        "type": "folder",
+        "value": "assets/cards/identity"
+      }
+    ],
     "include": []
   },
   "setting": {

@@ -3,6 +3,7 @@ const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const roleGuideData = require("../../data/roleGuides")
 const ttsData = require("../../data/ttsLines")
+const assets = require("../../utils/assets")
 
 const phaseNames = {
   reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
@@ -38,7 +39,7 @@ Page({
     hunterVoteValue: "", traitorSide: "", traitorTargets: [],
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
-    missionSkinPath: "/assets/cards/mission/skin-a/",
+    missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -168,7 +169,7 @@ Page({
     const dossier = this.buildDossier(privateView, decoratedPlayers)
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
-    const missionSkinPath = `/assets/cards/mission/skin-${room.missionSkin || "a"}/`
+    const missionSkin = room.missionSkin || "a"
     this.setData({
       room, game, privateView, isHost: !!result.isHost, phase: room.phase, phaseName: phaseNames[room.phase] || "圆桌进行中",
       myRole, myRoleGuide: privateView.role ? roleGuideData.getRoleGuide(privateView.role) : roleGuideData.defaultGuide,
@@ -219,7 +220,9 @@ Page({
       historyAmulets: history.amulets,
       myInspections: dossier.myInspections,
       waitingHint,
-      missionSkinPath,
+      missionCardBack: assets.missionCard(missionSkin, "back"),
+      missionCardSuccess: assets.missionCard(missionSkin, "success"),
+      missionCardFail: assets.missionCard(missionSkin, "fail"),
       myVotes: dossier.myVotes,
       syncing: false
     })

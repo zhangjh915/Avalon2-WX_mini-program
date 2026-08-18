@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "picker",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "/private/tmp/claude-501/-Users-zyb-Documents-ChatGPT----2/8648c44a-bca4-4dfa-b8d5-503393204c58/scratchpad"
+      ],
+      "port": 8765
+    }
+  ]
+}
