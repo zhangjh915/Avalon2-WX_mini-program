@@ -145,14 +145,24 @@
 
 /* 皮肤：入口只显示当前选择，完整列表在弹层里（皮肤会持续增加，一行摆不下） */
 .skin-row-entry { display: flex; margin-top: 26rpx; align-items: center; justify-content: space-between; }
-.skin-entry-right { display: flex; align-items: center; gap: 16rpx; }
+.skin-entry-right { display: flex; align-items: center; gap: 12rpx; }
 .skin-thumb { border-radius: 4rpx; background: #efe7d8; }
-.mission-thumb { width: 54rpx; height: 80rpx; }
+.mission-thumb { width: 60rpx; height: 80rpx; }
 .role-thumb { width: 60rpx; height: 80rpx; }
 
-.skin-grid { display: flex; max-height: 62vh; margin-top: 8rpx; flex-wrap: wrap; gap: 18rpx; }
-.skin-card { display: flex; width: calc((100% - 36rpx) / 3); padding: 14rpx 0 12rpx; flex-direction: column; align-items: center; border: 2rpx solid #ddd4c4; border-radius: 8rpx; background: #fbf6ec; box-sizing: border-box; }
+.skin-grid { max-height: 62vh; margin-top: 8rpx; }
+.skin-card { display: flex; padding: 14rpx; align-items: center; justify-content: center; border: 2rpx solid #ddd4c4; border-radius: 8rpx; background: #fbf6ec; box-sizing: border-box; }
 .skin-card.card-on { border-color: #9a763c; border-width: 3rpx; background: #f5ead4; }
-.skin-card-thumb { width: 132rpx; height: 176rpx; border-radius: 5rpx; background: #efe7d8; }
-.skin-card-name { margin-top: 12rpx; color: #6b6257; font-size: 23rpx; }
-.skin-card.card-on .skin-card-name { color: #6b4d1e; font-weight: 700; }
+.skin-card-thumb { border-radius: 5rpx; background: #efe7d8; }
+
+/* 任务牌：四套一行铺满，不留右侧空白。
+   注意 flex 必须加在 scroll-view 内层的普通 view 上——
+   scroll-view 自身有滚动容器，display:flex 不会作用到它的子节点。 */
+.kind-mission { display: flex; gap: 14rpx; }
+.kind-mission .skin-card { flex: 1; padding: 12rpx 8rpx; }
+.kind-mission .skin-card-thumb { width: 100%; height: 196rpx; }
+
+/* 身份牌：每套一行，卡背与摩根立绘并排 */
+.kind-role { display: flex; flex-direction: column; gap: 16rpx; }
+.kind-role .skin-card { gap: 20rpx; }
+.kind-role .skin-card-thumb { width: 216rpx; height: 288rpx; }

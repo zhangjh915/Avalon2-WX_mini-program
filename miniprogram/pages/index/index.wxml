@@ -123,9 +123,10 @@
     </view>
 
     <view class="skin-row-entry" bindtap="openSkinPicker" data-kind="role">
-      <view><view class="setting-label">身份牌画风</view><view class="muted">{{currentRoleSkin.name}}</view></view>
+      <view class="setting-label">身份牌画风</view>
       <view class="skin-entry-right">
-        <image class="skin-thumb role-thumb" src="{{currentRoleSkin.preview}}" mode="aspectFill" lazy-load />
+        <image class="skin-thumb role-thumb" src="{{currentRoleSkin.back}}" mode="aspectFill" lazy-load />
+        <image class="skin-thumb role-thumb" src="{{currentRoleSkin.front}}" mode="aspectFill" lazy-load />
         <view class="mini-command">更换</view>
       </view>
     </view>
@@ -146,10 +147,15 @@
         <view class="modal-close" bindtap="closeSkinPicker" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
       </view>
       <scroll-view class="skin-grid" scroll-y>
+        <view class="skin-grid-inner kind-{{skinPickerKind}}">
         <view wx:for="{{skinPickerOptions}}" wx:key="key" class="skin-card {{item.key === skinPickerCurrent ? 'card-on' : ''}}"
               data-skin="{{item.key}}" bindtap="chooseSkin">
-          <image class="skin-card-thumb" src="{{item.preview}}" mode="aspectFill" lazy-load />
-          <text wx:if="{{item.name}}" class="skin-card-name">{{item.name}}</text>
+          <block wx:if="{{skinPickerKind === 'role'}}">
+            <image class="skin-card-thumb" src="{{item.back}}" mode="aspectFill" lazy-load />
+            <image class="skin-card-thumb" src="{{item.front}}" mode="aspectFill" lazy-load />
+          </block>
+          <image wx:else class="skin-card-thumb" src="{{item.preview}}" mode="aspectFill" />
+        </view>
         </view>
       </scroll-view>
     </view>

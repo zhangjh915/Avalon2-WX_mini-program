@@ -69,17 +69,17 @@ Page({
     })
     this.setData({
       // 用真实卡背做预览，比抽象的 A/B/C/D 直观
-      // 任务牌卡背没有名字——四套只是画法不同，编号叫甲乙丙丁毫无意义，看图即可
+      // 任务牌卡背没有名字——四套只是画法不同，编号毫无信息量，看图即可
       missionSkinOptions: ["a", "b", "c", "d"].map(key => ({
         key, preview: assets.missionCard(key, "back")
       })),
-      // 身份牌用摩根勒菲的正面立绘做预览：卡背几套长得都差不多，
-      // 立绘才看得出画风差别。统一同一个角色，方便横向对比。
-      roleSkinOptions: [
-        { key: "painted", name: "手绘" },
-        { key: "fantasy", name: "幻想华服" },
-        { key: "woodcut", name: "木刻线刻" }
-      ].map(item => ({ ...item, preview: assets.roleArt(item.key, "morgan", 0) }))
+      // 身份牌同时给卡背和摩根勒菲的卡面：卡背几套长得差不多，
+      // 立绘才看得出画风差别，两张并排最直观。统一用同一个角色便于横向对比。
+      roleSkinOptions: ["painted", "fantasy", "woodcut"].map(key => ({
+        key,
+        back: assets.identityBack(key),
+        front: assets.roleArt(key, "morgan", 0)
+      }))
     })
     this.refreshSkinSelection()
     this.resetRoles(false)
