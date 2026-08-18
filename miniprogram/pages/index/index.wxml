@@ -115,7 +115,7 @@
       <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
     </view>
     <view class="skin-row-entry" bindtap="openSkinPicker" data-kind="mission">
-      <view><view class="setting-label">任务牌卡背</view><view class="muted">{{currentMissionSkin.name}}</view></view>
+      <view class="setting-label">任务牌卡背</view>
       <view class="skin-entry-right">
         <image class="skin-thumb mission-thumb" src="{{currentMissionSkin.preview}}" mode="aspectFill" />
         <view class="mini-command">更换</view>
@@ -149,7 +149,7 @@
         <view wx:for="{{skinPickerOptions}}" wx:key="key" class="skin-card {{item.key === skinPickerCurrent ? 'card-on' : ''}}"
               data-skin="{{item.key}}" bindtap="chooseSkin">
           <image class="skin-card-thumb" src="{{item.preview}}" mode="aspectFill" lazy-load />
-          <text class="skin-card-name">{{item.name}}</text>
+          <text wx:if="{{item.name}}" class="skin-card-name">{{item.name}}</text>
         </view>
       </scroll-view>
     </view>

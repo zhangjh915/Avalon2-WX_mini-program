@@ -126,13 +126,22 @@ TOK, AV, BADGE = R(72), R(64), R(34)
 P_TL, P_TR, P_BR = (R(-2), R(-9)), (TOK - BADGE - R(-2), R(-9)), (TOK - BADGE - R(-2), TOK - BADGE - R(-2))
 
 
+# 角标是故意挂在头像框外面的（wxss 里 .seat-badge 和 .game-seat-token 都是
+# overflow: visible），左上角标的偏移是负数、右下角标会超出右下边。
+# 画布必须比 token 大一圈，否则角标会被画布切掉——皇冠没顶、护身符没底。
+SEAT_PAD = BADGE
+
+
 def seat(marks):
-    c = Image.new("RGBA", (TOK, TOK), (0, 0, 0, 0))
-    d = ImageDraw.Draw(c); o = (TOK - AV) // 2
+    side = TOK + SEAT_PAD * 2
+    c = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    d = ImageDraw.Draw(c)
+    o = SEAT_PAD + (TOK - AV) // 2
     d.ellipse([o, o, o + AV, o + AV], fill=AV_BG, outline=AV_BD, width=R(3))
     for im, pos in marks:
         b = fit(im, BADGE)
-        c.alpha_composite(b, (pos[0] + (BADGE - b.width) // 2, pos[1] + (BADGE - b.height) // 2))
+        c.alpha_composite(b, (SEAT_PAD + pos[0] + (BADGE - b.width) // 2,
+                              SEAT_PAD + pos[1] + (BADGE - b.height) // 2))
     return c
 
 
@@ -154,8 +163,8 @@ def stage_round(key, floor_key="floor_2", emb="table_emblem_1"):
     for i, m in enumerate([[(CR, P_TL)], [(AM, P_BR)], [(FI, P_TR)], [], [(AM, P_BR)], []]):
         a = -math.pi / 2 + i * math.pi / 3
         rad = R(330) // 2 + R(56)
-        st.alpha_composite(seat(m), (cx + round(rad * math.cos(a)) - TOK // 2,
-                                     cy + round(rad * math.sin(a) * .86) - TOK // 2))
+        st.alpha_composite(seat(m), (cx + round(rad * math.cos(a)) - TOK // 2 - SEAT_PAD,
+                                     cy + round(rad * math.sin(a) * .86) - TOK // 2 - SEAT_PAD))
     return st.convert("RGB")
 
 
@@ -172,9 +181,9 @@ def stage_long(key, wpct=68, hpct=28, floor_key="floor_2", emb="table_emblem_1")
     for i in range(5):
         x = cx - tw // 2 + round(tw * (i + .5) / 5)
         st.alpha_composite(seat([(CR, P_TL)] if i == 0 else [(AM, P_BR)] if i == 2 else []),
-                           (x - TOK // 2, cy - th // 2 - TOK - R(6)))
+                           (x - TOK // 2 - SEAT_PAD, cy - th // 2 - TOK - R(6) - SEAT_PAD))
         st.alpha_composite(seat([(FI, P_TR)] if i == 3 else []),
-                           (x - TOK // 2, cy + th // 2 + R(6)))
+                           (x - TOK // 2 - SEAT_PAD, cy + th // 2 + R(6) - SEAT_PAD))
     return st.convert("RGB")
 
 
