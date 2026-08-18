@@ -25,7 +25,7 @@ const roomWxml = fs.readFileSync(path.join(root, "room", "room.wxml"), "utf8")
 const roomWxss = fs.readFileSync(path.join(root, "room", "room.wxss"), "utf8")
 const playWxml = fs.readFileSync(path.join(root, "play", "play.wxml"), "utf8")
 const playWxss = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
-assert.strictEqual((indexWxml.match(/class="modal-close"/g) || []).length, 4, "all index sheets need the shared close control")
+assert.strictEqual((indexWxml.match(/class="modal-close"/g) || []).length, 5, "all index sheets need the shared close control")
 // 圆桌纪录、我的密录、以及选人全屏页都要有统一的关闭控件
 assert.strictEqual((playWxml.match(/class="modal-close"/g) || []).length, 3, "play full-screen pages need the shared close control")
 assert.match(playWxml, /bindtap="openDossier"/, "对局中需要能随时打开我的密录")

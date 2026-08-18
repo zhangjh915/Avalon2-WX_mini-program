@@ -1,0 +1,14 @@
+{
+  "_说明": "界面图标与场景的定稿选择。键 = prompts/界面/*.toml 里的条目名，值 = 抽卡序号。",
+  "_日期": "2026-08-18",
+  "fireball": 1,
+  "crown": 1,
+  "amulet": 2,
+  "table_emblem": 3,
+  "table_round_ornate": 3,
+  "table_long_ornate": 2,
+  "_待定": ["floor", "home_bg"],
+  "_不生成": {
+    "amulet_faded": "只在 play.wxml:227 一处用，23rpx=34px，裂纹画不出来；CSS grayscale(1)+opacity .62 已足够，且天然保证同角度同构图"
+  }
+}

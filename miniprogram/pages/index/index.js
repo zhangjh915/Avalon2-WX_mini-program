@@ -47,6 +47,13 @@ Page({
     roleSkin: "painted",
     missionSkinOptions: [],
     roleSkinOptions: [],
+    currentMissionSkin: {},
+    currentRoleSkin: {},
+    skinPickerVisible: false,
+    skinPickerKind: "",
+    skinPickerTitle: "",
+    skinPickerOptions: [],
+    skinPickerCurrent: "",
     roleConfigValid: true
   },
 
@@ -74,15 +81,38 @@ Page({
         { key: "woodcut", name: "木刻线刻", preview: assets.identityBack("woodcut") }
       ]
     })
+    this.refreshSkinSelection()
     this.resetRoles(false)
   },
 
-  selectMissionSkin(event) {
-    this.setData({ missionSkin: event.currentTarget.dataset.skin })
+  // 只展示当前选择，完整列表放进弹层——皮肤会持续增加，一行摆不下
+  refreshSkinSelection() {
+    const find = (list, key) => list.find(item => item.key === key) || list[0] || {}
+    this.setData({
+      currentMissionSkin: find(this.data.missionSkinOptions, this.data.missionSkin),
+      currentRoleSkin: find(this.data.roleSkinOptions, this.data.roleSkin)
+    })
   },
 
-  selectRoleSkin(event) {
-    this.setData({ roleSkin: event.currentTarget.dataset.skin })
+  openSkinPicker(event) {
+    const kind = event.currentTarget.dataset.kind
+    const isMission = kind === "mission"
+    this.setData({
+      skinPickerVisible: true,
+      skinPickerKind: kind,
+      skinPickerTitle: isMission ? "选择任务牌卡背" : "选择身份牌画风",
+      skinPickerOptions: isMission ? this.data.missionSkinOptions : this.data.roleSkinOptions,
+      skinPickerCurrent: isMission ? this.data.missionSkin : this.data.roleSkin
+    })
+  },
+
+  closeSkinPicker() { this.setData({ skinPickerVisible: false }) },
+
+  chooseSkin(event) {
+    const key = event.currentTarget.dataset.skin
+    this.setData(this.data.skinPickerKind === "mission" ? { missionSkin: key } : { roleSkin: key })
+    this.refreshSkinSelection()
+    this.setData({ skinPickerVisible: false })
   },
 
   toggleTestMode(event) {

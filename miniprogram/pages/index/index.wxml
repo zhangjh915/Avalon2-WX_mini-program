@@ -114,29 +114,44 @@
       <view><view class="setting-label">测试模式</view><view class="muted">可补满测试玩家并代其投票；正式和同事玩时请关闭</view></view>
       <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
     </view>
-    <view class="skin-block">
-      <view class="setting-label">任务牌卡背</view>
-      <view class="skin-row">
-        <view wx:for="{{missionSkinOptions}}" wx:key="key" class="skin-chip {{item.key === missionSkin ? 'chip-on' : ''}}"
-              data-skin="{{item.key}}" bindtap="selectMissionSkin">
-          <image class="skin-thumb mission-thumb" src="{{item.preview}}" mode="aspectFill" />
-          <text class="skin-name">{{item.name}}</text>
-        </view>
+    <view class="skin-row-entry" bindtap="openSkinPicker" data-kind="mission">
+      <view><view class="setting-label">任务牌卡背</view><view class="muted">{{currentMissionSkin.name}}</view></view>
+      <view class="skin-entry-right">
+        <image class="skin-thumb mission-thumb" src="{{currentMissionSkin.preview}}" mode="aspectFill" />
+        <view class="mini-command">更换</view>
       </view>
     </view>
 
-    <view class="skin-block">
-      <view class="setting-label">身份牌画风</view>
-      <view class="skin-row">
-        <view wx:for="{{roleSkinOptions}}" wx:key="key" class="skin-chip {{item.key === roleSkin ? 'chip-on' : ''}}"
-              data-skin="{{item.key}}" bindtap="selectRoleSkin">
-          <image class="skin-thumb role-thumb" src="{{item.preview}}" mode="aspectFill" lazy-load />
-          <text class="skin-name">{{item.name}}</text>
-        </view>
+    <view class="skin-row-entry" bindtap="openSkinPicker" data-kind="role">
+      <view><view class="setting-label">身份牌画风</view><view class="muted">{{currentRoleSkin.name}}</view></view>
+      <view class="skin-entry-right">
+        <image class="skin-thumb role-thumb" src="{{currentRoleSkin.preview}}" mode="aspectFill" lazy-load />
+        <view class="mini-command">更换</view>
       </view>
     </view>
 
     <button class="btn" bindtap="createRoom" disabled="{{!roleConfigValid}}">创建房间</button>
+    </view>
+  </view>
+
+
+  <view wx:if="{{skinPickerVisible}}" class="role-overlay" bindtap="closeSkinPicker">
+    <view class="role-sheet" catchtap="stopPropagation">
+      <view class="sheet-handle"></view>
+      <view class="layout-sheet-head">
+        <view>
+          <view class="layout-sheet-title">{{skinPickerTitle}}</view>
+          <view class="layout-sheet-subtitle">开局后不可更改，同局所有人看到同一套</view>
+        </view>
+        <view class="modal-close" bindtap="closeSkinPicker" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view>
+      </view>
+      <scroll-view class="skin-grid" scroll-y>
+        <view wx:for="{{skinPickerOptions}}" wx:key="key" class="skin-card {{item.key === skinPickerCurrent ? 'card-on' : ''}}"
+              data-skin="{{item.key}}" bindtap="chooseSkin">
+          <image class="skin-card-thumb" src="{{item.preview}}" mode="aspectFill" lazy-load />
+          <text class="skin-card-name">{{item.name}}</text>
+        </view>
+      </scroll-view>
     </view>
   </view>
 
