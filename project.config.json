@@ -9,6 +9,10 @@
       {
         "type": "folder",
         "value": "assets/cards/identity"
+      },
+      {
+        "type": "folder",
+        "value": "assets/ui"
       }
     ],
     "include": []
