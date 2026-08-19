@@ -177,9 +177,12 @@ def export_ui():
         else:
             # 边条只把「厚度」那一轴缩到 SLICE_OUT，长度按比例——它要沿另一轴平铺
             horiz = f.stem in ("edge_top", "edge_bottom")
-            k = SLICE_OUT / (im.height if horiz else im.width)
+            k = SLICE_OUT / 260   # 切片 inset 是 260，所有块用同一个缩放比
             if f.stem == "center":
-                sz = (512, 256)
+                # 中心和边条同比例平铺，所以按同一个 k 缩，不能给固定尺寸——
+                # 尺寸一变比例就和边条对不上，交界处又会出现长方形轮廓
+                k = SLICE_OUT / 260
+                sz = (max(1, round(im.width * k)), max(1, round(im.height * k)))
             else:
                 sz = (max(1, round(im.width * k)), max(1, round(im.height * k)))
             n = export(f, DST / "ui/table-long" / (f.stem + ".jpg"), sz, q=82)

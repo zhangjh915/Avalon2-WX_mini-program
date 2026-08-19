@@ -22,10 +22,33 @@ import pathlib
 
 from PIL import Image
 import numpy as np
+from scipy import ndimage
 
 # 切角尺寸的下限：.long-table 的 border-radius 是 32rpx = 16pt = 48px @3x，
 # 切角必须完整包住圆角，否则圆角会被边条的平铺切断
 MIN_INSET = 60
+
+
+def flatten_light(im, strength=1.0, clamp=(0.65, 1.5)):
+    """拉平低频光照。九宫格把一张图切开又重组，源图自带的光照梯度会在
+    边条与中心的交界处变成一道台阶——实机看就是「中间一个长方形轮廓」。
+
+    做法：算出低频亮度场，用「目标/实测」的**单一标量**增益去乘 RGB 三个通道。
+    注意是同一个标量乘三通道，不是逐通道各算各的——后者在通道接近 0 时会爆，
+    正是手册 5.4 毁掉两套扁平皮肤的那个坑。再把增益钳在 clamp 内，双保险。
+    """
+    a = np.asarray(im.convert("RGBA"), np.float32) / 255.0
+    rgb, alpha = a[..., :3], a[..., 3]
+    lum = rgb @ [0.2126, 0.7152, 0.0722]
+    sigma = max(im.size) / 12.0            # 只拉平比这更低频的成分，木纹保持不动
+    w = ndimage.gaussian_filter(lum * alpha, sigma)
+    n = ndimage.gaussian_filter(alpha, sigma)
+    low = w / np.maximum(n, 1e-3)          # 只在物体内部统计，别把外面的透明区算进来
+    target = np.median(low[alpha > 0.5]) if (alpha > 0.5).any() else low.mean()
+    gain = np.clip(target / np.maximum(low, 1e-3), *clamp)
+    gain = 1.0 + (gain - 1.0) * strength
+    out = np.concatenate([np.clip(rgb * gain[..., None], 0, 1), alpha[..., None]], axis=2)
+    return Image.fromarray((out * 255).round().astype(np.uint8), "RGBA")
 
 
 def alpha_bbox(im):
@@ -128,8 +151,18 @@ def compose(parts, inset_src, inset_out, w, h, feather=0):
     # 中心向四周多铺 feather 像素，垫在边条底下，供渐隐时透出来
     e = min(feather, inset_out)
     cw, ch = w - inset_out * 2, h - inset_out * 2
-    out.alpha_composite(cover(parts["center"], cw + e * 2, ch + e * 2),
-                        (inset_out - e, inset_out - e))
+    # 中心按**和边条相同的固定比例**平铺，不用 cover——见 main() 里的注释
+    ctile = mirror_tile(mirror_tile(
+        parts["center"].crop((parts["center"].width // 4, 0,
+                              parts["center"].width * 3 // 4, parts["center"].height)),
+        "x"), "y")
+    ctile = sc(ctile)
+    field = Image.new("RGBA", (cw + e * 2, ch + e * 2), (0, 0, 0, 0))
+    for yy in range(0, field.height, ctile.height):
+        for xx in range(0, field.width, ctile.width):
+            field.alpha_composite(ctile.crop((0, 0, min(ctile.width, field.width - xx),
+                                              min(ctile.height, field.height - yy))), (xx, yy))
+    out.alpha_composite(field, (inset_out - e, inset_out - e))
     for name, side, pos, size, axis in [
             ("edge_top", "top", (inset_out, 0), (cw, inset_out), "x"),
             ("edge_bottom", "bottom", (inset_out, h - inset_out), (cw, inset_out), "x"),
@@ -154,6 +187,9 @@ def main():
     ap.add_argument("--preview-h", type=int, default=300, help="预览图的高（物理像素）")
     ap.add_argument("--render-inset", type=int, default=54,
                     help="落地时切角渲染成多少物理像素（= CSS 给角的 background-size）")
+    ap.add_argument("--flatten", type=float, default=0,
+                    help="拉平低频光照的强度 0-1。九宫格重组后源图的光照梯度会在"
+                         "边条与中心交界处变成台阶，切之前拉平掉。0 = 不处理")
     ap.add_argument("--feather", type=int, default=18,
                     help="边条内侧的渐隐宽度（物理像素），抹平边条与中心的木纹台阶")
     args = ap.parse_args()
@@ -166,6 +202,9 @@ def main():
         raise SystemExit("这张图没有透明通道，先用 scripts/cut-glow.py 抠出来")
     box = alpha_bbox(src)
     src = src.crop(box)
+    if args.flatten > 0:
+        src = flatten_light(src, args.flatten)
+        print("已拉平低频光照，强度 %.2f" % args.flatten)
     print("裁到外接框 %dx%d" % src.size)
 
     outdir = pathlib.Path(args.out)
@@ -174,6 +213,14 @@ def main():
     for name, im in parts.items():
         if name.startswith("edge_"):
             im = mirror_tile(im, "x" if name in ("edge_top", "edge_bottom") else "y")
+        elif name == "center":
+            # 中心也要能无缝平铺。用 cover 的话缩放比例随容器形状变——
+            # 实测正方形那档中心木纹比边条粗 1.88 倍，交界处出现明显的长方形轮廓。
+            # 改成和边条一样的固定比例平铺，两边的木纹就对得上了。
+            # 先取中段再双向镜像：整块镜像文件太大，而镜像后从哪儿裁都无缝。
+            w4 = im.width // 2
+            im = im.crop(((im.width - w4) // 2, 0, (im.width + w4) // 2, im.height))
+            im = mirror_tile(mirror_tile(im, "x"), "y")
         im.save(outdir / ("%s.png" % name))
         print("  %-12s %dx%d" % (name, *im.size))
 
