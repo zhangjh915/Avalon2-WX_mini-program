@@ -36,6 +36,7 @@ TESTS=(
   roleArt
   assets
   identityTiming
+  applyState
 )
 
 failed=0

@@ -106,14 +106,8 @@ Page({
 
   applyState(result) {
     const room = result.room
-    if (room.status === "playing") {
-      wx.redirectTo({ url: `/pages/play/play?roomId=${room._id}` })
-      return
-    }
-    if (room.status === "finished") {
-      wx.redirectTo({ url: `/pages/result/result?roomId=${room._id}` })
-      return
-    }
+    if (room.status === "playing") return this.leaveTo(`/pages/play/play?roomId=${room._id}`)
+    if (room.status === "finished") return this.leaveTo(`/pages/result/result?roomId=${room._id}`)
     const seats = this.decorateSeats(room.seats || [], room.playerCount, room.tableType || "round", room.seatLayout, room.tableSides)
     const roleCounts = room.settings && room.settings.roleCounts || {}
     const roleCandidates = Object.keys(roleCounts).filter(role => roleCounts[role]).map(role => {
@@ -163,6 +157,24 @@ Page({
     const floorColor = assets.setFloorColor(event.currentTarget.dataset.color)
     const option = this.data.floorOptions.find(item => item.key === floorColor)
     this.setData({ floorColor, floorBg: option ? option.bg : "" })
+  },
+
+  // 离开候场页。必须先停轮询并上锁：轮询每 1200ms 就会再发一次 redirectTo，
+  // 后一次会打断前一次正在进行的导航，页面能一直卡在候场页跳不出去
+  // （表现为「点了开始游戏没反应，再点一次报游戏已经开始」）。
+  // redirectTo 本身也要接 fail——它默认静默失败，出了问题日志上什么都看不到。
+  leaveTo(url) {
+    if (this.navigating) return
+    this.navigating = true
+    this.stopPolling()
+    wx.redirectTo({
+      url,
+      fail: error => {
+        this.navigating = false
+        this.startPolling()
+        console.error("[room] 跳转失败", url, error && error.errMsg)
+      }
+    })
   },
 
   openRoleViewer() { this.setData({ roleViewerVisible: true }) },

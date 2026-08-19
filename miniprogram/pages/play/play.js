@@ -116,6 +116,9 @@ Page({
       this.applyState(result)
     }).catch(error => {
       if (this.handleRoomGone(error)) return
+      // 轮询时不弹窗（会打断线下讨论），但一定要留日志：
+      // applyState 抛异常的表现是整页白屏，静默吞掉就完全无从查起。
+      console.error("[play] loadState 失败", error && (error.message || error))
       if (showError) this.showError(error)
     }).finally(() => { this.loading = false })
   },
@@ -180,8 +183,11 @@ Page({
     const nightStep = Math.min(this.data.nightStep, Math.max(nightCeremony.length - 1, 0))
     const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
-    const history = this.buildGameHistory(game, decoratedPlayers, dossier.myVotes)
+    // dossier 必须先建：圆桌纪录要用它的 myVotes 标出自己那一轮打的牌。
+    // 顺序写反的话 applyState 会在这里抛 TypeError，而 game 还没 setData，
+    // 于是外层 wx:if="{{game}}" 永远不成立——整个对局页白屏。
     const dossier = this.buildDossier(privateView, decoratedPlayers)
+    const history = this.buildGameHistory(game, decoratedPlayers, dossier.myVotes)
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
     const missionSkin = room.missionSkin || "a"
