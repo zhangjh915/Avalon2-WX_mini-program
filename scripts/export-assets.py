@@ -132,7 +132,11 @@ ICONS = {   # 轮廓不规则，必须 PNG 带 alpha
 }
 SCENES = {  # 矩形或可用 CSS 裁形，走 JPEG
     "table-round.jpg": ((512, 512),   84, ".round-table 330rpx=165pt，CSS border-radius:50% 裁圆"),
-    "floor.jpg":       ((1080, 1080), 78, ".compact-table-stage 约 351x295pt，cover 铺"),
+    # 地毯四个配色，玩家可选。全部同规格，只有颜色不同。
+    "floor-green.jpg":  ((1080, 1080), 78, "墨绿绒毯，.compact-table-stage 约 351x295pt，cover 铺"),
+    "floor-indigo.jpg": ((1080, 1080), 78, "深靛蓝绒毯"),
+    "floor-wine.jpg":   ((1080, 1080), 78, "深酒红绒毯"),
+    "floor-umber.jpg":  ((1080, 1080), 78, "暗金褐绒毯"),
     "home-bg.jpg":     ((750, 1624),  76, "首页整屏。低对比木纹，@2x 足够，@3x 白白多一倍体积"),
 }
 SLICE_OUT = 72          # 切角/边条在界面上渲染的物理像素
