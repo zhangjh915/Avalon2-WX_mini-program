@@ -141,6 +141,8 @@ Page({
       tableOrientation: tableGeometry.orientation,
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
+      // 角块尺寸随桌子短边缩放，窄长桌才不会被四个角挤成一条缝
+      longTableBg: assets.longTableBackground(tableGeometry.width, tableGeometry.height, 620) || this.data.longTableBg,
       isHost: !!result.isHost,
       ui: assets.uiIcons(),
       // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验

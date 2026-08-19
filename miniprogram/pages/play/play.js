@@ -220,6 +220,8 @@ Page({
       tableOrientation: tableGeometry.orientation,
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
+      // 角块尺寸随桌子短边缩放，窄长桌才不会被四个角挤成一条缝
+      longTableBg: assets.longTableBackground(tableGeometry.width, tableGeometry.height, 650) || this.data.longTableBg,
       voteCount: game.current.voteCount || 0,
       votePercent: game.current.team.length ? Math.round((game.current.voteCount || 0) / game.current.team.length * 100) : 0,
       amulet, isAmuletOwner: !!amulet && amulet.ownerId === privateView.id,

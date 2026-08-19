@@ -81,9 +81,22 @@ const icons = assets.uiIcons()
 assert.strictEqual(assets.LONG_TABLE_SLICES.length, 9)
 assert.strictEqual(assets.LONG_TABLE_SLICES[0][0], "corner_tl.png", "角块必须排在最前（最上层）")
 assert.strictEqual(assets.LONG_TABLE_SLICES[8][0], "center.jpg", "中心必须排在最后（垫底）")
-// 边条必须单轴平铺，否则拉伸会把桌沿抻变形
-assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-x").length === 2, "上下边条 repeat-x")
-assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-y").length === 2, "左右边条 repeat-y")
+// 边条只沿单轴铺，且必须用 round 不能用 repeat：
+// edge_left.jpg 铺开一个单元约 154pt 高，而 8 人竖向长桌 195pt——1.27 次重复，
+// 接缝正好卡在桌子中间，桌面看起来从中间断开。round 会微调到整数次。
+assert.strictEqual(assets.LONG_TABLE_SLICES.filter(s => s[3] === "round no-repeat").length, 2, "上下边条沿横轴 round")
+assert.strictEqual(assets.LONG_TABLE_SLICES.filter(s => s[3] === "no-repeat round").length, 2, "左右边条沿纵轴 round")
+assert.ok(!assets.LONG_TABLE_SLICES.some(s => /repeat-[xy]/.test(s[3])), "不能再用会留接缝的 repeat-x/y")
+
+// 角块尺寸随桌子短边缩放，窄长桌上四个角不能吃掉大半个桌面
+assert.strictEqual(assets.cornerSize(68, 62, 650), 48, "宽桌用满 48rpx 上限")
+const narrow = assets.cornerSize(32, 60, 650)
+assert.ok(narrow < 48 && narrow >= 26, `8 人竖向长桌的角块应当收窄，实际 ${narrow}`)
+// 收窄后四角占短边的比例必须明显低于一半，否则中间木纹会被挤成一条
+assert.ok(narrow * 2 / (0.32 * 650) < 0.45, "四角不能吃掉近一半短边")
+// 尺寸缺失（0 / undefined）当作「没给」，退回满尺寸而不是算出 0 让角块消失
+assert.strictEqual(assets.cornerSize(0, 0, 650), 48)
+assert.strictEqual(assets.cornerSize(undefined, undefined, undefined), 48)
 assert.strictEqual(assets.LONG_TABLE_SLICES[8][2], "cover", "中心用 cover")
 
 // CSS 的 background-image 不认 cloud:// 协议，必须先换成 https 临时链接。

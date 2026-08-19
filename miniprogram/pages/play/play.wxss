@@ -1469,8 +1469,33 @@ button::after {
 .submitted-state .waiting-title { margin: 0; font-size: 27rpx; }
 /* seal-base.png 是 208px 见方，而这个圆圈只有 32pt。内联下发的是 background-image，
    不给铺法就按原图 1:1 渲染——只能看到左上角一丢丢，和地毯栽的是同一个跟头。 */
-.submitted-seal { display: flex; width: 64rpx; height: 64rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; background-position: center; background-size: cover; color: #dbc582; font-size: 28rpx; font-weight: 900; }
-.submitted-seal.spectator { border-color: #647169; color: #9da8a1; }
+/* 印章里放自己的角色立绘，状态交给边框。
+   原来 10 处共用一张底纹、只靠一个汉字区分，「该我动」和「我交完了」在视觉上
+   几乎没差别，玩家得读字才知道要不要动。现在动静一分就够了：
+   会呼吸的 = 在等别人，压死的 = 你已经交了。
+   放大到 132rpx 是因为 64rpx 的圆里人脸只有 10pt，糊成一团。 */
+.submitted-seal { position: relative; display: flex; width: 132rpx; height: 132rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; background-position: center; background-size: cover; overflow: hidden; box-sizing: border-box; }
+.seal-portrait { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.submitted-seal.spectator { border-color: #647169; }
+
+/* 等着别人——边框呼吸 */
+.submitted-seal.seal-waiting { animation: seal-breathe 2.1s ease-in-out infinite; }
+@keyframes seal-breathe {
+  0%, 100% { border-color: #6d6250; box-shadow: 0 0 0 0 rgba(169, 141, 78, .34); }
+  50% { border-color: #a98d4e; box-shadow: 0 0 0 10rpx rgba(169, 141, 78, 0); }
+}
+/* 我交完了——金边点亮一次然后压死不动 */
+.submitted-seal.seal-sealed { border-width: 4rpx; border-color: #d8b76a; animation: seal-stamp 420ms cubic-bezier(.2,.8,.3,1) both; }
+@keyframes seal-stamp {
+  from { transform: scale(1.14); box-shadow: 0 0 0 14rpx rgba(216, 183, 106, .3); }
+  to { transform: scale(1); box-shadow: 0 0 0 0 rgba(216, 183, 106, 0); }
+}
+/* 猎杀——红边急促脉冲，等专门的图到位后再换 */
+.submitted-seal.seal-danger { border-color: #c4564a; animation: seal-danger-pulse 900ms ease-in-out infinite; }
+@keyframes seal-danger-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 86, 74, .45); }
+  50% { box-shadow: 0 0 0 12rpx rgba(196, 86, 74, 0); }
+}
 .waiting-title { color: #f1ede5; font-size: 32rpx; font-weight: 900; text-align: center; }
 .waiting-copy,.action-copy { max-width: 650rpx; margin: 14rpx auto 22rpx; color: #9eaaa4; font-size: 24rpx; line-height: 1.65; text-align: center; }
 .identity-progress { margin-top: 18rpx; color: #9ca7a1; font-size: 22rpx; font-variant-numeric: tabular-nums; text-align: center; }

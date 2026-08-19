@@ -42,17 +42,45 @@ function uiAsset(name) {
 // 左右边人数决定高，两者独立），整图拉伸会把桌沿和铆钉抻变形。
 //
 // 数组顺序即层序：先列的画在上层，所以角在最上、边其次、中心垫底。不要重排。
+// 边条一律用 round 而不是 repeat：
+// edge_left.jpg 是 72x463，按比例铺开一个单元约 154pt 高，而 8 人竖向长桌才 195pt——
+// 1.27 次重复，接缝正好卡在桌子中间，看起来就是桌面从中间断开了。
+// round 会把图微调到整数次填满，接缝消失，代价只是纹理密度略变。
 const LONG_TABLE_SLICES = [
   ["corner_tl.png", "left top", "48rpx 48rpx", "no-repeat"],
   ["corner_tr.png", "right top", "48rpx 48rpx", "no-repeat"],
   ["corner_bl.png", "left bottom", "48rpx 48rpx", "no-repeat"],
   ["corner_br.png", "right bottom", "48rpx 48rpx", "no-repeat"],
-  ["edge_top.jpg", "48rpx top", "auto 48rpx", "repeat-x"],
-  ["edge_bottom.jpg", "48rpx bottom", "auto 48rpx", "repeat-x"],
-  ["edge_left.jpg", "left 48rpx", "48rpx auto", "repeat-y"],
-  ["edge_right.jpg", "right 48rpx", "48rpx auto", "repeat-y"],
+  ["edge_top.jpg", "48rpx top", "auto 48rpx", "round no-repeat"],
+  ["edge_bottom.jpg", "48rpx bottom", "auto 48rpx", "round no-repeat"],
+  ["edge_left.jpg", "left 48rpx", "48rpx auto", "no-repeat round"],
+  ["edge_right.jpg", "right 48rpx", "48rpx auto", "no-repeat round"],
   ["center.jpg", "center", "cover", "no-repeat"]
 ]
+
+// 角块尺寸必须跟着桌子走，不能写死。
+// 8 人竖向长桌只有约 104pt 宽，四个 24pt 的角块就吃掉近一半，
+// 中间的木纹被挤成一条，桌子看起来像散了架。
+const CORNER_MAX = 48
+const CORNER_MIN = 26
+function cornerSize(widthPct, heightPct, stageRpx) {
+  const shortSide = Math.min(Number(widthPct) || 100, Number(heightPct) || 100) / 100 * (Number(stageRpx) || 650)
+  return Math.max(CORNER_MIN, Math.min(CORNER_MAX, Math.round(shortSide * 0.2)))
+}
+
+// 按当前桌子尺寸重算九宫格。页面拿到 tableWidth / tableHeight 之后调用，
+// 拿不到就退回 backgroundStyles 里那份 48rpx 的默认值。
+function longTableBackground(widthPct, heightPct, stageRpx) {
+  const corner = cornerSize(widthPct, heightPct, stageRpx) + "rpx"
+  const layers = LONG_TABLE_SLICES.map(slice => {
+    const url = tempUrlCache[uiAsset("table-long/" + slice[0])]
+    if (!url) return ""
+    const pos = slice[1].split("48rpx").join(corner)
+    const size = slice[2].split("48rpx").join(corner)
+    return `url(${url}) ${pos} / ${size} ${slice[3]}`
+  }).filter(Boolean)
+  return layers.length === LONG_TABLE_SLICES.length ? "background:" + layers.join(",") : ""
+}
 
 // 走 CSS background 的图必须先换成 https 临时链接。
 //
@@ -217,6 +245,8 @@ module.exports = {
   resolveTempUrls,
   backgroundStyles,
   LONG_TABLE_SLICES,
+  cornerSize,
+  longTableBackground,
   roleArtPath,
   roleArt,
   identityBack,

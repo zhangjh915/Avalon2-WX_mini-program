@@ -45,5 +45,15 @@ assert.match(roomWxss, /\.page\s*\{[^}]*height:\s*100vh[^}]*overflow:\s*hidden/s
 assert.strictEqual((playWxml.match(/round-seat-stage/g) || []).length, 2, "both in-game round selectors need square stages")
 assert.match(playWxss, /round-seat-stage\s*\{[^}]*width:\s*650rpx;[^}]*height:\s*650rpx/s, "main in-game round selector must be square")
 
+// 状态印不再用汉字。原来 10 处共用一张底纹只靠一个字区分，
+// 「该我动」和「我交完了」在视觉上几乎没差别，玩家得读字才知道要不要动。
+// 现在圆圈里是自己的角色立绘，状态由边框的动静表达。
+assert.ok(!/class="submitted-seal[^"]*"[^>]*>\s*[\u4e00-\u9fa5]/.test(playWxml), "状态印里不该再出现汉字")
+assert.ok(/seal-waiting/.test(playWxml) && /seal-sealed/.test(playWxml), "等待态与已封存态必须能区分")
+// prepare 阶段身份还没揭示，那处只能放卡背，放立绘就直接泄底了
+const prepareBlock = playWxml.slice(playWxml.indexOf("identityMode === 'prepare'"), playWxml.indexOf("identity-progress"))
+assert.ok(/seal-portrait" src="\{\{identityBackArt\}\}"/.test(prepareBlock), "揭示身份前的等待印只能用卡背，不能用角色立绘")
+assert.ok(!/seal-portrait" src="\{\{myRoleArt\}\}"/.test(prepareBlock), "揭示身份前不能把自己的立绘露出来")
+
 delete global.Page
 console.log("UI binding tests passed")
