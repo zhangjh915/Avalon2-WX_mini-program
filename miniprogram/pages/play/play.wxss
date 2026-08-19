@@ -1460,7 +1460,18 @@ button::after {
 .history-glyph > view::before { position: absolute; top: 0; left: -7rpx; width: 4rpx; height: 4rpx; border-radius: 1rpx; background: #d8c27f; content: ""; }
 .leader-line { display: flex; min-height: 72rpx; padding: 10rpx 14rpx; align-items: center; border: 2rpx solid #404d47; border-radius: 7rpx; background: #1a2420; box-sizing: border-box; color: #ece7dc; font-size: 23rpx; }
 .leader-crown { display: flex; width: 46rpx; height: 46rpx; margin-right: 12rpx; flex: 0 0 auto; align-items: center; justify-content: center; }
-.symbol-icon { display: block; }
+/* 换成 <image> 后必须显式给尺寸：图片按自然尺寸渲染（96~224px），
+   原来的 font-size 规则对图片无效，圆桌纪录里的图标就是这么撑爆排版的。 */
+.symbol-icon { display: block; width: 32rpx; height: 32rpx; flex: none; }
+.crown-icon { width: 34rpx; height: 34rpx; }
+.amulet-icon,.fire-icon { width: 32rpx; height: 32rpx; }
+.inline-amulet-icon { width: 26rpx; height: 26rpx; margin-right: 8rpx; }
+.faded-amulet-icon { width: 26rpx; height: 26rpx; }
+.history-label .symbol-icon { width: 28rpx; height: 28rpx; }
+.history-section-title .symbol-icon { width: 26rpx; height: 26rpx; }
+.leader-crown .crown-icon { width: 30rpx; height: 30rpx; }
+.rider-fire { width: 28rpx; height: 28rpx; }
+.seat-badge .symbol-icon { width: 100%; height: 100%; }
 .crown-icon { color: #f1c84c; }
 .fire-icon { color: #ef6c3f; }
 .amulet-icon { color: #4c9cce; }
@@ -1558,7 +1569,7 @@ button::after {
 .role-reveal-small { margin: 24rpx 0; padding: 20rpx; border: 3rpx solid #b14943; background: #5d2927; color: #f5dfdc; font-size: 36rpx; font-weight: 900; text-align: center; animation: mission-stamp 360ms ease both; }
 .danger-seal { border-color: #b14943; color: #d96760; }
 .table-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-end; background: rgba(5, 10, 8, 0.76); animation: overlay-in 160ms ease both; }
-.table-sheet { width: 100%; max-height: 92vh; padding: 24rpx; overflow-y: auto; border-radius: 8rpx 8rpx 0 0; background: #eceae4; box-sizing: border-box; animation: sheet-up 220ms ease both; }
+.table-sheet { width: 100%; max-height: 92vh; padding: 24rpx; overflow-y: auto; border-radius: 8rpx 8rpx 0 0; background: #141c18; box-sizing: border-box; animation: sheet-up 220ms ease both; }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; padding-bottom: 14rpx; }
 .sheet-handle { width: 72rpx; height: 7rpx; margin: -6rpx auto 18rpx; border-radius: 4rpx; background: #b8bab5; }
 .modal-close { display: flex; width: 72rpx; height: 72rpx; margin: -8rpx -8rpx -8rpx 0; flex: none; align-items: center; justify-content: center; background: transparent; box-sizing: border-box; }
@@ -1589,7 +1600,6 @@ button::after {
 .amulet-badge { right: -2rpx; bottom: -2rpx; }
 .magic-badge { top: -9rpx; right: -2rpx; background: transparent; }
 .faded-badge { left: -2rpx; bottom: -2rpx; background: transparent; filter: grayscale(1); opacity: .62; }
-.faded-amulet-icon { font-size: 23rpx; }
 .sync-indicator { position: fixed; right: 20rpx; bottom: 20rpx; z-index: 100; padding: 10rpx 18rpx; border-radius: 4rpx; background: rgba(31, 39, 35, 0.88); color: #dde2de; font-size: 20rpx; }
 button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity: 0.86; }
 
@@ -1623,7 +1633,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .history-label { display: flex; min-height: 34rpx; align-items: center; color: #84918b; font-size: 25rpx; }
 .history-line > view { min-width: 0; word-break: break-all; }
 .history-section-title { display: flex; padding: 30rpx 0 10rpx; align-items: center; gap: 10rpx; color: #d3b973; font-size: 24rpx; font-weight: 900; }
-.inline-amulet-icon { margin-right: 8rpx; font-size: 23rpx; vertical-align: middle; }
 .history-amulet { display: grid; min-height: 70rpx; padding: 14rpx 0; grid-template-columns: 130rpx minmax(0, 1fr); align-items: center; border-bottom: 1rpx solid #303c37; color: #d8ded9; font-size: 22rpx; }
 .history-amulet > text { color: #84918b; }
 
@@ -1788,3 +1797,37 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .dossier-desc { color: #b9c2bc; font-size: 23rpx; line-height: 1.55; }
 
 @keyframes mission-orb-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* 退伍队长标识：与褪色护身符同样处理——同一张 crown.png 走 CSS 灰度，
+   不另外出图。这样天然保证与在任皇冠同角度同构图。 */
+.retired-badge { right: -2rpx; bottom: -2rpx; background: transparent; filter: grayscale(1); opacity: .55; }
+.faded-crown-icon { width: 26rpx; height: 26rpx; }
+
+/* 投票：两张真实卡面。选中的翻转投出，另一张碎裂消失。
+   用 transition 而非 animation——对局页每 900ms 轮询 setData，
+   带 fill-mode 的 animation 会被反复重启（本项目已踩过两次）。 */
+.vote-cards { display: flex; margin: 24rpx 0 8rpx; justify-content: center; gap: 40rpx; }
+.vote-card { position: relative; width: 208rpx; height: 308rpx; border-radius: 10rpx; overflow: hidden; box-shadow: 0 14rpx 30rpx rgba(0,0,0,.38); transition: transform 520ms cubic-bezier(.4,0,.2,1), opacity 420ms ease; }
+.vote-card-art { display: block; width: 100%; height: 100%; }
+.vote-card.card-locked { filter: grayscale(1); opacity: .32; }
+/* 选中：翻面并向上投递出去 */
+.vote-card.card-cast { transform: translateY(-260rpx) rotateY(180deg) scale(.72); opacity: 0; }
+/* 未选中：原地碎裂消散 */
+.vote-card.card-shatter { transform: scale(.86) rotate(-6deg); opacity: 0; filter: blur(6rpx) saturate(.4); }
+
+/* 圆桌纪录里标出自己那一轮打的牌 */
+.history-mine .mine-vote { padding: 2rpx 14rpx; border: 2rpx solid; border-radius: 4rpx; font-size: 22rpx; font-weight: 700; }
+.history-mine .vote-success { border-color: #4f9a80; color: #8ecdb3; }
+.history-mine .vote-fail { border-color: #c1656b; color: #e09b9e; }
+
+/* 待交付的道具：选人前在桌心放大晃动，选中后飘向该玩家头像。
+   座位坐标本来就是百分比，所以直接过渡 left/top 即可，不需要算像素。
+   用 transition 不用 animation——轮询 setData 会重启带 fill-mode 的动画。 */
+.deliver-token { position: absolute; left: 50%; top: 50%; z-index: 6; transform: translate(-50%, -50%); transition: left 620ms cubic-bezier(.3,0,.2,1), top 620ms cubic-bezier(.3,0,.2,1), opacity 260ms ease 400ms, transform 620ms cubic-bezier(.3,0,.2,1); }
+.deliver-icon { display: block; width: 104rpx; height: 104rpx; filter: drop-shadow(0 8rpx 18rpx rgba(0,0,0,.45)); animation: deliver-wobble 1.7s ease-in-out infinite; }
+.deliver-token.flying { opacity: 0; transform: translate(-50%, -50%) scale(.34); }
+.deliver-token.flying .deliver-icon { animation: none; }
+@keyframes deliver-wobble {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  50% { transform: rotate(7deg) translateY(-12rpx); }
+}

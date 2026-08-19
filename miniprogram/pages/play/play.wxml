@@ -37,7 +37,6 @@
         <button wx:if="{{isHost && identityReadyCount === game.playerCount && !game.identity.revealAt}}" class="launch-action" bindtap="startIdentity">统一揭示身份</button>
       </view>
 
-      <view wx:if="{{identityMode === 'countdown'}}" class="identity-countdown"><view class="countdown-number">{{identityCountdown}}</view><view class="waiting-copy">命运即将显现</view></view>
 
       <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
         <!-- 点击牌背翻牌；两段 scaleX，不用 3D 变换 -->
@@ -115,9 +114,15 @@
     <view wx:if="{{phase === 'vote'}}" class="phase-content">
       <view wx:if="{{myInTeam && !privateView.hasVoted && !myVotePending}}">
         <view class="action-copy">选择一张任务牌。提交后不可更改，其他人只会看到最终票数。</view>
-        <view class="vote-actions">
-          <button class="mission-vote success-vote" data-value="success" bindtap="submitVote" disabled="{{!canVoteSuccess}}">任务成功</button>
-          <button class="mission-vote fail-vote" data-value="fail" bindtap="submitVote" disabled="{{!canVoteFail}}">任务失败</button>
+        <view class="vote-cards {{voteChoice ? 'voted' : ''}}">
+          <view class="vote-card {{voteChoice === 'success' ? 'card-cast' : ''}} {{voteChoice === 'fail' ? 'card-shatter' : ''}} {{canVoteSuccess ? '' : 'card-locked'}}"
+                data-value="success" bindtap="submitVote">
+            <image class="vote-card-art" src="{{missionCardSuccess}}" mode="aspectFill" />
+          </view>
+          <view class="vote-card {{voteChoice === 'fail' ? 'card-cast' : ''}} {{voteChoice === 'success' ? 'card-shatter' : ''}} {{canVoteFail ? '' : 'card-locked'}}"
+                data-value="fail" bindtap="submitVote">
+            <image class="vote-card-art" src="{{missionCardFail}}" mode="aspectFill" />
+          </view>
         </view>
       </view>
       <view wx:else class="submitted-state"><view class="submitted-seal" style="{{sealBg}}">{{myInTeam ? '已' : '候'}}</view><view class="waiting-title">{{myInTeam ? '任务牌已提交' : '本轮未上车'}}</view></view>
@@ -203,7 +208,11 @@
         </view>
         <view style="{{floorBg}}" class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
           <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
-          <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
+          <view wx:if="{{deliverIcon}}" class="deliver-token {{deliverFlying ? 'flying' : ''}}"
+              style="{{deliverFlying ? 'left:' + deliverX + '%;top:' + deliverY + '%;' : ''}}">
+          <image class="deliver-icon" src="{{deliverIcon}}" mode="aspectFit" />
+        </view>
+        <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
             <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
           </view>
         </view>
@@ -224,7 +233,7 @@
         <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
         <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.selected ? 'selected' : ''}} {{item.justSelected ? 'seat-boarding' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}} {{item.id === game.leaderId ? 'leader' : ''}} {{item.id === nextLeaderId ? 'leader-selected' : ''}} {{item.id === nextAmuletId ? 'amulet-selected' : ''}} {{tableMode === 'magic' && item.id === magicTargetId ? 'magic-selected' : ''}} {{tableMode === 'leader' && !item.canLead ? 'seat-disabled' : ''}} {{tableMode === 'amuletOwner' && (!item.canReceiveAmulet || item.id === nextLeaderId) ? 'seat-disabled' : ''}} {{tableMode === 'inspect' && !item.canInspect ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" bindtap="tapSeat">
           <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
-          <view wx:if="{{item.id === game.leaderId || item.id === nextLeaderId}}" class="seat-badge leader-badge"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><view wx:if="{{item.hadAmulet || item.id === nextAmuletId}}" class="seat-badge amulet-badge"><image class="symbol-icon amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view><view wx:if="{{tableMode === 'magic' && item.id === magicTargetId}}" class="seat-badge magic-badge"><image class="symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view wx:if="{{item.fadedAmulet}}" class="seat-badge faded-badge"><image class="symbol-icon faded-amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view>
+          <view wx:if="{{item.id === game.leaderId || item.id === nextLeaderId}}" class="seat-badge leader-badge"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><view wx:if="{{item.hadAmulet || item.id === nextAmuletId}}" class="seat-badge amulet-badge"><image class="symbol-icon amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view><view wx:if="{{tableMode === 'magic' && item.id === magicTargetId}}" class="seat-badge magic-badge"><image class="symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view wx:if="{{item.fadedAmulet}}" class="seat-badge faded-badge"><image class="symbol-icon faded-amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view><view wx:if="{{item.hasLed && item.id !== game.leaderId}}" class="seat-badge retired-badge"><image class="symbol-icon faded-crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view>
         </view>
       </view>
       <view class="sheet-actions {{syncing ? 'sheet-actions-syncing' : ''}}">
@@ -248,6 +257,7 @@
           <view class="history-line"><text>车队</text><view>{{item.team}}</view></view>
           <view class="history-line"><view class="history-label"><image class="symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view>{{item.magic}}</view></view>
           <view class="history-line"><text>任务牌</text><view>{{item.votes}}</view></view>
+          <view wx:if="{{item.myVote}}" class="history-line history-mine"><text>我打出</text><view class="mine-vote vote-{{item.myVoteValue}}">{{item.myVote}}</view></view>
         </view>
         <view wx:if="{{historyAmulets.length}}" class="history-section-title"><image class="symbol-icon amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /><text>护身符记录</text></view>
         <view wx:for="{{historyAmulets}}" wx:key="id" class="history-amulet"><text>第 {{item.round}} 轮前</text><view><image class="symbol-icon inline-amulet-icon" src="{{ui.amulet}}" mode="aspectFit" />{{item.owner}} 查验 {{item.target}}</view></view>
@@ -282,14 +292,6 @@
           </view>
         </view>
 
-        <view wx:if="{{myVotes.length}}" class="dossier-section">
-          <view class="intel-title">我的出牌</view>
-          <view wx:for="{{myVotes}}" wx:key="round" class="dossier-row">
-            <text class="dossier-round">第 {{item.round}} 轮</text>
-            <text class="dossier-main">你打出的任务牌</text>
-            <text class="dossier-tag vote-{{item.value}}">{{item.label}}</text>
-          </view>
-        </view>
 
         <view class="role-guide">
           <view class="guide-title">本局思路</view>
@@ -310,7 +312,7 @@
     <view class="ceremony-ring ring-inner"></view>
     <view class="ceremony-stage">
       <view class="ceremony-sparks"><view></view><view></view><view></view><view></view></view>
-      <view class="ceremony-symbol">{{ceremonySymbol}}</view>
+      <view class="ceremony-symbol"><image wx:if="{{ceremonySymbolImage}}" class="ceremony-symbol-image" src="{{ceremonySymbolImage}}" mode="aspectFit" /><text wx:else>{{ceremonySymbol}}</text></view>
       <view wx:if="{{ceremonyTarget}}" class="ceremony-target">
         <view class="ceremony-avatar">{{ceremonyTarget.initial}}</view>
         <view class="ceremony-target-name">{{ceremonyTarget.id}}号 {{ceremonyTarget.name}}</view>

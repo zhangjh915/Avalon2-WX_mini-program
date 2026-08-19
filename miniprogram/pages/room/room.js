@@ -10,7 +10,7 @@ Page({
     playerName: "",
     isHost: false,
     devMode: false,
-    ui: {}, roundTableBg: "", longTableBg: "",
+    ui: {}, roundTableBg: "", longTableBg: "", floorBg: "",
     mySeatNo: 0,
     seatedCount: 0,
     tableType: "round",

@@ -61,7 +61,11 @@ const LONG_TABLE_SLICES = [
 // 圆桌换图后一片空白就是这么来的。
 //
 // 临时链接默认 2 小时有效，页面 onShow 时重新解析一次即可覆盖长时间对局。
+// 临时链接约 2 小时失效，过期后请求会返回 403（渲染层报 Failed to load image）。
+// 缓存必须带时效，否则 onShow 再解析也永远命中旧值——这个洞真实踩到过。
+const TEMP_URL_TTL = 90 * 60 * 1000
 const tempUrlCache = {}
+const tempUrlAt = {}
 
 function resolveTempUrls(fileIDs) {
   // 云开发不可用时退化成「没有背景图」，不要让整页起不来。
@@ -69,14 +73,18 @@ function resolveTempUrls(fileIDs) {
   if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.getTempFileURL) {
     return Promise.resolve(tempUrlCache)
   }
-  const missing = fileIDs.filter(id => !tempUrlCache[id])
+  const now = Date.now()
+  const missing = fileIDs.filter(id => !tempUrlCache[id] || now - (tempUrlAt[id] || 0) > TEMP_URL_TTL)
   if (!missing.length) return Promise.resolve(tempUrlCache)
   return new Promise(resolve => {
     wx.cloud.getTempFileURL({
       fileList: missing,
       success: res => {
         (res.fileList || []).forEach(item => {
-          if (item.tempFileURL) tempUrlCache[item.fileID] = item.tempFileURL
+          if (item.tempFileURL) {
+            tempUrlCache[item.fileID] = item.tempFileURL
+            tempUrlAt[item.fileID] = Date.now()
+          }
         })
         resolve(tempUrlCache)
       },

@@ -27,7 +27,7 @@
     <view class="section-head"><view class="section-kicker">五次远征</view><view class="section-title">任务档案</view></view>
     <view class="mission-archive">
       <view wx:for="{{missionLines}}" wx:key="round" class="archive-row">
-        <view class="archive-orb {{item.winner === 'good' ? 'archive-good' : 'archive-evil'}}">{{item.winner === 'good' ? '成' : '败'}}</view>
+        <image class="archive-orb" src="{{item.crest}}" mode="aspectFit" />
         <view class="archive-copy"><view class="archive-title">{{item.title}}</view><view class="archive-detail">{{item.detail}}</view></view>
       </view>
     </view>

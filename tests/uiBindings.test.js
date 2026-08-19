@@ -30,7 +30,8 @@ assert.strictEqual((indexWxml.match(/class="modal-close"/g) || []).length, 5, "a
 assert.strictEqual((playWxml.match(/class="modal-close"/g) || []).length, 3, "play full-screen pages need the shared close control")
 assert.match(playWxml, /bindtap="openDossier"/, "对局中需要能随时打开我的密录")
 assert.match(playWxml, /myInspections/, "我的密录需要展示自己的查验记录")
-assert.match(playWxml, /myVotes/, "我的密录需要展示自己的出牌记录")
+// 自己的出牌并进圆桌纪录里对应轮次，不再单独占一块（原来分散在密录里太割裂）
+assert.match(playWxml, /history-mine/, "圆桌纪录里要标出自己那一轮打的牌")
 assert.ok(!/创建圆桌|设置本局的圆桌/.test(indexWxml), "creation copy must support long and round tables")
 assert.match(indexWxml, />创建房间</, "creation action should use neutral room wording")
 assert.match(indexWxss, /\.create-sheet\s*\{[^}]*height:\s*100%/, "creation setup must occupy the full screen")

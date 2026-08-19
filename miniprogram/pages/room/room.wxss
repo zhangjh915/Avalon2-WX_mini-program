@@ -56,7 +56,7 @@ page { height: 100%; overflow: hidden; background: #f4eee4; }
 .section-row { flex: none; align-items: baseline; margin-bottom: 10rpx; }
 .section-row .section-title { margin: 0; font-size: 27rpx; }
 .section-meta { color: #7c7164; font-size: 20rpx; text-align: right; }
-.lobby-table-stage { align-self: center; border-color: #cdbda7; border-radius: 8rpx; background: #e7d6ba; }
+.lobby-table-stage { align-self: center; border-color: #cdbda7; border-radius: 8rpx; background-position: center; background-size: cover; }
 .lobby-table-stage.round-seat-stage { width: 620rpx; height: 620rpx; min-height: 620rpx; flex: none; }
 .lobby-table-stage.long-seat-stage { width: 100%; height: 100%; min-height: 0; flex: 1; }
 

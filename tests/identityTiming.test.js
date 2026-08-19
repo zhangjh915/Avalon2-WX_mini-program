@@ -57,10 +57,13 @@ const done = makeCtx({ flipped: true, sinceReveal: 90000, flippedAt: Date.now() 
 done.updateClock()
 assert.strictEqual(done.data.identityMode, "remember", "读满时间后应进入确认阶段")
 
-// 揭示前仍然是倒数阶段
+// 揭示前不再做 3-2-1 倒数：牌本来就要手动翻，等待感由牌背自己承担。
+// 直接停在 reading 等玩家点，不会出现"还没到点却已经能翻"的问题，
+// 因为服务端 closeAt 只影响计时上限，翻牌与否由本人决定。
 const before = makeCtx({ flipped: false, sinceReveal: -2000 })
 before.updateClock()
-assert.strictEqual(before.data.identityMode, "countdown")
+assert.strictEqual(before.data.identityMode, "reading")
+assert.strictEqual(before.data.roleVisible, false, "揭示前不能暴露身份")
 
 delete global.wx
 console.log("identity timing tests passed")

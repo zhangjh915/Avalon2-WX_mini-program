@@ -38,14 +38,15 @@ Page({
     canOperateHunter: false,
     finalClock: "5:00", lastMission: null, myInTeam: false,
     canVoteSuccess: false, canVoteFail: false, canClaimGood: false, canClaimEvil: false,
-    hunterVoteValue: "", traitorSide: "", traitorTargets: [],
+    hunterVoteValue: "", traitorSide: "", traitorTargets: [], voteChoice: "",
+    deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50,
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "",
     ui: {}, roundTableBg: "", longTableBg: "", floorBg: "", sealBg: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
-    ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
+    ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonySymbolImage: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
   },
 
@@ -55,6 +56,7 @@ Page({
   bannerTimer: null,
   nightTimer: null,
   selectionTimer: null,
+  deliverTimer: null,
   ceremonyQueue: [],
   loading: false,
   stateGeneration: 0,
@@ -102,6 +104,7 @@ Page({
     if (this.bannerTimer) clearTimeout(this.bannerTimer)
     if (this.nightTimer) clearTimeout(this.nightTimer)
     if (this.selectionTimer) clearTimeout(this.selectionTimer)
+    if (this.deliverTimer) clearTimeout(this.deliverTimer)
   },
 
   loadState(showError) {
@@ -177,7 +180,7 @@ Page({
     const nightStep = Math.min(this.data.nightStep, Math.max(nightCeremony.length - 1, 0))
     const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
-    const history = this.buildGameHistory(game, decoratedPlayers)
+    const history = this.buildGameHistory(game, decoratedPlayers, dossier.myVotes)
     const dossier = this.buildDossier(privateView, decoratedPlayers)
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
@@ -247,6 +250,7 @@ Page({
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
+    if (phaseChanged) this.setData({ voteChoice: "" })
     if (phaseChanged && room.phase !== "reveal") {
       this.identityFlippedAt = 0
       this.setData({ cardFlipped: false })
@@ -266,14 +270,16 @@ Page({
       const finalMission = game.missions && game.missions[game.missions.length - 1]
       if (finalMission) events.push({
         type: finalMission.winner === "good" ? "mission-good" : "mission-evil",
-        symbol: finalMission.winner === "good" ? "成" : "败",
+        symbol: "",
+        symbolImage: assets.uiAsset(finalMission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
         title: `第 ${finalMission.round} 次远征${finalMission.winner === "good" ? "成功" : "失败"}`,
         subtitle: `成功 ${finalMission.successCount} 票 · 失败 ${finalMission.failCount} 票`,
         target: null
       })
       events.push({
         type: goodReachedThree ? "finale-good" : "finale-evil",
-        symbol: goodReachedThree ? "光" : "影",
+        symbol: "",
+        symbolImage: assets.uiAsset(goodReachedThree ? "crest-good.png" : "crest-evil.png"),
         title: goodReachedThree ? "圣杯三度告捷" : "黑暗三度得手",
         subtitle: "常规远征结束，最终审判开启",
         target: null
@@ -283,7 +289,7 @@ Page({
     if (previousFinalStage !== "hunterTargets" && finalStage === "hunterTargets" && game.final.hunterRevealed) {
       const hunter = players.find(player => player.revealed) || null
       events.push({
-        type: "hunter", symbol: "杀", title: "盲眼杀手现身",
+        type: "hunter", symbol: "", symbolImage: assets.uiAsset("crest-evil.png"), title: "盲眼杀手现身",
         subtitle: hunter ? `${hunter.id}号 ${hunter.name} 发动最后猎杀` : "圆桌禁止交谈，等待最后猎杀",
         target: hunter
       })
@@ -479,7 +485,9 @@ Page({
     return { myInspections, myVotes }
   },
 
-  buildGameHistory(game, players) {
+  buildGameHistory(game, players, myVotes) {
+    const mine = {}
+    ;(myVotes || []).forEach(item => { mine[item.round] = item })
     const byId = id => players.find(player => Number(player.id) === Number(id))
     const playerLabel = id => {
       const player = byId(id)
@@ -492,7 +500,10 @@ Page({
       magic: playerLabel(mission.magicTargetId),
       result: mission.winner === "good" ? "远征成功" : "远征失败",
       resultClass: mission.winner === "good" ? "good" : "evil",
-      votes: `成功 ${mission.successCount} · 失败 ${mission.failCount}`
+      votes: `成功 ${mission.successCount} · 失败 ${mission.failCount}`,
+      // 自己那一轮打的牌直接标在该轮里，不再单独开一块（原来在密录里，太割裂）
+      myVote: mine[mission.round] ? mine[mission.round].label : "",
+      myVoteValue: mine[mission.round] ? mine[mission.round].value : ""
     }))
     const amulets = (game.amuletHistory || []).map((item, index) => ({
       id: `${item.round}-${index}`,
@@ -518,8 +529,9 @@ Page({
       let readingHint = ""
       if (identity.revealAt) {
         if (now < identity.revealAt) {
-          identityMode = "countdown"
-          identityCountdown = Math.max(1, Math.ceil((identity.revealAt - now) / 1000))
+          // 不再做 3-2-1 倒计时：牌本来就要手动翻，等待感由牌背自己承担
+          identityMode = "reading"
+          readingHint = "翻开后开始计时"
         } else if (!this.data.cardFlipped) {
           // 还没翻牌就一直停在这一步，牌始终可点
           identityMode = "reading"
@@ -600,7 +612,11 @@ Page({
       leader: "已担任队长或曾持护身符者不可接任", amuletOwner: "不可与新队长为同一人",
       inspect: "不可查验持符者、曾持符者或已被查验者", final: "每位玩家私密选择两人"
     }
-    this.setData({ tableVisible: true, tableMode: mode, tableTitle: titles[mode], tableHint: hints[mode] || "查看本局玩家" })
+    this.setData({
+      tableVisible: true, tableMode: mode, tableTitle: titles[mode], tableHint: hints[mode] || "查看本局玩家",
+      // 单目标交付的模式才亮出道具；组队模式没有道具
+      deliverIcon: this.deliverIconFor(mode), deliverFlying: false
+    })
   },
 
   openHistory() { this.setData({ historyVisible: true }) },
@@ -619,6 +635,7 @@ Page({
   closeDossier() { this.setData({ dossierVisible: false }) },
 
   closeTable() {
+    this.setData({ deliverIcon: "", deliverFlying: false })
     if (this.data.syncing) return
     this.setData({ tableVisible: false })
   },
@@ -631,7 +648,28 @@ Page({
     return privateView.finalSubmitted ? "" : "identify"
   },
 
+  // 待交付的道具：皇冠/护身符/火球。组队模式没有道具，返回空串即不渲染。
+  // 选中后道具飘向该玩家的头像位置；座位坐标本来就是百分比，直接过渡 left/top
+  flyDeliverTo(event) {
+    if (!this.data.deliverIcon || this.data.deliverFlying) return
+    const id = Number(event.currentTarget.dataset.id)
+    const seat = this.data.decoratedPlayers.find(player => Number(player.id) === id)
+    if (!seat) return
+    this.setData({ deliverFlying: true, deliverX: seat.x, deliverY: seat.y })
+    if (this.deliverTimer) clearTimeout(this.deliverTimer)
+    this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
+  },
+
+  deliverIconFor(mode) {
+    const icons = this.data.ui || {}
+    if (mode === "leader") return icons.crown || ""
+    if (mode === "amuletOwner") return icons.amulet || ""
+    if (mode === "magic") return icons.fire || ""
+    return ""
+  },
+
   tapSeat(event) {
+    this.flyDeliverTo(event)
     const id = Number(event.currentTarget.dataset.id)
     const player = this.data.decoratedPlayers.find(item => item.id === id)
     const mode = event.currentTarget.dataset.mode || this.data.tableMode
@@ -707,6 +745,13 @@ Page({
   },
 
   submitVote(event) {
+    // 先本地标记，让选中的牌翻转投出、另一张碎裂——不等服务端往返
+    const picked = event.currentTarget.dataset.value
+    if (this.data.voteChoice) return
+    if (picked === "success" && !this.data.canVoteSuccess) return
+    if (picked === "fail" && !this.data.canVoteFail) return
+    this.setData({ voteChoice: picked })
+    this.vibrate("medium")
     if (this.data.privateView.hasVoted || this.data.myVotePending) return
     this.setData({ myVotePending: true })
     this.sendAction("submitVote", { value: event.currentTarget.dataset.value }, { myVotePending: false })

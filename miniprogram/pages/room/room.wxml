@@ -15,7 +15,7 @@
 
   <view class="lobby-section table-section">
     <view class="section-row"><view class="section-title">选择座位</view><view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view></view>
-    <view class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
+    <view style="{{floorBg}}" class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
       <view class="{{tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}">
         <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
       </view>

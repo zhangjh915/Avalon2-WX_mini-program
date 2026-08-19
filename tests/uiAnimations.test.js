@@ -94,6 +94,8 @@ const teamContext = {
   selectionTimer: null,
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
+  flyDeliverTo: definition.flyDeliverTo,
+  deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
 definition.tapSeat.call(teamContext, { currentTarget: { dataset: { id: 2 } } })
@@ -116,6 +118,8 @@ const finalContext = {
   },
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
+  flyDeliverTo: definition.flyDeliverTo,
+  deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
 definition.tapSeat.call(finalContext, { currentTarget: { dataset: { id: 1, mode: "final" } } })
@@ -174,6 +178,29 @@ assert.match(cardRules, /\.mission-card-front[^\n]*--flip-delay[^\n]*\+ 540ms/, 
 
 const playWxmlFlip = fs2.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "play", "play.wxml"), "utf8")
 assert.match(playWxmlFlip, /--flip-delay: \{\{item\.delay\}\}ms/, "逐张延迟需要通过 CSS 变量传给两面")
+
+// 道具交付：选中后飘向该玩家的座位坐标；组队模式没有道具，不该触发
+const deliverCtx = {
+  data: {
+    ui: { crown: "cloud://crown", amulet: "cloud://amulet", fire: "cloud://fire" },
+    deliverIcon: "cloud://crown", deliverFlying: false, deliverX: 50, deliverY: 50,
+    decoratedPlayers: [{ id: 2, x: 18, y: 72 }]
+  },
+  setData(v) { Object.assign(this.data, v) },
+  flyDeliverTo: definition.flyDeliverTo,
+  deliverIconFor: definition.deliverIconFor
+}
+deliverCtx.flyDeliverTo({ currentTarget: { dataset: { id: 2 } } })
+assert.strictEqual(deliverCtx.data.deliverFlying, true, "选中后道具应开始飞行")
+assert.strictEqual(deliverCtx.data.deliverX, 18, "应飞向该座位的横坐标")
+assert.strictEqual(deliverCtx.data.deliverY, 72, "应飞向该座位的纵坐标")
+clearTimeout(deliverCtx.deliverTimer)
+
+// 三种单目标模式各自对应一件道具，组队模式没有
+assert.strictEqual(deliverCtx.deliverIconFor("leader"), "cloud://crown")
+assert.strictEqual(deliverCtx.deliverIconFor("amuletOwner"), "cloud://amulet")
+assert.strictEqual(deliverCtx.deliverIconFor("magic"), "cloud://fire")
+assert.strictEqual(deliverCtx.deliverIconFor("team"), "", "组队模式没有待交付道具")
 
 delete global.Page
 delete global.wx

@@ -36,9 +36,7 @@ button::after { border: 0; }
 .record-copy { color: #d7d2c8; font-size: 26rpx; line-height: 1.75; }
 .archive-row { display: flex; align-items: flex-start; gap: 18rpx; padding: 18rpx 0; border-bottom: 2rpx solid #27322e; }
 .archive-row:last-child { border-bottom: 0; }
-.archive-orb { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 62rpx; height: 62rpx; border-radius: 50%; color: #fff; font-size: 21rpx; font-weight: 900; }
-.archive-good { background: #28735e; }
-.archive-evil { background: #8c3c43; }
+.archive-orb { display: block; flex: 0 0 auto; width: 62rpx; height: 62rpx; }
 .archive-copy { min-width: 0; }
 .archive-title { font-size: 26rpx; font-weight: 800; }
 .archive-detail { margin-top: 7rpx; color: #98a59f; font-size: 22rpx; line-height: 1.55; }
