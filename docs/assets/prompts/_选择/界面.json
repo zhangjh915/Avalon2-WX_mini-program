@@ -7,8 +7,16 @@
   "table_emblem": 3,
   "table_round_ornate": 3,
   "table_long_ornate": 2,
-  "_待定": ["floor", "home_bg"],
+  "floor_carpet": 1,
+  "home_bg": 1,
   "_不生成": {
-    "amulet_faded": "只在 play.wxml:227 一处用，23rpx=34px，裂纹画不出来；CSS grayscale(1)+opacity .62 已足够，且天然保证同角度同构图"
-  }
+    "amulet_faded": "已确认：走 CSS filter: grayscale(1) + opacity .62。只在 play.wxml:227 一处渲染，23rpx = 34 物理像素，宝石裂纹和包边缺口在这个尺寸上画不出来，最终只剩「灰圈灰心」的色块印象；而 CSS 灰度天然保证与完好版同角度同构图。若以后界面给护身符加了大尺寸展示位，再拿 amulet_2 当参考图补出破损版。",
+    "table_round_plain / table_long_plain": "选了华丽版",
+    "floor_marble": "选了绒毯",
+    "mission_orb 待打/当前轮": "保留现有 CSS 圆点（深灰绿 / 浅金），只有成功和失败换成阵营队徽"
+  },
+  "emblems_首页徽标": 3,
+  "emblems_状态印底": 2,
+  "crest_v3_bearer": 2,
+  "_队徽说明": "第四轮 V3 环抱大符号 第2张。正义=鹰翼环抱圣杯，邪恶=蛇身盘环嵌宝石。阵营色由队徽自己承载（绿/红主导），所以落地时底必须改中性深色，见手册第 9 节第 12、13 条。抠图只去掉外部背景，鹰翼之间与蛇环中心的黑色是纹章底色，保留——代价是这份资产绑定深色底，放到浅色处会露出黑块。落地时按原始轮廓直接摆放，不要裁成圆形也不要外加圆框。"
 }

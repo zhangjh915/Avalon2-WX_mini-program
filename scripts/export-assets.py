@@ -109,3 +109,78 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ---- 界面资产（图标 / 场景）----
+# 尺寸 = 该资产在界面上的最大用途 × DPR3，留一点余量。改尺寸前先回 wxss 查，别拍脑袋。
+#
+# 格式怎么选：**只有轮廓不规则的才用 PNG**。
+#   圆桌实测填充率 78.0%（完美圆内切正方形是 78.5%）——它就是个干净的圆，
+#   用 JPEG + CSS border-radius:50% 裁，512px 从 472KB 降到 51KB，省 9 倍。
+#   长桌的边条和中心全不透明像素占 97-100%，同样走 JPEG；只有四个圆角需要 alpha。
+ICONS = {   # 轮廓不规则，必须 PNG 带 alpha
+    "crown.png":            (96,  ".handoff-preview-symbol 48rpx = 24pt"),
+    "amulet.png":           (224, ".amulet-emblem 140rpx = 70pt"),
+    "magic-fire.png":       (224, "座位角标只要 17pt，留给分配时的摆动动画"),
+    "table-emblem.png":     (192, ".table-emblem 116rpx = 58pt"),
+    "crest-good.png":       (240, ".verdict-mark 144rpx = 72pt，同时用于 .mission-orb"),
+    "crest-evil.png":       (240, "同上"),
+    "home-emblem.png":      (160, ".home-emblem 94rpx = 47pt"),
+    "seal-base.png":        (208, ".submitted-seal / .sigil-placeholder 112-126rpx"),
+    "mission-pending.png":  (128, ".mission-orb 68rpx = 34pt"),
+    "mission-current.png":  (128, "同上"),
+}
+SCENES = {  # 矩形或可用 CSS 裁形，走 JPEG
+    "table-round.jpg": ((512, 512),   84, ".round-table 330rpx=165pt，CSS border-radius:50% 裁圆"),
+    "floor.jpg":       ((1080, 1080), 78, ".compact-table-stage 约 351x295pt，cover 铺"),
+    "home-bg.jpg":     ((750, 1624),  76, "首页整屏。低对比木纹，@2x 足够，@3x 白白多一倍体积"),
+}
+SLICE_OUT = 72          # 切角/边条在界面上渲染的物理像素
+
+
+def export_png(src, out, side):
+    out.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.open(src).convert("RGBA")
+    k = side / max(im.size)
+    im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))),
+              Image.LANCZOS).save(out, optimize=True)
+    return out.stat().st_size
+
+
+def export_ui():
+    src = GEN / "界面/_定稿"
+    rows, total = [], 0
+    for name, (side, why) in ICONS.items():
+        f = src / name
+        if not f.exists():
+            print("  ! 缺 " + name); continue
+        n = export_png(f, DST / "ui" / name, side); total += n
+        rows.append(("ui/" + name, "%dpx" % side, n, why))
+    for name, (size, q, why) in SCENES.items():
+        f = src / (name[:-4] + (".png" if name.startswith("table-round") else ".jpeg"))
+        n = export(f, DST / "ui" / name, size, q=q); total += n
+        rows.append(("ui/" + name, "x".join(map(str, size)), n, why))
+    for f in sorted((src / "table-long-9slice").glob("*.png")):
+        if f.stem.startswith("_"):
+            continue                      # _九宫格预览 是验收图，不是资产
+        im = Image.open(f).convert("RGBA")
+        if f.stem.startswith("corner"):
+            n = export_png(f, DST / "ui/table-long" / f.name, SLICE_OUT)
+            rows.append(("ui/table-long/" + f.name, "%dpx" % SLICE_OUT, n, "圆角，需要 alpha"))
+        else:
+            # 边条只把「厚度」那一轴缩到 SLICE_OUT，长度按比例——它要沿另一轴平铺
+            horiz = f.stem in ("edge_top", "edge_bottom")
+            k = SLICE_OUT / (im.height if horiz else im.width)
+            if f.stem == "center":
+                sz = (512, 256)
+            else:
+                sz = (max(1, round(im.width * k)), max(1, round(im.height * k)))
+            n = export(f, DST / "ui/table-long" / (f.stem + ".jpg"), sz, q=82)
+            rows.append(("ui/table-long/%s.jpg" % f.stem, "x".join(map(str, sz)), n,
+                         "全不透明，JPEG 即可"))
+        total += n
+    w = max(len(r[0]) for r in rows)
+    for path, size, n, why in rows:
+        print("  %-*s %-11s %7.1f KB   %s" % (w, path, size, n / 1024, why))
+    print("\n界面资产合计 %.2f MB" % (total / 1024 / 1024))
+    return total

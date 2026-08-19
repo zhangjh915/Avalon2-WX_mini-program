@@ -17,6 +17,7 @@ import os
 import pathlib
 import sys
 import threading
+import time
 import tomllib
 import urllib.error
 import urllib.request
@@ -51,26 +52,38 @@ def load_group(name):
     return items, path
 
 
+# 实测会偶发 "Remote end closed connection without response"——纯瞬时网络抖动，
+# 重试一次就好。不重试的话一批 6 张能丢 3 张（内容审核类错误不会重试，见下）
+RETRIES = 2
+
+
 def request(prompt, size, key):
     body = {"model": MODEL, "prompt": prompt, "size": size, "stream": False,
             "response_format": "url", "watermark": False}
-    req = urllib.request.Request(
-        ENDPOINT, data=json.dumps(body, ensure_ascii=False).encode(),
-        headers={"Content-Type": "application/json",
-                 "Authorization": "Bearer " + key}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=900) as r:
-            return json.loads(r.read().decode())
-    except urllib.error.HTTPError as e:
+    last = None
+    for attempt in range(RETRIES + 1):
+        req = urllib.request.Request(
+            ENDPOINT, data=json.dumps(body, ensure_ascii=False).encode(),
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer " + key}, method="POST")
         try:
-            return json.loads(e.read().decode())
-        except Exception:
-            return {"error": {"message": "HTTP %d" % e.code}}
-    except Exception as e:
-        return {"error": {"message": str(e)}}
+            with urllib.request.urlopen(req, timeout=900) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            # 接口明确回了内容（比如内容审核拦截），重试没有意义
+            try:
+                return json.loads(e.read().decode())
+            except Exception:
+                last = {"error": {"message": "HTTP %d" % e.code}}
+        except Exception as e:
+            last = {"error": {"message": str(e)}}
+        if attempt < RETRIES:
+            time.sleep(3 * (attempt + 1))
+    return last
 
 
 def job(task, group, key):
+    """-> 成功返回单价，失败返回 0。花费按实际落盘的张数算，不按计划张数。"""
     item_key, label, size, prompt, draw = task
     out = BASE / group / ("%s_%d.jpeg" % (item_key, draw))
     tag = "%s 第%d张" % (label, draw)
@@ -81,7 +94,7 @@ def job(task, group, key):
             print("X %s -- %s" % (tag, str(data["error"].get("message", ""))[:130]))
         if PROG:
             PROG.tick(tag + " 失败", ok=False)
-        return
+        return 0.0
     out.parent.mkdir(parents=True, exist_ok=True)
     try:
         save_verified(data["data"][0]["url"], out)
@@ -90,11 +103,12 @@ def job(task, group, key):
             print("X %s -- %s" % (tag, e))
         if PROG:
             PROG.tick(tag + " 下载损坏", ok=False)
-        return
+        return 0.0
     with lock:
         print("OK %s" % tag)
     if PROG:
         PROG.tick(tag)
+    return price_of(size)
 
 
 def main():
@@ -147,9 +161,12 @@ def main():
     # 各条尺寸可能不同，进度条的单价按第一条算，总预算上面已经精确打印过
     PROG = Progress("界面：" + "、".join(groups), len(tasks), tasks[0][1][2])
     with ThreadPoolExecutor(max_workers=CONC) as pool:
-        list(pool.map(lambda t: job(t[1], t[0], key), tasks))
+        spent = sum(pool.map(lambda t: job(t[1], t[0], key), tasks))
     PROG.done()
-    print("\n实际花费约 %.2f 元" % budget)
+    print("\n成功 %d/%d 张 ｜ 实际花费约 %.2f 元（计划 %.2f）"
+          % (round(spent / price_of(tasks[0][1][2])), len(tasks), spent, budget))
+    if spent < budget - 1e-6:      # 浮点累加，别用 < 直接比
+        print("失败的重跑同一条命令即可，已落盘的会跳过")
 
 
 if __name__ == "__main__":

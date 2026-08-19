@@ -154,7 +154,7 @@ def emblem(st, key):
     st.alpha_composite(e, (STAGE[0] // 2 - e.width // 2, STAGE[1] // 2 - e.height // 2))
 
 
-def stage_round(key, floor_key="floor_2", emb="table_emblem_1"):
+def stage_round(key, floor_key="floor_carpet_1", emb="table_emblem_3"):
     st = stage_base(floor_key)
     t = fit(Image.open(SCE / (key + ".png")).convert("RGBA"), R(330))
     cx, cy = STAGE[0] // 2, STAGE[1] // 2
@@ -168,7 +168,7 @@ def stage_round(key, floor_key="floor_2", emb="table_emblem_1"):
     return st.convert("RGB")
 
 
-def stage_long(key, wpct=68, hpct=28, floor_key="floor_2", emb="table_emblem_1"):
+def stage_long(key, wpct=68, hpct=28, floor_key="floor_carpet_1", emb="table_emblem_3"):
     st = stage_base(floor_key)
     src = Image.open(SCE / (key + ".png")).convert("RGBA")
     box = src.getchannel("A").point(lambda v: 255 if v > 8 else 0).getbbox()
@@ -196,20 +196,17 @@ def sheet_tables(kind):
     sub = ("圆桌固定 330×330rpx，整张出图" if kind == "round"
            else "切九宫格后按 68×28（最扁那档）合成，同一套切片覆盖全部 30 种比例")
     return grid(cells, 3, w, h, "%s · 六选一" % ("圆桌" if kind == "round" else "长桌"),
-                sub + "。地面用 floor_2、纹章用 table_emblem_1，缩至 %d px 展示" % 640)
+                sub + "。地面用 floor_carpet_1、纹章用 table_emblem_3，缩至 %d px 展示" % 640)
 
 
 # ---------- 底纹 ----------
 def sheet_bg():
     cells = []
-    for n in (1, 2, 3):
-        f = RAW / ("floor_%d.jpeg" % n)
-        if f.exists():
-            cells.append(("地面 floor_%d" % n, cover(Image.open(f).convert("RGB"), 460, 386)))
-    for n in (1, 2, 3):
-        f = RAW / ("home_bg_%d.jpeg" % n)
-        if f.exists():
-            cells.append(("首页 home_bg_%d" % n, cover(Image.open(f).convert("RGB"), 460, 386)))
+    for key, lab in (("floor_carpet", "绒毯"), ("floor_marble", "大理石"), ("home_bg", "首页橡木")):
+        for n in (1, 2, 3):
+            f = RAW / ("%s_%d.jpeg" % (key, n))
+            if f.exists():
+                cells.append(("%s %d" % (lab, n), cover(Image.open(f).convert("RGB"), 460, 386)))
     return grid(cells, 3, 460, 386, "地面与首页底纹 · 各三选一",
                 "按容器比例 cover 裁切。地面垫在牌桌下，首页是浅色主题、和其余深色资产不同套")
 
