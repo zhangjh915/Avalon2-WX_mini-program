@@ -64,4 +64,46 @@ assert.ok(ignored.includes("assets/roles"), "assets/roles 必须排除出包体"
 assert.ok(ignored.includes("assets/cards/identity"), "assets/cards/identity 必须排除出包体")
 assert.ok(!ignored.some(v => v.startsWith("assets/cards/mission")), "任务牌必须留在包里")
 
+// ---- 界面图标与场景 ----
+
+// 全部走云存储：包内绝对路径取不到（assets/ui 已排除出包体）
+assert.ok(assets.uiAsset("crown.png").startsWith("cloud://"))
+assert.strictEqual(assets.uiAsset("crown.png"), assets.CLOUD_PREFIX + "assets/ui/crown.png")
+
+// applyState 一次性下发的图标集，键名与界面绑定一一对应
+const icons = assets.uiIcons()
+;["crown", "amulet", "fire", "tableEmblem", "crestGood", "crestEvil",
+  "missionPending", "missionCurrent", "seal"].forEach(key => {
+  assert.ok(icons[key] && icons[key].startsWith("cloud://"), `图标 ${key} 缺失`)
+})
+
+// 长桌九宫格：层序即数组顺序，角在最上、中心垫底，重排会让角被中心盖住
+assert.strictEqual(assets.LONG_TABLE_SLICES.length, 9)
+assert.strictEqual(assets.LONG_TABLE_SLICES[0][0], "corner_tl.png", "角块必须排在最前（最上层）")
+assert.strictEqual(assets.LONG_TABLE_SLICES[8][0], "center.jpg", "中心必须排在最后（垫底）")
+const bg = assets.longTableBackground()
+assert.ok(bg.startsWith("background:"), "要能直接内联到 style")
+assert.strictEqual(bg.split("url(").length - 1, 9, "九个图层缺一不可")
+assert.ok(bg.indexOf("repeat-x") > 0 && bg.indexOf("repeat-y") > 0, "边条必须单轴平铺")
+
+assert.ok(assets.backgroundImage("floor.jpg").startsWith("background-image:url(cloud://"))
+
+// ---- 云端文件必须真实存在（本地那份是上传中转，两者应一致）----
+const UI_DIR = path.join(__dirname, "..", "miniprogram", "assets", "ui")
+if (fs.existsSync(UI_DIR)) {
+  Object.keys(icons).forEach(key => {
+    const name = icons[key].slice((assets.CLOUD_PREFIX + "assets/ui/").length)
+    assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
+  })
+  assets.LONG_TABLE_SLICES.forEach(slice => {
+    assert.ok(fs.existsSync(path.join(UI_DIR, "table-long", slice[0])), `缺少长桌切片 ${slice[0]}`)
+  })
+  ;["table-round.jpg", "floor.jpg", "home-bg.jpg", "home-emblem.png"].forEach(name => {
+    assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
+  })
+}
+
+// ---- 界面资产必须排除出包体，否则 1.1MB 会挤占 2MB 主包 ----
+assert.ok(ignored.includes("assets/ui"), "assets/ui 必须排除出包体")
+
 console.log("asset path tests passed")

@@ -114,7 +114,7 @@
 }
 .home-brand { display: flex; min-height: 240rpx; flex-direction: column; align-items: center; justify-content: center; }
 .home-brand .title { margin: 18rpx 0 0; font-size: 48rpx; }
-.home-emblem { display: flex; width: 94rpx; height: 94rpx; align-items: center; justify-content: center; border: 3rpx solid #8a633b; border-radius: 50%; background: #765033; color: #f4d996; font-size: 38rpx; font-weight: 900; box-shadow: 0 10rpx 24rpx rgba(73,48,28,.18); }
+.home-emblem { display: block; width: 94rpx; height: 94rpx; }
 .identity-panel { margin-bottom: 18rpx; }
 .home-actions { display: grid; gap: 14rpx; }
 .home-command { display: flex; min-height: 118rpx; padding: 20rpx; align-items: center; border: 2rpx solid #d5c6b2; border-radius: 8rpx; background: #fffaf1; box-sizing: border-box; }

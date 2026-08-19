@@ -1,6 +1,7 @@
 const gameUtil = require("../../utils/game")
 const { pickLine } = require("../../data/ttsLines")
 const roomStore = require("../../utils/roomStore")
+const assets = require("../../utils/assets")
 
 Page({
   data: {
@@ -9,7 +10,8 @@ Page({
     report: "",
     missionLines: [],
     players: [],
-    finalLine: ""
+    finalLine: "",
+    verdictCrest: ""
   },
 
   onLoad(options) {
@@ -44,7 +46,8 @@ Page({
     })
     const finalLine = this.buildFinalLine(game)
     const report = `本局由${winnerName}取得最终胜利，任务比分为正义 ${game.goodWins} 比邪恶 ${game.evilWins}。${finalLine}`
-    this.setData({ game, winnerName, missionLines, players, report, finalLine, hostLine: pickLine("ending", game.missions.length) })
+    this.setData({ game, winnerName, missionLines, players, report, finalLine,
+      verdictCrest: assets.uiAsset(game.winner === "good" ? "crest-good.png" : "crest-evil.png"), hostLine: pickLine("ending", game.missions.length) })
   },
 
   buildFinalLine(game) {

@@ -43,6 +43,7 @@ Page({
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "",
+    ui: {}, roundTableBg: "", longTableBg: "", floorBg: "", sealBg: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -228,6 +229,12 @@ Page({
       waitingHint,
       myRoleArt,
       identityBackArt: assets.identityBack(roleSkin),
+      ui: assets.uiIcons(),
+      // 云存储的图 wxss 里写不了 fileID，只能在 js 拼好内联到 style
+      roundTableBg: assets.backgroundImage("table-round.jpg"),
+      longTableBg: assets.longTableBackground(),
+      floorBg: assets.backgroundImage("floor.jpg"),
+      sealBg: assets.backgroundImage("seal-base.png"),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
       missionCardFail: assets.missionCard(missionSkin, "fail"),
@@ -373,6 +380,10 @@ Page({
       return {
         round, size,
         state: mission ? (mission.winner === "good" ? "success" : "fail") : (round === game.round ? "current" : "future"),
+        // 四态各是一张完整图标（自带圆形外观），不再靠 CSS 圆框 + 汉字
+        icon: mission
+          ? (mission.winner === "good" ? assets.uiAsset("crest-good.png") : assets.uiAsset("crest-evil.png"))
+          : (round === game.round ? assets.uiAsset("mission-current.png") : assets.uiAsset("mission-pending.png")),
         label: mission ? (mission.winner === "good" ? "成" : "败") : String(round),
         protected: game.missionPreset.protectedRounds.indexOf(round) >= 0
       }

@@ -1,6 +1,6 @@
-<view class="page">
+<view class="page" style="{{homeBg}}">
   <view class="home-brand">
-    <view class="home-emblem">杯</view>
+    <image class="home-emblem" src="{{homeEmblem}}" mode="aspectFit" />
     <view class="title">圆桌秘闻</view>
   </view>
 

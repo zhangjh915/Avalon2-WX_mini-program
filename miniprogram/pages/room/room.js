@@ -1,6 +1,7 @@
 const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
+const assets = require("../../utils/assets")
 
 Page({
   data: {
@@ -9,6 +10,7 @@ Page({
     playerName: "",
     isHost: false,
     devMode: false,
+    ui: {}, roundTableBg: "", longTableBg: "",
     mySeatNo: 0,
     seatedCount: 0,
     tableType: "round",
@@ -134,6 +136,9 @@ Page({
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
       isHost: !!result.isHost,
+      ui: assets.uiIcons(),
+      roundTableBg: assets.backgroundImage("table-round.jpg"),
+      longTableBg: assets.longTableBackground(),
       // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验
       devMode: !!room.devMode,
       mySeatNo: mySeat ? mySeat.seatNo : 0,

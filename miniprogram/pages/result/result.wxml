@@ -1,7 +1,7 @@
 <view class="result-page" wx:if="{{game}}">
   <view class="verdict {{game.winner === 'good' ? 'good-verdict' : 'evil-verdict'}}">
     <view class="verdict-kicker">远征终局</view>
-    <view class="verdict-mark">{{game.winner === 'good' ? '光' : '影'}}</view>
+    <image class="verdict-mark" src="{{verdictCrest}}" mode="aspectFit" />
     <view class="verdict-title">{{winnerName}}胜利</view>
     <view class="score-line">正义 {{game.goodWins}} · {{game.evilWins}} 邪恶</view>
     <view class="verdict-copy">{{hostLine.text}}</view>

@@ -105,45 +105,20 @@ button::after {
 }
 
 .mission-orb {
+  /* 四态各是一张完整图标（自带圆形外观），不再用 CSS 圆框 + 汉字。
+     底色也不能再用绿/红——阵营色由队徽自己承载，绿徽压绿底会糊成一团。 */
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 68rpx;
   height: 68rpx;
-  border: 4rpx solid #4d5a55;
-  border-radius: 50%;
-  background: #202a27;
-  box-sizing: border-box;
-  color: #83908b;
 }
 
-.mission-symbol {
-  font-size: 22rpx;
-  font-weight: 900;
-}
 
-.mission-success {
-  border-color: #55ab8c;
-  background: #23745f;
-  color: #ffffff;
-  animation: mission-stamp 0.48s ease-out;
-}
 
-.mission-fail {
-  border-color: #cf777b;
-  background: #943e45;
-  color: #ffffff;
-  animation: mission-stamp 0.48s ease-out;
-}
+.mission-success { animation: mission-stamp 0.48s ease-out; }
 
-.mission-current {
-  border-color: #d9bb78;
-  background: #f1e7d4;
-  color: #2c342f;
-  box-shadow: 0 0 0 8rpx rgba(217, 187, 120, 0.12);
-  animation: current-mission-pulse 2.2s ease-in-out infinite;
-}
+.mission-fail { animation: mission-stamp 0.48s ease-out; }
+
+.mission-current { animation: mission-orb-spin 9s linear infinite; }
 
 .protection-mark {
   position: absolute;
@@ -1259,19 +1234,18 @@ button::after {
 
 .round-table,
 .long-table {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  border: 7rpx solid #9c784a;
-  background: #4f3323;
-  box-shadow: inset 0 0 28rpx rgba(0, 0, 0, 0.32), 0 14rpx 25rpx rgba(59, 44, 31, 0.22);
-  transform: translate(-50%, -50%);
+  width: 420rpx;
+  height: 200rpx;
+  /* 九宫格背景的直角由它裁掉；和角块圆弧未必严丝合缝，观感不对就微调 */
+  border-radius: 32rpx;
 }
 
 .round-table {
   width: 330rpx;
   height: 330rpx;
+  /* 必须保留：table-round.jpg 带黑色四角，靠这个圆角裁掉 */
   border-radius: 50%;
+  overflow: hidden;
 }
 
 .long-table {
@@ -1486,7 +1460,7 @@ button::after {
 .history-glyph > view::before { position: absolute; top: 0; left: -7rpx; width: 4rpx; height: 4rpx; border-radius: 1rpx; background: #d8c27f; content: ""; }
 .leader-line { display: flex; min-height: 72rpx; padding: 10rpx 14rpx; align-items: center; border: 2rpx solid #404d47; border-radius: 7rpx; background: #1a2420; box-sizing: border-box; color: #ece7dc; font-size: 23rpx; }
 .leader-crown { display: flex; width: 46rpx; height: 46rpx; margin-right: 12rpx; flex: 0 0 auto; align-items: center; justify-content: center; }
-.symbol-icon { display: inline-flex; align-items: center; justify-content: center; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-style: normal; line-height: 1; }
+.symbol-icon { display: block; }
 .crown-icon { color: #f1c84c; }
 .fire-icon { color: #ef6c3f; }
 .amulet-icon { color: #4c9cce; }
@@ -1599,7 +1573,7 @@ button::after {
 .compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #c6c3ba; border-radius: 8rpx; background: #d8d4ca; box-sizing: border-box; }
 .game-seat-token { width: 72rpx; min-height: 72rpx; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
 .game-seat-token .seat-avatar { width: 64rpx; height: 64rpx; margin: 0; border: 3rpx solid #8f9993; background: #405049; font-size: 22rpx; box-sizing: border-box; }
-.game-seat-token .seat-caption { position: absolute; top: 70rpx; left: 50%; width: 126rpx; overflow: hidden; color: #343a36; font-size: 18rpx; font-weight: 800; line-height: 27rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; transform: translateX(-50%); }
+.game-seat-token .seat-caption { position: absolute; top: 70rpx; left: 50%; width: 126rpx; overflow: hidden; color: #e6e2d8; font-size: 18rpx; font-weight: 800; line-height: 27rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; transform: translateX(-50%); }
 .game-seat-token.mine .seat-avatar { border-color: #3b8b6c; box-shadow: 0 0 0 5rpx rgba(59,139,108,.14); }
 .game-seat-token.selected .seat-avatar,.game-seat-token.danger-selected .seat-avatar { border-color: #a74742; box-shadow: 0 0 0 7rpx rgba(167,71,66,.15); }
 .game-seat-token.seat-disabled { opacity: .34; }
@@ -1812,3 +1786,5 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .dossier-faction { color: #8e9993; font-size: 21rpx; }
 .dossier-name { margin: 4rpx 0 8rpx; color: #f0f2ef; font-size: 36rpx; font-weight: 900; }
 .dossier-desc { color: #b9c2bc; font-size: 23rpx; line-height: 1.55; }
+
+@keyframes mission-orb-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }

@@ -3,10 +3,10 @@ button { margin: 0; }
 button::after { border: 0; }
 .result-page { min-height: 100vh; padding-bottom: 64rpx; background: #101714; }
 .verdict { padding: 64rpx 36rpx 48rpx; text-align: center; border-bottom: 2rpx solid #34413c; animation: verdict-in 480ms ease-out both; }
-.good-verdict { background: linear-gradient(180deg, #1c493d 0%, #101714 92%); }
-.evil-verdict { background: linear-gradient(180deg, #5b2930 0%, #101714 92%); }
+.good-verdict { background: linear-gradient(180deg, #232c28 0%, #101714 92%); }
+.evil-verdict { background: linear-gradient(180deg, #2b2422 0%, #101714 92%); }
 .verdict-kicker,.section-kicker { color: #c9ae73; font-size: 21rpx; font-weight: 800; }
-.verdict-mark { display: flex; align-items: center; justify-content: center; width: 144rpx; height: 144rpx; margin: 28rpx auto 24rpx; border: 4rpx solid #d2b875; border-radius: 50%; color: #ead79e; font-size: 56rpx; font-weight: 900; animation: verdict-mark-in 650ms 120ms cubic-bezier(.18,.78,.22,1) both; }
+.verdict-mark { display: block; width: 144rpx; height: 144rpx; margin: 28rpx auto 24rpx; animation: verdict-mark-in 650ms 120ms cubic-bezier(.18,.78,.22,1) both; }
 .verdict-title { font-size: 50rpx; font-weight: 900; }
 .score-line { margin-top: 12rpx; color: #d6cec1; font-size: 26rpx; }
 .verdict-copy { max-width: 610rpx; margin: 26rpx auto 0; color: #aeb8b3; font-size: 24rpx; line-height: 1.65; }

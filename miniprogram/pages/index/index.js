@@ -54,7 +54,9 @@ Page({
     skinPickerTitle: "",
     skinPickerOptions: [],
     skinPickerCurrent: "",
-    roleConfigValid: true
+    roleConfigValid: true,
+    homeEmblem: "",
+    homeBg: ""
   },
 
   onLoad() {
@@ -80,6 +82,10 @@ Page({
         back: assets.identityBack(key),
         front: assets.roleArt(key, "morgan", 0)
       }))
+    })
+    this.setData({
+      homeEmblem: assets.uiAsset("home-emblem.png"),
+      homeBg: assets.backgroundImage("home-bg.jpg")
     })
     this.refreshSkinSelection()
     this.resetRoles(false)
