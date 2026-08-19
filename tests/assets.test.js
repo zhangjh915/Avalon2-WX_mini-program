@@ -81,23 +81,39 @@ const icons = assets.uiIcons()
 assert.strictEqual(assets.LONG_TABLE_SLICES.length, 9)
 assert.strictEqual(assets.LONG_TABLE_SLICES[0][0], "corner_tl.png", "角块必须排在最前（最上层）")
 assert.strictEqual(assets.LONG_TABLE_SLICES[8][0], "center.jpg", "中心必须排在最后（垫底）")
-// 边条只沿单轴铺，且必须用 round 不能用 repeat：
-// edge_left.jpg 铺开一个单元约 154pt 高，而 8 人竖向长桌 195pt——1.27 次重复，
-// 接缝正好卡在桌子中间，桌面看起来从中间断开。round 会微调到整数次。
-assert.strictEqual(assets.LONG_TABLE_SLICES.filter(s => s[3] === "round no-repeat").length, 2, "上下边条沿横轴 round")
-assert.strictEqual(assets.LONG_TABLE_SLICES.filter(s => s[3] === "no-repeat round").length, 2, "左右边条沿纵轴 round")
-assert.ok(!assets.LONG_TABLE_SLICES.some(s => /repeat-[xy]/.test(s[3])), "不能再用会留接缝的 repeat-x/y")
+// 边条只沿单轴平铺。**不要改成 round**：round 按整个盒子算整数次填充，
+// 而这里用 background-position 把边条起点偏移了一个角块的距离，两者不兼容——
+// 接缝会跟角块完全对不齐，桌子看起来像拼错了。真实踩过并回退。
+assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-x").length === 2, "上下边条 repeat-x")
+assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-y").length === 2, "左右边条 repeat-y")
+assert.ok(!assets.LONG_TABLE_SLICES.some(s => /round/.test(s[3])), "边条不能用 round，会和角块错位")
 
-// 角块尺寸随桌子短边缩放，窄长桌上四个角不能吃掉大半个桌面
-assert.strictEqual(assets.cornerSize(68, 62, 650), 48, "宽桌用满 48rpx 上限")
-const narrow = assets.cornerSize(32, 60, 650)
-assert.ok(narrow < 48 && narrow >= 26, `8 人竖向长桌的角块应当收窄，实际 ${narrow}`)
-// 收窄后四角占短边的比例必须明显低于一半，否则中间木纹会被挤成一条
-assert.ok(narrow * 2 / (0.32 * 650) < 0.45, "四角不能吃掉近一半短边")
-// 尺寸缺失（0 / undefined）当作「没给」，退回满尺寸而不是算出 0 让角块消失
-assert.strictEqual(assets.cornerSize(0, 0, 650), 48)
-assert.strictEqual(assets.cornerSize(undefined, undefined, undefined), 48)
-assert.strictEqual(assets.LONG_TABLE_SLICES[8][2], "cover", "中心用 cover")
+// 竖向长桌是把横向长桌整体转 90 度得到的，不是另画一套图。
+// center.jpg 是横向木板、edge_top 是横向长条，直接拿来铺竖桌的话木板会横跨窄桌，
+// 板缝变成一道道横向断裂（实机截图确认过）。转元素能让木纹、边条、角块一次全对。
+const appWxssTable = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
+assert.match(appWxssTable, /\.long-table\.vertical \{[^}]*rotate\(90deg\)/s, "竖向长桌必须靠旋转实现")
+// 转 90 度之后宽高会互换，所以页面下发时必须已经按横桌给好
+;["play", "room"].forEach(name => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", name, `${name}.js`), "utf8")
+  assert.match(src, /tableWidth:\s*tableGeometry\.orientation === "vertical" \? tableGeometry\.height/,
+    `${name}.js 竖向长桌要按横桌下发宽度`)
+  assert.match(src, /tableHeight:\s*tableGeometry\.orientation === "vertical" \? tableGeometry\.width/,
+    `${name}.js 竖向长桌要按横桌下发高度`)
+})
+
+// 长桌背景只能在 loadBackgrounds 里算一次。放进 applyState 的话，
+// 900ms 的轮询每次都会重算并 setData 一个 1.4KB 的新字符串（9 个图片链接），
+// 渲染层每次都重新解析背景、重新请求那 9 张图，桌子要等很久才出得来。
+;["play", "room"].forEach(name => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", name, `${name}.js`), "utf8")
+  // 必须锚在方法定义上。用 indexOf("applyState(") 会先撞上 loadState 里的
+  // this.applyState(result) 那个调用，截出来的根本不是方法体——这条守卫因此假绿过一次。
+  const applyStart = src.indexOf("\n  applyState(result) {")
+  assert.ok(applyStart > 0, `${name}.js 没有 applyState 方法定义`)
+  const applyBody = src.slice(applyStart, src.indexOf("\n  },", applyStart + 5))
+  assert.ok(!/longTableBg\s*:/.test(applyBody), `${name}.applyState 不能每次轮询都重算长桌背景`)
+})
 
 // CSS 的 background-image 不认 cloud:// 协议，必须先换成 https 临时链接。
 // 没有 wx.cloud 时（单元测试、云开发未初始化）要安全退化成空串而不是抛错。

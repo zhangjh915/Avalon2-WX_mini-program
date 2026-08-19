@@ -218,10 +218,9 @@ Page({
       missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
       missionTrack: this.buildMissionTrack(game), decoratedPlayers,
       tableOrientation: tableGeometry.orientation,
-      tableWidth: tableGeometry.width,
-      tableHeight: tableGeometry.height,
-      // 角块尺寸随桌子短边缩放，窄长桌才不会被四个角挤成一条缝
-      longTableBg: assets.longTableBackground(tableGeometry.width, tableGeometry.height, 650) || this.data.longTableBg,
+      // 竖向长桌靠 CSS 转 90 度实现，所以宽高要按**横桌**下发，转完才是竖的
+      tableWidth: tableGeometry.orientation === "vertical" ? tableGeometry.height : tableGeometry.width,
+      tableHeight: tableGeometry.orientation === "vertical" ? tableGeometry.width : tableGeometry.height,
       voteCount: game.current.voteCount || 0,
       votePercent: game.current.team.length ? Math.round((game.current.voteCount || 0) / game.current.team.length * 100) : 0,
       amulet, isAmuletOwner: !!amulet && amulet.ownerId === privateView.id,
@@ -566,7 +565,11 @@ Page({
           } else identityMode = "remember"
         }
       }
-      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint, readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 })
+      // 只在真的变了才 setData。这个定时器 200ms 跑一次，无条件 setData 等于
+    // 每秒白白推 5 次渲染，和别的更新抢通道。
+    const next = { identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint,
+                   readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 }
+    if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
     }
     if (this.data.finalStage === "discussion" && game.final) {
       const finalSecondsLeft = Math.max(0, Math.ceil((game.final.discussionEndsAt - now) / 1000))

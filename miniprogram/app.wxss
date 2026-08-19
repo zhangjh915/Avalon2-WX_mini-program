@@ -193,9 +193,13 @@ button:active,
   border-radius: 42rpx;
 }
 
+/* 竖向长桌 = 横向长桌转 90 度。
+   九宫格那套图是按横桌画的（center.jpg 是横向木板、edge_top 是横向长条），
+   直接拿来铺竖桌的话木板会横跨窄桌，板缝变成一道道横向断裂。
+   转元素比换图省事得多：木纹、边条、角块跟着一起转，全都自然正确。
+   宽高由页面按**横桌**下发，转完才是竖的。 */
 .long-table.vertical {
-  width: 220rpx;
-  height: 430rpx;
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .table-emblem {

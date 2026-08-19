@@ -139,10 +139,9 @@ Page({
       room: { ...room, seats },
       tableType: room.tableType || "round",
       tableOrientation: tableGeometry.orientation,
-      tableWidth: tableGeometry.width,
-      tableHeight: tableGeometry.height,
-      // 角块尺寸随桌子短边缩放，窄长桌才不会被四个角挤成一条缝
-      longTableBg: assets.longTableBackground(tableGeometry.width, tableGeometry.height, 620) || this.data.longTableBg,
+      // 竖向长桌靠 CSS 转 90 度实现，所以宽高要按**横桌**下发，转完才是竖的
+      tableWidth: tableGeometry.orientation === "vertical" ? tableGeometry.height : tableGeometry.width,
+      tableHeight: tableGeometry.orientation === "vertical" ? tableGeometry.width : tableGeometry.height,
       isHost: !!result.isHost,
       ui: assets.uiIcons(),
       // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验
