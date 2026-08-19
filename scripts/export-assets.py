@@ -167,27 +167,14 @@ def export_ui():
         f = src / (name[:-4] + (".png" if name.startswith("table-round") else ".jpeg"))
         n = export(f, DST / "ui" / name, size, q=q); total += n
         rows.append(("ui/" + name, "x".join(map(str, size)), n, why))
-    for f in sorted((src / "table-long-9slice").glob("*.png")):
-        if f.stem.startswith("_"):
-            continue                      # _九宫格预览 是验收图，不是资产
-        im = Image.open(f).convert("RGBA")
-        if f.stem.startswith("corner"):
-            n = export_png(f, DST / "ui/table-long" / f.name, SLICE_OUT)
-            rows.append(("ui/table-long/" + f.name, "%dpx" % SLICE_OUT, n, "圆角，需要 alpha"))
-        else:
-            # 边条只把「厚度」那一轴缩到 SLICE_OUT，长度按比例——它要沿另一轴平铺
-            horiz = f.stem in ("edge_top", "edge_bottom")
-            k = SLICE_OUT / 260   # 切片 inset 是 260，所有块用同一个缩放比
-            if f.stem == "center":
-                # 中心和边条同比例平铺，所以按同一个 k 缩，不能给固定尺寸——
-                # 尺寸一变比例就和边条对不上，交界处又会出现长方形轮廓
-                k = SLICE_OUT / 260
-                sz = (max(1, round(im.width * k)), max(1, round(im.height * k)))
-            else:
-                sz = (max(1, round(im.width * k)), max(1, round(im.height * k)))
-            n = export(f, DST / "ui/table-long" / (f.stem + ".jpg"), sz, q=82)
-            rows.append(("ui/table-long/%s.jpg" % f.stem, "x".join(map(str, sz)), n,
-                         "全不透明，JPEG 即可"))
+    # 长桌改成整图分档：7 张覆盖 29 种布局，最大拉伸 ±7.4%。
+    # 九宫格废弃——边条与中心的色差、角块与 border-radius 的配对，
+    # 修了两轮实机仍有可见接缝。整图一次性消掉了这一整类问题。
+    for f in sorted((src / "table-long").glob("*.png")):
+        im = Image.open(f)
+        n = export_png(f, DST / "ui/table-long" / f.name, max(im.size))
+        rows.append(("ui/table-long/" + f.name, "%dx%d" % im.size, n,
+                     "第%s档 比例 %.2f" % (f.stem, im.width / im.height)))
         total += n
     w = max(len(r[0]) for r in rows)
     for path, size, n, why in rows:
