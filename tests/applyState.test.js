@@ -77,6 +77,42 @@ PHASES.forEach(phase => {
   assert.strictEqual(context.data.phase, phase)
 })
 
+// ---- 边界：这些都真实发生过，且表现全是整页白屏 ----
+function contextFor(overrides) {
+  return Object.assign({}, definition, {
+    data: JSON.parse(JSON.stringify(definition.data)),
+    setData(patch) { Object.assign(this.data, patch) },
+    ceremonyQueue: [], vibrate() {}, enqueueCeremonies() {},
+    startNightAuto() {}, stopTimers() {}, startTimers() {}
+  }, overrides || {})
+}
+
+// private 为空（观战、没入座、座位被顶掉）不能炸
+const noPrivate = contextFor()
+assert.doesNotThrow(() => noPrivate.applyState({
+  room: { _id: "r", status: "playing", phase: "mission", playerCount: PLAYER_COUNT,
+          tableType: "round", seats, settings, game },
+  private: null, isHost: false
+}), "private 为空时 applyState 不能抛")
+assert.ok(noPrivate.data.game, "private 为空也要能渲染出对局页")
+
+// 房间还没开局就进了对局页：room.game 是没有 players 的空壳，
+// 直接往下走会在 game.players.map 上炸
+let left = ""
+const lobby = contextFor({ leaveTo(url) { left = url } })
+assert.doesNotThrow(() => lobby.applyState({
+  room: { _id: "r7", status: "lobby", phase: "lobby", playerCount: PLAYER_COUNT, game: {} },
+  private: null, isHost: true
+}), "lobby 状态的房间不能让 applyState 抛")
+assert.match(left, /pages\/room\/room/, "还没开局应当送回候场页")
+
+// game 完全缺失时安静退出即可，不要抛
+const noGame = contextFor()
+assert.doesNotThrow(() => noGame.applyState({
+  room: { _id: "r8", status: "playing", phase: "reveal", playerCount: PLAYER_COUNT, game: null },
+  private: null, isHost: false
+}))
+
 delete global.Page
 delete global.wx
 delete global.__playDefinition

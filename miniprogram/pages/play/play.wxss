@@ -1107,10 +1107,6 @@ button::after {
   font-weight: 900;
 }
 
-.compact-votes .vote-card {
-  min-height: 150rpx;
-}
-
 .finale-banner {
   padding: 18rpx;
   margin-bottom: 20rpx;
@@ -1471,7 +1467,9 @@ button::after {
 /* 已提交状态压成紧凑横排，不再是撑满的居中块 */
 .submitted-state { display: flex; margin: 8rpx 0; align-items: center; justify-content: center; gap: 14rpx; text-align: center; }
 .submitted-state .waiting-title { margin: 0; font-size: 27rpx; }
-.submitted-seal { display: flex; width: 64rpx; height: 64rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; color: #dbc582; font-size: 28rpx; font-weight: 900; }
+/* seal-base.png 是 208px 见方，而这个圆圈只有 32pt。内联下发的是 background-image，
+   不给铺法就按原图 1:1 渲染——只能看到左上角一丢丢，和地毯栽的是同一个跟头。 */
+.submitted-seal { display: flex; width: 64rpx; height: 64rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; background-position: center; background-size: cover; color: #dbc582; font-size: 28rpx; font-weight: 900; }
 .submitted-seal.spectator { border-color: #647169; color: #9da8a1; }
 .waiting-title { color: #f1ede5; font-size: 32rpx; font-weight: 900; text-align: center; }
 .waiting-copy,.action-copy { max-width: 650rpx; margin: 14rpx auto 22rpx; color: #9eaaa4; font-size: 24rpx; line-height: 1.65; text-align: center; }
@@ -1535,7 +1533,7 @@ button::after {
 .loyalty-button[disabled] { border-color: #c7c8c4; background: #e5e5e2; color: #a0a39e; opacity: 1; }
 .loyalty-button.selected-loyalty { box-shadow: 0 0 0 7rpx rgba(47, 115, 88, 0.16); transform: translateY(-2rpx); }
 .ceremony-content { min-height: 650rpx; justify-content: center; }
-.ceremony-mark { display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
+.ceremony-mark { display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; background-position: center; background-size: cover; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
 .ceremony-step { color: #909993; font-size: 21rpx; text-align: center; }
 .ceremony-text { min-height: 240rpx; padding: 42rpx 12rpx; color: #f0f2ef; font-size: 34rpx; font-weight: 700; line-height: 1.8; text-align: center; animation: script-enter 260ms ease both; }
 .ceremony-controls { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
@@ -1604,9 +1602,18 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .final-inline-stage.round-seat-stage { width: 590rpx; height: 590rpx; min-height: 590rpx; align-self: center; }
 .selector-tools { display: flex; flex: none; align-items: center; gap: 4rpx; }
 .selector-history { width: 58rpx; min-width: 58rpx; max-width: 58rpx; height: 58rpx; min-height: 58rpx; max-height: 58rpx; border-radius: 5rpx; }
-.selector-page .sheet-actions { flex: none; bottom: auto; padding: 14rpx 0 0; }
+/* 按钮区浮在地毯上：不占布局高度，桌子就不会因为按钮出现而上移；
+   背景透明，也就没有那块突兀的白。按钮自己带深色底和投影，压得住毯面。 */
+.selector-page { position: relative; }
+.selector-page .sheet-actions { position: absolute; left: 24rpx; right: 24rpx; bottom: calc(18rpx + env(safe-area-inset-bottom)); z-index: 12; flex: none; padding: 0; background: transparent; }
+.selector-page .sheet-actions button { box-shadow: 0 10rpx 28rpx rgba(0, 0, 0, .45); }
 
 .history-overlay { position: fixed; inset: 0; z-index: 110; background: #171f1c; animation: selector-page-in 160ms ease-out both; }
+/* 密录是全屏浮层，会把外面的阅读计时整个盖住。这里补一枚常驻的，
+   最后 5 秒转红并加脉冲——玩家常常正埋头看攻略，错过了就得重开一局才知道身份。 */
+.dossier-clock { flex: none; margin-left: auto; margin-right: 16rpx; padding: 6rpx 16rpx; border: 2rpx solid #6f7c74; border-radius: 999rpx; color: #cfd8d2; font-size: 21rpx; font-weight: 800; }
+.dossier-clock.urgent { border-color: #c4564a; background: rgba(196, 86, 74, .16); color: #ffb9ae; animation: clock-urge 1s ease-in-out infinite; }
+@keyframes clock-urge { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 .history-page { display: flex; width: 100%; height: 100%; padding: 22rpx 24rpx calc(24rpx + env(safe-area-inset-bottom)); flex-direction: column; box-sizing: border-box; }
 .history-head { flex: none; align-items: center; border-bottom: 2rpx solid #34413b; }
 .history-head .sheet-title { color: #f0ede6; }
@@ -1656,6 +1663,9 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .ceremony-finale-evil .ceremony-ring,.ceremony-hunter .ceremony-ring,.ceremony-mission-evil .ceremony-ring { border-color: rgba(207, 89, 91, 0.44); }
 .ceremony-symbol { display: flex; width: 132rpx; height: 132rpx; align-items: center; justify-content: center; border: 4rpx solid #d0b36f; border-radius: 50%; background: #1c2521; color: #ead38c; box-shadow: 0 0 0 12rpx rgba(208, 179, 111, 0.12), 0 18rpx 46rpx rgba(0, 0, 0, 0.35); font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: 48rpx; font-weight: 900; animation: crown-flight 720ms cubic-bezier(0.18, 0.78, 0.22, 1) both; }
 .ceremony-amulet .ceremony-symbol { border-color: #69a991; color: #91cfb8; animation-name: amulet-flight; }
+/* 队徽图必须显式给尺寸。<image> 没有 CSS 尺寸时按图片自然尺寸渲染（213x240），
+   会把 132rpx 的圆圈整个撑爆并被 overflow 裁掉——表现为「图标没生效」。 */
+.ceremony-symbol-image { display: block; width: 84rpx; height: 84rpx; }
 .ceremony-magic .ceremony-symbol { border-color: #c45c4f; background: #722f2b; color: #ffe6d1; box-shadow: 0 0 0 12rpx rgba(196, 92, 79, 0.13), 0 18rpx 48rpx rgba(65, 18, 15, 0.45); animation-name: magic-flight; }
 .ceremony-round .ceremony-symbol,.ceremony-finale-good .ceremony-symbol,.ceremony-mission-good .ceremony-symbol { border-color: #69ad91; background: #245d4d; color: #e3f4ec; }
 .ceremony-finale-evil .ceremony-symbol,.ceremony-hunter .ceremony-symbol,.ceremony-mission-evil .ceremony-symbol { border-color: #d56c70; background: #702e34; color: #ffe8e6; animation-name: mission-stamp; }
@@ -1747,8 +1757,9 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 /* ── 身份牌舞台：点击翻牌，文字浮在牌面下半部 ──
    高度用 vh 自适应，保证小屏（iPhone SE 视口 603pt）也不需要滚动。
    52vh / 39vh 恰好是 3:4，与云端 990x1320 的立绘一致。 */
-.identity-stage { position: relative; width: 39vh; height: 52vh; margin: 0 auto; border-radius: 12rpx; overflow: hidden; background: #1b2420; box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42); }
-.card-face { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 12rpx; overflow: hidden; }
+.identity-stage { position: relative; width: 39vh; height: 52vh; margin: 0 auto; border-radius: 30rpx; overflow: hidden; background: #1b2420; box-shadow: 0 20rpx 48rpx rgba(0,0,0,.42); }
+/* 圆角必须 >= 卡背图自带的圆角（约图宽 4.8%），否则 fantasy 那张的白角会露出来 */
+.card-face { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 30rpx; overflow: hidden; }
 /* 用 transition 而不是 animation：对局页每 900ms 轮询 setData，
    带 fill-mode 的 animation 会被反复重启而永远走不完（已踩过）。 */
 .card-back-face { transform: scaleX(1); transition: transform 220ms cubic-bezier(.55,0,1,.45); }
@@ -1775,7 +1786,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .reading-clock { margin-top: 14rpx; }
 
 /* 未揭示/已记住阶段用小尺寸卡背，给下面的按钮和进度留出空间 */
-.identity-card-back { display: block; width: 18vh; height: 24vh; margin: 0 auto 20rpx; border-radius: 10rpx; background: #1b2420; box-shadow: 0 14rpx 32rpx rgba(0,0,0,.38); }
+.identity-card-back { display: block; width: 18vh; height: 24vh; margin: 0 auto 20rpx; border-radius: 16rpx; background: #1b2420; box-shadow: 0 14rpx 32rpx rgba(0,0,0,.38); }
 .identity-card-back.sealed { opacity: .5; }
 
 /* 密录里的身份牌：小图 + 文字并排，任何阶段都能回看 */
@@ -1799,7 +1810,10 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
    用 transition 而非 animation——对局页每 900ms 轮询 setData，
    带 fill-mode 的 animation 会被反复重启（本项目已踩过两次）。 */
 .vote-cards { display: flex; margin: 24rpx 0 8rpx; justify-content: center; gap: 40rpx; }
-.vote-card { position: relative; width: 208rpx; height: 308rpx; border-radius: 10rpx; overflow: hidden; box-shadow: 0 14rpx 30rpx rgba(0,0,0,.38); transition: transform 520ms cubic-bezier(.4,0,.2,1), opacity 420ms ease; }
+/* flex: none 是必须的：上面那条旧的 .vote-card 规则带 flex: 1，会把卡片按父容器
+   均分拉宽，而高度是写死的 308rpx——比例一变，aspectFill 就把牌面上下裁掉。
+   牌面图是 156x231（0.675），这里的 208x308rpx 就是照着这个比例定的，不要改单边。 */
+.vote-card { position: relative; width: 208rpx; height: 308rpx; flex: none; border-radius: 10rpx; overflow: hidden; box-shadow: 0 14rpx 30rpx rgba(0,0,0,.38); transition: transform 520ms cubic-bezier(.4,0,.2,1), opacity 420ms ease; }
 .vote-card-art { display: block; width: 100%; height: 100%; }
 .vote-card.card-locked { filter: grayscale(1); opacity: .32; }
 /* 选中：翻面并向上投递出去 */

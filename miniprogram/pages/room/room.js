@@ -67,7 +67,11 @@ Page({
 
   startPolling() {
     this.stopPolling()
-    this.pollTimer = setInterval(() => this.loadRoom(false), 1200)
+    this.pollTimer = setInterval(() => {
+      this.loadRoom(false)
+      // 临时链接会过期成 403，而 onShow 在一局里根本不会再触发
+      if (assets.backgroundsStale()) this.loadBackgrounds()
+    }, 1200)
   },
 
   stopPolling() {

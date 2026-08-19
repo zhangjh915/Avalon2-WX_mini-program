@@ -43,7 +43,7 @@ Page({
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
-    myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "",
+    myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "", readingUrgent: false,
     ui: {}, roundTableBg: "", longTableBg: "", floorBg: "", sealBg: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonySymbolImage: "", ceremonyTitle: "",
@@ -87,7 +87,11 @@ Page({
 
   startTimers() {
     this.stopTimers()
-    this.pollTimer = setInterval(() => this.loadState(false), 900)
+    this.pollTimer = setInterval(() => {
+      this.loadState(false)
+      // 临时链接会过期成 403，而 onShow 在一局里根本不会再触发
+      if (assets.backgroundsStale()) this.loadBackgrounds()
+    }, 900)
     this.clockTimer = setInterval(() => this.updateClock(), 200)
   },
 
@@ -141,12 +145,13 @@ Page({
 
   applyState(result) {
     const room = result.room
-    if (room.status === "finished") {
-      wx.redirectTo({ url: `/pages/result/result?roomId=${room._id}` })
-      return
-    }
+    if (room.status === "finished") return this.leaveTo(`/pages/result/result?roomId=${room._id}`)
+    // 房间还没开局就进了对局页（分享链接、房间被重置、后退回来），
+    // 此时 room.game 是个没有 players 的空壳，往下走会在 game.players.map 上炸，
+    // 而整页外层是 wx:if="{{game}}"，炸了就是白屏。送回候场页才是对的。
+    if (room.status === "lobby") return this.leaveTo(`/pages/room/room?roomId=${room._id}`)
     const game = room.game
-    if (!game) return
+    if (!game || !game.players) return
     const previousGame = this.data.game
     const previousPhase = this.data.phase
     const privateView = result.private || {}
@@ -550,10 +555,16 @@ Page({
             roleVisible = true
             identitySecondsLeft = Math.max(0, Math.ceil((readEndsAt - now) / 1000))
             readingHint = `阅读时间 ${identitySecondsLeft}秒`
+            // 最后 5 秒提醒一次。玩家很可能正埋在密录/攻略里，
+            // 那儿是全屏浮层，会把外面的计时完全盖住。
+            if (identitySecondsLeft <= 5 && this.lastUrgeSecond !== identitySecondsLeft) {
+              this.lastUrgeSecond = identitySecondsLeft
+              this.vibrate("light")
+            }
           } else identityMode = "remember"
         }
       }
-      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint })
+      this.setData({ identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint, readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 })
     }
     if (this.data.finalStage === "discussion" && game.final) {
       const finalSecondsLeft = Math.max(0, Math.ceil((game.final.discussionEndsAt - now) / 1000))
@@ -635,6 +646,22 @@ Page({
     this.identityFlippedAt = Date.now()
     this.setData({ cardFlipped: true })
     this.vibrate("medium")
+  },
+
+  // 离开对局页。先停表并上锁：轮询每 900ms 就会再发一次导航，
+  // 后一次会打断前一次，页面能一直卡着跳不出去。
+  leaveTo(url) {
+    if (this.navigating) return
+    this.navigating = true
+    this.stopTimers()
+    wx.redirectTo({
+      url,
+      fail: error => {
+        this.navigating = false
+        this.startTimers()
+        console.error("[play] 跳转失败", url, error && error.errMsg)
+      }
+    })
   },
 
   openDossier() { this.setData({ dossierVisible: true }) },

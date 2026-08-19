@@ -60,12 +60,32 @@ const LONG_TABLE_SLICES = [
 // src 认。直接把 fileID 写进 background-image 不会报错，图就是不显示——
 // 圆桌换图后一片空白就是这么来的。
 //
-// 临时链接默认 2 小时有效，页面 onShow 时重新解析一次即可覆盖长时间对局。
-// 临时链接约 2 小时失效，过期后请求会返回 403（渲染层报 Failed to load image）。
-// 缓存必须带时效，否则 onShow 再解析也永远命中旧值——这个洞真实踩到过。
+// 临时链接约 2 小时失效，过期后请求返回 403（渲染层报 Failed to load image）。
+//
+// 两层都必须有，缺一个都不管用：
+//   1. 缓存带时效——否则命中就返回，永远拿到过期链接。
+//   2. **要有人定期来问**——页面只在 onLoad / onShow 调 loadBackgrounds，
+//      而线下一局能打一两个小时、玩家全程不切后台，onShow 根本不会再触发。
+//      光有 TTL 没人调用，等于没修：链接照样过期成 403。
+//      所以页面轮询里要用 backgroundsStale() 顺带检查一次。
 const TEMP_URL_TTL = 90 * 60 * 1000
+// 提前量：别等真过期才换，留出一次请求往返的余量
+const REFRESH_AHEAD = 5 * 60 * 1000
+// 取不到时的退避，避免每个轮询周期都去撞同一个失败
+const RETRY_BACKOFF = 30 * 1000
 const tempUrlCache = {}
 const tempUrlAt = {}
+let lastAttemptAt = 0
+
+// 背景链接是不是该换一批了。页面每个轮询周期调一次，开销就是几次数值比较。
+function backgroundsStale() {
+  const now = Date.now()
+  const ids = Object.keys(tempUrlAt)
+  if (!ids.length) return now - lastAttemptAt > RETRY_BACKOFF
+  const oldest = ids.reduce((min, id) => Math.min(min, tempUrlAt[id]), Infinity)
+  if (now - oldest <= TEMP_URL_TTL - REFRESH_AHEAD) return false
+  return now - lastAttemptAt > RETRY_BACKOFF
+}
 
 function resolveTempUrls(fileIDs) {
   // 云开发不可用时退化成「没有背景图」，不要让整页起不来。
@@ -74,8 +94,9 @@ function resolveTempUrls(fileIDs) {
     return Promise.resolve(tempUrlCache)
   }
   const now = Date.now()
-  const missing = fileIDs.filter(id => !tempUrlCache[id] || now - (tempUrlAt[id] || 0) > TEMP_URL_TTL)
+  const missing = fileIDs.filter(id => !tempUrlCache[id] || now - (tempUrlAt[id] || 0) > TEMP_URL_TTL - REFRESH_AHEAD)
   if (!missing.length) return Promise.resolve(tempUrlCache)
+  lastAttemptAt = now
   return new Promise(resolve => {
     wx.cloud.getTempFileURL({
       fileList: missing,
@@ -184,6 +205,7 @@ function missionCard(skin, face) {
 
 module.exports = {
   CLOUD_PREFIX,
+  backgroundsStale,
   FLOOR_COLORS,
   DEFAULT_FLOOR,
   normalizeFloorColor,

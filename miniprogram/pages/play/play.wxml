@@ -208,10 +208,6 @@
         </view>
         <view style="{{floorBg}}" class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
           <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
-          <view wx:if="{{deliverIcon}}" class="deliver-token {{deliverFlying ? 'flying' : ''}}"
-              style="{{deliverFlying ? 'left:' + deliverX + '%;top:' + deliverY + '%;' : ''}}">
-          <image class="deliver-icon" src="{{deliverIcon}}" mode="aspectFit" />
-        </view>
         <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
             <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
           </view>
@@ -231,6 +227,9 @@
       <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view class="selector-tools"><view class="table-icon-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>
       <view style="{{floorBg}}" class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
         <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
+        <view wx:if="{{deliverIcon}}" class="deliver-token {{deliverFlying ? 'flying' : ''}}" style="{{deliverFlying ? 'left:' + deliverX + '%;top:' + deliverY + '%;' : ''}}">
+          <image class="deliver-icon" src="{{deliverIcon}}" mode="aspectFit" />
+        </view>
         <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.selected ? 'selected' : ''}} {{item.justSelected ? 'seat-boarding' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}} {{item.id === game.leaderId ? 'leader' : ''}} {{item.id === nextLeaderId ? 'leader-selected' : ''}} {{item.id === nextAmuletId ? 'amulet-selected' : ''}} {{tableMode === 'magic' && item.id === magicTargetId ? 'magic-selected' : ''}} {{tableMode === 'leader' && !item.canLead ? 'seat-disabled' : ''}} {{tableMode === 'amuletOwner' && (!item.canReceiveAmulet || item.id === nextLeaderId) ? 'seat-disabled' : ''}} {{tableMode === 'inspect' && !item.canInspect ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" bindtap="tapSeat">
           <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
           <view wx:if="{{item.id === game.leaderId || item.id === nextLeaderId}}" class="seat-badge leader-badge"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><view wx:if="{{item.hadAmulet || item.id === nextAmuletId}}" class="seat-badge amulet-badge"><image class="symbol-icon amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view><view wx:if="{{tableMode === 'magic' && item.id === magicTargetId}}" class="seat-badge magic-badge"><image class="symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view wx:if="{{item.fadedAmulet}}" class="seat-badge faded-badge"><image class="symbol-icon faded-amulet-icon" src="{{ui.amulet}}" mode="aspectFit" /></view><view wx:if="{{item.hasLed && item.id !== game.leaderId}}" class="seat-badge retired-badge"><image class="symbol-icon faded-crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view>
@@ -267,7 +266,7 @@
 
   <view wx:if="{{dossierVisible}}" class="history-overlay">
     <view class="history-page">
-      <view class="sheet-head history-head"><view><view class="sheet-title">我的密录</view><view class="sheet-hint">只有你能看到，可随时回看</view></view><view class="modal-close" bindtap="closeDossier" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
+      <view class="sheet-head history-head"><view><view class="sheet-title">我的密录</view><view class="sheet-hint">只有你能看到，可随时回看</view></view><view wx:if="{{readingHint && phase === 'reveal'}}" class="dossier-clock {{readingUrgent ? 'urgent' : ''}}">{{readingHint}}</view><view class="modal-close" bindtap="closeDossier" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
       <scroll-view class="history-scroll" scroll-y>
         <view class="dossier-card">
           <image class="dossier-art" src="{{myRoleArt}}" mode="aspectFill" />
