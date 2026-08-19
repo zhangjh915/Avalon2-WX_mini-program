@@ -218,9 +218,8 @@ Page({
       missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
       missionTrack: this.buildMissionTrack(game), decoratedPlayers,
       tableOrientation: tableGeometry.orientation,
-      // 竖向长桌靠 CSS 转 90 度实现，所以宽高要按**横桌**下发，转完才是竖的
-      tableWidth: tableGeometry.orientation === "vertical" ? tableGeometry.height : tableGeometry.width,
-      tableHeight: tableGeometry.orientation === "vertical" ? tableGeometry.width : tableGeometry.height,
+      tableWidth: tableGeometry.width,
+      tableHeight: tableGeometry.height,
       voteCount: game.current.voteCount || 0,
       votePercent: game.current.team.length ? Math.round((game.current.voteCount || 0) / game.current.team.length * 100) : 0,
       amulet, isAmuletOwner: !!amulet && amulet.ownerId === privateView.id,

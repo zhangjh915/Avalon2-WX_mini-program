@@ -1623,11 +1623,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .selector-page { display: flex; width: 100%; height: 100%; max-height: none; padding: 22rpx 24rpx calc(22rpx + env(safe-area-inset-bottom)); flex-direction: column; overflow: hidden; border-radius: 0; animation: selector-page-in 160ms ease-out both; }
 .selector-page .sheet-head { flex: none; align-items: center; }
 .selector-page .compact-stage { height: auto; min-height: 0; flex: 1; margin-top: 8rpx; }
-.selector-page .compact-stage.round-seat-stage { width: 650rpx; height: 650rpx; min-height: 650rpx; flex: none; align-self: center; margin: auto 0; }
-/* 长桌台面必须和圆桌一样是正方形。tableGeometry 的宽、高分别相对台面宽和台面高，
-   台面不是正方形的话两个基准就不同——竖桌靠旋转实现时要交换宽高，一交换比例就毁了
-   （实测 32%x60% 换成 60%x32% 后是 218x209 的近正方形，桌子变成方的）。 */
-.selector-page .compact-stage.long-seat-stage { width: 650rpx; height: 650rpx; min-height: 650rpx; flex: none; align-self: center; margin: auto 0; }
+.selector-page .compact-stage.round-seat-stage { width: 650rpx; height: 650rpx; min-height: 650rpx; flex: none; align-self: center; margin-top: 24rpx; }
 .final-inline-stage.round-seat-stage { width: 590rpx; height: 590rpx; min-height: 590rpx; align-self: center; }
 .selector-tools { display: flex; flex: none; align-items: center; gap: 4rpx; }
 .selector-history { width: 58rpx; min-width: 58rpx; max-width: 58rpx; height: 58rpx; min-height: 58rpx; max-height: 58rpx; border-radius: 5rpx; }

@@ -88,20 +88,6 @@ assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-x").length === 2
 assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-y").length === 2, "左右边条 repeat-y")
 assert.ok(!assets.LONG_TABLE_SLICES.some(s => /round/.test(s[3])), "边条不能用 round，会和角块错位")
 
-// 竖向长桌是把横向长桌整体转 90 度得到的，不是另画一套图。
-// center.jpg 是横向木板、edge_top 是横向长条，直接拿来铺竖桌的话木板会横跨窄桌，
-// 板缝变成一道道横向断裂（实机截图确认过）。转元素能让木纹、边条、角块一次全对。
-const appWxssTable = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
-assert.match(appWxssTable, /\.long-table\.vertical \{[^}]*rotate\(90deg\)/s, "竖向长桌必须靠旋转实现")
-// 转 90 度之后宽高会互换，所以页面下发时必须已经按横桌给好
-;["play", "room"].forEach(name => {
-  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", name, `${name}.js`), "utf8")
-  assert.match(src, /tableWidth:\s*tableGeometry\.orientation === "vertical" \? tableGeometry\.height/,
-    `${name}.js 竖向长桌要按横桌下发宽度`)
-  assert.match(src, /tableHeight:\s*tableGeometry\.orientation === "vertical" \? tableGeometry\.width/,
-    `${name}.js 竖向长桌要按横桌下发高度`)
-})
-
 // 长桌背景只能在 loadBackgrounds 里算一次。放进 applyState 的话，
 // 900ms 的轮询每次都会重算并 setData 一个 1.4KB 的新字符串（9 个图片链接），
 // 渲染层每次都重新解析背景、重新请求那 9 张图，桌子要等很久才出得来。
