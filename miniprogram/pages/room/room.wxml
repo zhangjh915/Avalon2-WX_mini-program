@@ -14,7 +14,13 @@
   </view>
 
   <view class="lobby-section table-section">
-    <view class="section-row"><view class="section-title">选择座位</view><view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view></view>
+    <view class="section-row">
+      <view class="section-title">选择座位</view>
+      <view class="floor-swatches">
+        <view wx:for="{{floorOptions}}" wx:key="key" class="floor-swatch {{floorColor === item.key ? 'active' : ''}}" style="{{item.bg}}" data-color="{{item.key}}" bindtap="selectFloorColor" aria-role="button" aria-label="{{item.name}}地毯"></view>
+      </view>
+      <view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view>
+    </view>
     <view style="{{floorBg}}" class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
       <view class="{{tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}">
         <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />

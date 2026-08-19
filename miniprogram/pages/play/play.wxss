@@ -1221,17 +1221,6 @@ button::after {
   line-height: 1.4;
 }
 
-.compact-table-stage {
-  position: relative;
-  width: 100%;
-  min-height: 590rpx;
-  overflow: hidden;
-  border: 2rpx solid #c6c3ba;
-  border-radius: 8rpx;
-  background: #d8d4ca;
-  box-sizing: border-box;
-}
-
 .round-table,
 .long-table {
   width: 420rpx;
@@ -1437,7 +1426,7 @@ button::after {
 }
 
 @media (max-height: 700px) {
-  .compact-table-stage {
+  .compact-stage {
     min-height: 520rpx;
   }
 
@@ -1581,7 +1570,10 @@ button::after {
 .sheet-actions { position: sticky; bottom: -24rpx; z-index: 5; padding: 16rpx 0 calc(24rpx + env(safe-area-inset-bottom)); background: #eceae4; }
 .sheet-actions-syncing { pointer-events: none; }
 .sheet-actions button[disabled] { background: #b9ad90; color: #f3eee4; opacity: 1; }
-.compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #c6c3ba; border-radius: 8rpx; background: #d8d4ca; box-sizing: border-box; }
+/* 内联下发的只有 background-image，铺法必须写在这里。漏掉 background-size 就会按
+   原图 1080px 逻辑像素渲染，只看得到左上角一块，花纹瞬间大到读作「有图案的墙」。
+   底色也要跟着地毯转深，图没加载出来时才不会闪一下浅灰。 */
+.compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #4a4038; border-radius: 8rpx; background: #241d18; background-position: center; background-size: cover; box-sizing: border-box; }
 .game-seat-token { width: 72rpx; min-height: 72rpx; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
 .game-seat-token .seat-avatar { width: 64rpx; height: 64rpx; margin: 0; border: 3rpx solid #8f9993; background: #405049; font-size: 22rpx; box-sizing: border-box; }
 .game-seat-token .seat-caption { position: absolute; top: 70rpx; left: 50%; width: 126rpx; overflow: hidden; color: #e6e2d8; font-size: 18rpx; font-weight: 800; line-height: 27rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; transform: translateX(-50%); }

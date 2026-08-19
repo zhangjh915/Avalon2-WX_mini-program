@@ -11,6 +11,7 @@ Page({
     isHost: false,
     devMode: false,
     ui: {}, roundTableBg: "", longTableBg: "", floorBg: "",
+    floorColor: "", floorOptions: [],
     mySeatNo: 0,
     seatedCount: 0,
     tableType: "round",
@@ -155,6 +156,13 @@ Page({
       roleCandidates,
       filteredRoleCandidates
     })
+  },
+
+  // 地毯是个人偏好，只写本地 storage，不进房间数据——不同玩家看到不同颜色不影响对局
+  selectFloorColor(event) {
+    const floorColor = assets.setFloorColor(event.currentTarget.dataset.color)
+    const option = this.data.floorOptions.find(item => item.key === floorColor)
+    this.setData({ floorColor, floorBg: option ? option.bg : "" })
   },
 
   openRoleViewer() { this.setData({ roleViewerVisible: true }) },

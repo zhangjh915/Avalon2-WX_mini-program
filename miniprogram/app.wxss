@@ -174,7 +174,10 @@ button:active,
   border: 0;
   background-position: center;
   background-size: cover;
-  box-shadow: 0 16rpx 26rpx rgba(75, 48, 28, 0.24);
+  /* 投影必须保留、而且必须够深。桌面和地面都是正俯视平光，没有可见投影就完全
+     没有深度线索，桌子读起来像一张贴在地毯上的贴纸。原来的暖褐 24%
+     打在深色绒毯上几乎看不见，等同于没有。实机验证过这一条。 */
+  box-shadow: 0 14rpx 25rpx rgba(20, 14, 10, 0.45);
 }
 
 .round-table {

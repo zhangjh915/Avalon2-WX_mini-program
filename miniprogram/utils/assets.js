@@ -94,15 +94,49 @@ function resolveTempUrls(fileIDs) {
   })
 }
 
-// 页面需要的全部 CSS 背景，一次解析好再 setData
+// 地毯四个配色，纯装饰、不承载任何游戏信息，所以做成**个人偏好**而不是房间级设置：
+// 房间级要动房间结构和云函数（missionSkin / roleSkin 是那么做的，因为卡面必须全场一致），
+// 个人偏好只要本地一个 key，零服务端改动，还能随时换不用重开房。
+const FLOOR_COLORS = [
+  { key: "indigo", name: "靛蓝" },
+  { key: "green", name: "墨绿" },
+  { key: "wine", name: "酒红" },
+  { key: "umber", name: "金褐" }
+]
+// 默认靛蓝：四色里它和桌子的明度差、冷暖差都最大，桌子最跳出来
+const DEFAULT_FLOOR = "indigo"
+const FLOOR_STORAGE_KEY = "floorColor"
+
+function normalizeFloorColor(color) {
+  return FLOOR_COLORS.some(item => item.key === color) ? color : DEFAULT_FLOOR
+}
+
+function floorAsset(color) {
+  return uiAsset("floor-" + normalizeFloorColor(color) + ".jpg")
+}
+
+function floorColor() {
+  if (typeof wx === "undefined" || !wx.getStorageSync) return DEFAULT_FLOOR
+  return normalizeFloorColor(wx.getStorageSync(FLOOR_STORAGE_KEY))
+}
+
+function setFloorColor(color) {
+  const next = normalizeFloorColor(color)
+  if (typeof wx !== "undefined" && wx.setStorageSync) wx.setStorageSync(FLOOR_STORAGE_KEY, next)
+  return next
+}
+
+// 页面需要的全部 CSS 背景，一次解析好再 setData。
+// 四张地毯一次全解析（getTempFileURL 一次调用就能带完），换色才是纯本地 setData，
+// 不然每换一次都要等一趟网络。
 function backgroundStyles() {
   const singles = {
     roundTableBg: "table-round.jpg",
-    floorBg: "floor.jpg",
     sealBg: "seal-base.png",
     homeBg: "home-bg.jpg"
   }
   const ids = Object.keys(singles).map(key => uiAsset(singles[key]))
+    .concat(FLOOR_COLORS.map(item => floorAsset(item.key)))
     .concat(LONG_TABLE_SLICES.map(slice => uiAsset("table-long/" + slice[0])))
   return resolveTempUrls(ids).then(cache => {
     const styles = {}
@@ -110,6 +144,13 @@ function backgroundStyles() {
       const url = cache[uiAsset(singles[key])]
       styles[key] = url ? `background-image:url(${url})` : ""
     })
+    const active = floorColor()
+    styles.floorColor = active
+    styles.floorOptions = FLOOR_COLORS.map(item => {
+      const url = cache[floorAsset(item.key)]
+      return { ...item, bg: url ? `background-image:url(${url})` : "" }
+    })
+    styles.floorBg = (styles.floorOptions.find(item => item.key === active) || {}).bg || ""
     const layers = LONG_TABLE_SLICES
       .map(slice => {
         const url = cache[uiAsset("table-long/" + slice[0])]
@@ -143,6 +184,12 @@ function missionCard(skin, face) {
 
 module.exports = {
   CLOUD_PREFIX,
+  FLOOR_COLORS,
+  DEFAULT_FLOOR,
+  normalizeFloorColor,
+  floorAsset,
+  floorColor,
+  setFloorColor,
   uiAsset,
   uiIcons,
   resolveTempUrls,
