@@ -81,12 +81,19 @@ const icons = assets.uiIcons()
 assert.strictEqual(assets.LONG_TABLE_SLICES.length, 9)
 assert.strictEqual(assets.LONG_TABLE_SLICES[0][0], "corner_tl.png", "角块必须排在最前（最上层）")
 assert.strictEqual(assets.LONG_TABLE_SLICES[8][0], "center.jpg", "中心必须排在最后（垫底）")
-const bg = assets.longTableBackground()
-assert.ok(bg.startsWith("background:"), "要能直接内联到 style")
-assert.strictEqual(bg.split("url(").length - 1, 9, "九个图层缺一不可")
-assert.ok(bg.indexOf("repeat-x") > 0 && bg.indexOf("repeat-y") > 0, "边条必须单轴平铺")
+// 边条必须单轴平铺，否则拉伸会把桌沿抻变形
+assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-x").length === 2, "上下边条 repeat-x")
+assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-y").length === 2, "左右边条 repeat-y")
+assert.strictEqual(assets.LONG_TABLE_SLICES[8][2], "cover", "中心用 cover")
 
-assert.ok(assets.backgroundImage("floor.jpg").startsWith("background-image:url(cloud://"))
+// CSS 的 background-image 不认 cloud:// 协议，必须先换成 https 临时链接。
+// 没有 wx.cloud 时（单元测试、云开发未初始化）要安全退化成空串而不是抛错。
+assets.backgroundStyles().then(styles => {
+  ;["roundTableBg", "floorBg", "sealBg", "homeBg", "longTableBg"].forEach(key => {
+    assert.ok(key in styles, `缺少背景样式 ${key}`)
+    assert.ok(!String(styles[key]).includes("cloud://"), `${key} 不能把 cloud:// 写进 CSS`)
+  })
+})
 
 // ---- 云端文件必须真实存在（本地那份是上传中转，两者应一致）----
 const UI_DIR = path.join(__dirname, "..", "miniprogram", "assets", "ui")

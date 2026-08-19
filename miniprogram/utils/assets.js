@@ -54,16 +54,63 @@ const LONG_TABLE_SLICES = [
   ["center.jpg", "center", "cover", "no-repeat"]
 ]
 
-// 九个图层都在云端，wxss 里写不了 fileID，只能在 js 拼好整段 background 内联。
-function longTableBackground() {
-  return "background:" + LONG_TABLE_SLICES
-    .map(slice => `url(${uiAsset("table-long/" + slice[0])}) ${slice[1]} / ${slice[2]} ${slice[3]}`)
-    .join(",")
+// 走 CSS background 的图必须先换成 https 临时链接。
+//
+// 关键限制：**CSS 的 background-image 不认 cloud:// 协议**，只有 <image> 组件的
+// src 认。直接把 fileID 写进 background-image 不会报错，图就是不显示——
+// 圆桌换图后一片空白就是这么来的。
+//
+// 临时链接默认 2 小时有效，页面 onShow 时重新解析一次即可覆盖长时间对局。
+const tempUrlCache = {}
+
+function resolveTempUrls(fileIDs) {
+  // 云开发不可用时退化成「没有背景图」，不要让整页起不来。
+  // 单元测试没有 wx 全局对象，这条同时保证 require 页面不炸。
+  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.getTempFileURL) {
+    return Promise.resolve(tempUrlCache)
+  }
+  const missing = fileIDs.filter(id => !tempUrlCache[id])
+  if (!missing.length) return Promise.resolve(tempUrlCache)
+  return new Promise(resolve => {
+    wx.cloud.getTempFileURL({
+      fileList: missing,
+      success: res => {
+        (res.fileList || []).forEach(item => {
+          if (item.tempFileURL) tempUrlCache[item.fileID] = item.tempFileURL
+        })
+        resolve(tempUrlCache)
+      },
+      // 取不到就退化成没有背景图，不至于整页白屏
+      fail: () => resolve(tempUrlCache)
+    })
+  })
 }
 
-// 单张图的内联 background，供圆桌、地面、首页底纹等使用
-function backgroundImage(name) {
-  return `background-image:url(${uiAsset(name)})`
+// 页面需要的全部 CSS 背景，一次解析好再 setData
+function backgroundStyles() {
+  const singles = {
+    roundTableBg: "table-round.jpg",
+    floorBg: "floor.jpg",
+    sealBg: "seal-base.png",
+    homeBg: "home-bg.jpg"
+  }
+  const ids = Object.keys(singles).map(key => uiAsset(singles[key]))
+    .concat(LONG_TABLE_SLICES.map(slice => uiAsset("table-long/" + slice[0])))
+  return resolveTempUrls(ids).then(cache => {
+    const styles = {}
+    Object.keys(singles).forEach(key => {
+      const url = cache[uiAsset(singles[key])]
+      styles[key] = url ? `background-image:url(${url})` : ""
+    })
+    const layers = LONG_TABLE_SLICES
+      .map(slice => {
+        const url = cache[uiAsset("table-long/" + slice[0])]
+        return url ? `url(${url}) ${slice[1]} / ${slice[2]} ${slice[3]}` : ""
+      })
+      .filter(Boolean)
+    styles.longTableBg = layers.length === LONG_TABLE_SLICES.length ? "background:" + layers.join(",") : ""
+    return styles
+  })
 }
 
 // 界面上一次性用到的所有图标，applyState 时整体下发，避免逐个拼路径
@@ -90,8 +137,8 @@ module.exports = {
   CLOUD_PREFIX,
   uiAsset,
   uiIcons,
-  longTableBackground,
-  backgroundImage,
+  resolveTempUrls,
+  backgroundStyles,
   LONG_TABLE_SLICES,
   roleArtPath,
   roleArt,

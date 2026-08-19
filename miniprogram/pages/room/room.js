@@ -41,16 +41,23 @@ Page({
 
   enterRoom(roomId) {
     this.setData({ roomId })
+    this.loadBackgrounds()
     this.loadRoom(true)
     this.startPolling()
   },
 
   onUnload() { this.stopPolling() },
 
+  // CSS 背景不认 cloud://，先换成 https 临时链接
+  loadBackgrounds() {
+    assets.backgroundStyles().then(styles => this.setData(styles))
+  },
+
   // 切后台时停止轮询省流量，回到前台立刻补一次拉取，
   // 不必等下一个轮询周期才恢复到最新状态。
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
+    this.loadBackgrounds()
     this.startPolling()
     this.loadRoom(false)
   },
@@ -137,8 +144,6 @@ Page({
       tableHeight: tableGeometry.height,
       isHost: !!result.isHost,
       ui: assets.uiIcons(),
-      roundTableBg: assets.backgroundImage("table-round.jpg"),
-      longTableBg: assets.longTableBackground(),
       // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验
       devMode: !!room.devMode,
       mySeatNo: mySeat ? mySeat.seatNo : 0,

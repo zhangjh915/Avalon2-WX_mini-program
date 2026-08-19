@@ -61,14 +61,22 @@ Page({
 
   onLoad(options) {
     this.setData({ roomId: options.roomId })
+    this.loadBackgrounds()
     this.loadState(true)
     this.startTimers()
+  },
+
+  // CSS 背景不认 cloud://，要先换成 https 临时链接。链接 2 小时过期，
+  // 每次 onShow 重新解析一次，覆盖长时间对局。
+  loadBackgrounds() {
+    assets.backgroundStyles().then(styles => this.setData(styles))
   },
 
   // 切后台停表，回到前台立刻补一次拉取：锁屏或切微信聊天回来后
   // 不用等下一个轮询周期，也能马上追上其他玩家的进度。
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
+    this.loadBackgrounds()
     this.startTimers()
     this.loadState(false)
   },
@@ -230,11 +238,6 @@ Page({
       myRoleArt,
       identityBackArt: assets.identityBack(roleSkin),
       ui: assets.uiIcons(),
-      // 云存储的图 wxss 里写不了 fileID，只能在 js 拼好内联到 style
-      roundTableBg: assets.backgroundImage("table-round.jpg"),
-      longTableBg: assets.longTableBackground(),
-      floorBg: assets.backgroundImage("floor.jpg"),
-      sealBg: assets.backgroundImage("seal-base.png"),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
       missionCardFail: assets.missionCard(missionSkin, "fail"),

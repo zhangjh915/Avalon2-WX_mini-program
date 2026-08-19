@@ -83,10 +83,9 @@ Page({
         front: assets.roleArt(key, "morgan", 0)
       }))
     })
-    this.setData({
-      homeEmblem: assets.uiAsset("home-emblem.png"),
-      homeBg: assets.backgroundImage("home-bg.jpg")
-    })
+    this.setData({ homeEmblem: assets.uiAsset("home-emblem.png") })
+    // CSS 背景不认 cloud://，先换成 https 临时链接
+    assets.backgroundStyles().then(styles => this.setData({ homeBg: styles.homeBg }))
     this.refreshSkinSelection()
     this.resetRoles(false)
   },
