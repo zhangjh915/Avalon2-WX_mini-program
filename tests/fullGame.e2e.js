@@ -26,7 +26,12 @@ const automator = require("miniprogram-automator")
 
 const ENDPOINT = process.env.WECHAT_AUTOMATION_ENDPOINT || "ws://127.0.0.1:9420"
 const SHOT_DIR = process.env.E2E_SHOT_DIR || path.join(__dirname, "..", "tmp", "e2e-shots")
-const PLAYER_COUNT = 8
+// 支持从环境变量换配置，方便一次跑多种局型：
+//   E2E_PLAYERS=10 E2E_TABLE=round E2E_UNKNOWN=1 E2E_HUNTER_VOTE=1 bash scripts/run-e2e.sh
+const PLAYER_COUNT = Number(process.env.E2E_PLAYERS) || 8
+const TABLE_TYPE = process.env.E2E_TABLE === "round" ? "round" : "long"
+const UNKNOWN_ROLES = process.env.E2E_UNKNOWN === "1"
+const HUNTER_VOTE = process.env.E2E_HUNTER_VOTE === "1"
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -63,6 +68,43 @@ async function main() {
   log("预检通过，模拟器可用")
 
   const problems = []
+
+  // 台面渲染出来了，桌子就必须一起在。
+  // 踩过：选人面板会被 applyState **自动**打开（队长进入组队阶段），那条路径不经过
+  // openTable，stage 尺寸从未测量过，于是挑不出档、长桌整个不渲染——而地毯和座位
+  // 照常显示，光看截图很容易忽略。这条检查专门盯它。
+  async function checkTableRendered(label) {
+    let r
+    try {
+      r = await withTimeout(mp.evaluate(function () {
+        return new Promise(function (res) {
+          const page = getCurrentPages().slice(-1)[0]
+          const q = wx.createSelectorQuery().in(page)
+          q.selectAll(".stage-floor").fields({ size: true }, null)
+          q.selectAll(".long-table").fields({ size: true }, null)
+          q.selectAll(".round-table").fields({ size: true }, null)
+          q.exec(function (rs) {
+            res({
+              floor: (rs[0] || []).length,
+              long: (rs[1] || []).filter(x => x.width > 0).length,
+              round: (rs[2] || []).filter(x => x.width > 0).length,
+              type: (page.data.room || {}).tableType,
+              tier: page.data.longTable && page.data.longTable.tier,
+              stage: Math.round(page.data.stageW || 0) + "x" + Math.round(page.data.stageH || 0)
+            })
+          })
+        })
+      }), 8000, "查桌子")
+    } catch (error) {
+      // 静默 return 是陷阱：分不清「没问题」和「没检查」。探针验证时就是因为这里
+      // 悄悄跳过，回滚了修复也照样"通过"。
+      problems.push(`[检查未执行] ${label}：查桌子超时，本轮结论无效`)
+      return
+    }
+    if (!r || !r.floor) { log(`  ${label}：台面未渲染，跳过桌子检查`); return }
+    const drawn = r.type === "long" ? r.long : r.round
+    if (!drawn) problems.push(`[桌子缺失] ${label}：台面和地毯都在，但 ${r.type} 桌没渲染（stage=${r.stage} 档位=${r.tier}）`)
+  }
   mp.on("exception", error => problems.push(`[exception] ${error.message}`))
   mp.on("console", message => {
     if (message.type !== "error") return
@@ -170,16 +212,16 @@ async function main() {
 
     const created = await call("createRoom", {
       playerCount: PLAYER_COUNT,
-      roleCounts: require("../miniprogram/utils/game").buildDefaultRoleCounts(PLAYER_COUNT, false),
-      unknownRoles: false,
-      hunterVoteVariant: false,
-      tableType: "long",
-      seatLayout: { top: 3, right: 1, bottom: 3, left: 1 },
+      roleCounts: require("../miniprogram/utils/game").buildDefaultRoleCounts(PLAYER_COUNT, UNKNOWN_ROLES),
+      unknownRoles: UNKNOWN_ROLES,
+      hunterVoteVariant: HUNTER_VOTE,
+      tableType: TABLE_TYPE,
+      seatLayout: TABLE_TYPE === "long" ? require("../miniprogram/utils/tableLayout").balancedLayout(PLAYER_COUNT) : null,
       devMode: true
     })
     const roomId = created.roomId
     currentRoomId = roomId
-    log(`房间已创建 code=${created.code} id=${roomId}`)
+    log(`房间已创建 code=${created.code} id=${roomId}｜配置 ${PLAYER_COUNT}人 ${TABLE_TYPE}桌 未知角色=${UNKNOWN_ROLES} 猎杀投票=${HUNTER_VOTE}`)
 
     await call("takeSeat", { roomId, seatNo: 1, name: "自动巡检" })
     await call("fillBots", { roomId })
@@ -284,6 +326,7 @@ async function main() {
       }
       await sleep(1200)
       await shot(`mission-round-${(await state(roomId)).room.game.round}`)
+      await checkTableRendered(`第 ${(await state(roomId)).room.game.round} 轮组队`)
     }
 
     // ---- 终局 ----

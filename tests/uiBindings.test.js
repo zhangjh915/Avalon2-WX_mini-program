@@ -85,5 +85,13 @@ assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier
 
 
 
+// 选人面板有两条打开路径：openTable（点按钮）和 applyState 自动打开
+// （队长进入组队阶段）。长桌要靠实测 stage 尺寸才能挑档，测量必须两条路径都覆盖——
+// 只挂在 openTable 上时，真实对局里队长那一轮的长桌整个不渲染（e2e 截图逮到过）。
+const playSrc2 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+assert.match(playSrc2, /tableVisible:\s*phaseChanged \?/, "applyState 仍会自动打开选人面板")
+assert.match(playSrc2, /refreshLongTable\(\) \{[\s\S]{0,400}?measureStage\(\)/,
+  "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则自动打开的面板挑不出档")
+
 delete global.Page
 console.log("UI binding tests passed")

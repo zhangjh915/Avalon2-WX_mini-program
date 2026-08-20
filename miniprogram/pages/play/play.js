@@ -643,14 +643,19 @@ Page({
   // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
   // 375pt 屏上长宽比 1.19、414pt 屏上 1.32，差 11%，写死会挑错档。
   measureStage(attempt) {
+    // 防并发：refreshLongTable 每轮轮询都可能来催一次，别叠出一堆重试链
+    if (!attempt && this.measuring) return
+    this.measuring = true
     wx.createSelectorQuery().in(this).selectAll(".compact-stage").boundingClientRect(rects => {
       const rect = (rects || []).find(item => item && item.width > 0 && item.height > 0)
       if (!rect) {
         // 面板是 wx:if 出来的，setData 回调里布局往往还没完成，量到 0 就挑不出档、
         // 桌子整个不渲染（第一轮点「选择骑士」桌子不见了就是这么来的）。补量几次。
-        if ((attempt || 0) < 5) setTimeout(() => this.measureStage((attempt || 0) + 1), 120)
+        if ((attempt || 0) < 5) return setTimeout(() => this.measureStage((attempt || 0) + 1), 120)
+        this.measuring = false
         return
       }
+      this.measuring = false
       if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
       this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
     }).exec()
@@ -658,7 +663,13 @@ Page({
 
   refreshLongTable() {
     const data = this.data
-    if (!data.stageW || !data.stageH) return
+    if (!data.stageW || !data.stageH) {
+      // 选人面板还会被 applyState **自动**打开（队长进入组队阶段，见 tableVisible 那行），
+      // 那条路径不经过 openTable，测量从来没发生过——于是挑不出档、长桌整个不渲染。
+      // 实测 e2e 跑真实对局时第 2 轮就是这样：地毯和座位都在，桌子没了。
+      if (data.tableVisible) this.measureStage()
+      return
+    }
     const longTable = assets.pickLongTable(data.tableWidth, data.tableHeight, data.stageW, data.stageH)
     if (!longTable) return
     const previous = data.longTable || {}
