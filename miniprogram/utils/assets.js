@@ -100,7 +100,7 @@ function pickLongTable(widthPct, heightPct, stageW, stageH) {
 // src 认。直接把 fileID 写进 background-image 不会报错，图就是不显示——
 // 圆桌换图后一片空白就是这么来的。
 //
-// 地毯四个配色，纯装饰、不承载任何游戏信息，所以做成**个人偏好**而不是房间级设置：
+// 地毯四个配色。纯装饰、不承载游戏信息，所以做成**个人偏好**而不是房间级设置：
 // 房间级要动房间结构和云函数（missionSkin / roleSkin 是那么做的，因为卡面必须全场一致），
 // 个人偏好只要本地一个 key，零服务端改动，还能随时换不用重开房。
 const FLOOR_COLORS = [
@@ -121,46 +121,53 @@ function floorAsset(color) {
   return uiAsset("floor-" + normalizeFloorColor(color) + ".jpg")
 }
 
+// 缓存偏好：storage 只有本进程会改，所以缓存永远是准的。
+// 不缓存的话 uiIcons() 每次调用都要一次同步 wx.getStorageSync（阻塞式 JSBridge 往返），
+// 而 uiIcons() 在 applyState 里被 900ms 的轮询带着跑——一局能有四千次。
+let cachedFloor = null
+
 function floorColor() {
+  if (cachedFloor) return cachedFloor
   if (typeof wx === "undefined" || !wx.getStorageSync) return DEFAULT_FLOOR
-  return normalizeFloorColor(wx.getStorageSync(FLOOR_STORAGE_KEY))
+  cachedFloor = normalizeFloorColor(wx.getStorageSync(FLOOR_STORAGE_KEY))
+  return cachedFloor
 }
 
 function setFloorColor(color) {
   const next = normalizeFloorColor(color)
+  cachedFloor = next
   if (typeof wx !== "undefined" && wx.setStorageSync) wx.setStorageSync(FLOOR_STORAGE_KEY, next)
   return next
 }
 
-// 地毯色板。四色一次给全，换色是纯本地 setData。
-// 注意这里返回的是 cloud:// 而不是 https 临时链接——色块用 <image> 渲染，
-// 不再走 CSS background，也就没有临时链接过期那一类问题。
-function floorOptions() {
-  const active = floorColor()
-  return {
-    floorColor: active,
-    floorSrc: floorAsset(active),
-    floorOptions: FLOOR_COLORS.map(item => ({ ...item, src: floorAsset(item.key) }))
-  }
+// 界面图标。除地毯外全是编译期常量，所以只算一次；页面在 onLoad 下发一次即可，
+// **不要放进 applyState** —— 那是 900ms 轮询驱动的，每轮重建并整体 setData
+// 1.4KB 全常量，渲染层还要把十几处绑定重新求值一遍。
+const STATIC_ICONS = {
+  crown: uiAsset("crown.png"),
+  amulet: uiAsset("amulet.png"),
+  fire: uiAsset("magic-fire.png"),
+  tableEmblem: uiAsset("table-emblem.png"),
+  crestGood: uiAsset("crest-good.png"),
+  crestEvil: uiAsset("crest-evil.png"),
+  missionPending: uiAsset("mission-pending.png"),
+  missionCurrent: uiAsset("mission-current.png"),
+  seal: uiAsset("seal-base.png"),
+  tableRound: uiAsset("table-round.jpg"),
+  homeBg: uiAsset("home-bg.jpg")
 }
 
-// 界面上一次性用到的所有图标，applyState 时整体下发，避免逐个拼路径
 function uiIcons() {
+  // 只有地毯跟着个人偏好走，换色时重新下发一次
+  return { ...STATIC_ICONS, floor: floorAsset(floorColor()) }
+}
+
+// 地毯色板：四色一次给全，换色是纯本地 setData。
+// 给的是 cloud:// 而不是 https 临时链接——色块用 <image> 渲染，不走 CSS background。
+function floorOptions() {
   return {
-    crown: uiAsset("crown.png"),
-    amulet: uiAsset("amulet.png"),
-    fire: uiAsset("magic-fire.png"),
-    tableEmblem: uiAsset("table-emblem.png"),
-    crestGood: uiAsset("crest-good.png"),
-    crestEvil: uiAsset("crest-evil.png"),
-    missionPending: uiAsset("mission-pending.png"),
-    missionCurrent: uiAsset("mission-current.png"),
-    seal: uiAsset("seal-base.png"),
-    // 下面四个原先走 CSS background，必须先换成 https 临时链接，于是会过期 403。
-    // 改成 <image src="cloud://"> 之后由微信自己解析，不再经手临时链接。
-    tableRound: uiAsset("table-round.jpg"),
-    homeBg: uiAsset("home-bg.jpg"),
-    floor: floorAsset(floorColor())
+    floorColor: floorColor(),
+    floorOptions: FLOOR_COLORS.map(item => ({ ...item, src: floorAsset(item.key) }))
   }
 }
 

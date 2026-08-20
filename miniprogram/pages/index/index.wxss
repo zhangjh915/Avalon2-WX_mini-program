@@ -167,5 +167,3 @@
 .kind-role .skin-card { gap: 20rpx; }
 .kind-role .skin-card-thumb { width: 216rpx; height: 288rpx; }
 
-/* 首页底图改成垫底 image，内容要压在它上面 */
-.page > view { position: relative; z-index: 1; }

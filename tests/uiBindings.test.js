@@ -17,6 +17,9 @@ pages.forEach(name => {
   handlers.forEach(handler => assert.strictEqual(typeof definition[handler], "function", `${name}.${handler} is missing`))
   assert.ok(!/>\s*×\s*</.test(wxml), `${name} uses a text close glyph`)
   assert.ok(!/class="[^"]*sheet-close/.test(wxml), `${name} uses the retired sheet-close button`)
+  // 图一律走 <image src="cloud://">：CSS background 只认 https，就得先换临时链接，
+  // 而临时链接实测只活约 10 分钟，403 反复出现三轮就是它带来的。
+  assert.ok(!/style="\{\{[a-zA-Z]*Bg[\s}]/.test(wxml), `${name}.wxml 不能再把图放进 CSS background`)
 })
 
 const indexWxml = fs.readFileSync(path.join(root, "index", "index.wxml"), "utf8")
@@ -80,17 +83,7 @@ assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier
   assert.ok(!/table-emblem/.test(slot.slice(0, slotEnd)), `${name} 纹章不能放进 table-slot（会跟着旋转）`)
 })
 
-// 走 CSS background 的图必须先换成 https 临时链接，而临时链接会过期成 403
-// （实测生成后十几分钟就失效，反复修了三轮都是在错的方向上使劲）。
-// 现在一律改用 <image src="cloud://">，由微信自己解析，不再经手临时链接。
-;["index", "room", "play", "result"].forEach(name => {
-  const wxml = fs.readFileSync(path.join(root, name, `${name}.wxml`), "utf8")
-  assert.ok(!/style="\{\{[a-zA-Z]*Bg[\s}]/.test(wxml), `${name}.wxml 不能再把图放进 CSS background`)
-})
-// 同 assets.test.js：只看实际代码，顶部的警示注释里本来就写着这个词
-const assetsSrc2 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
-assert.ok(!/getTempFileURL/.test(assetsSrc2), "不该再需要临时链接")
+
 
 delete global.Page
 console.log("UI binding tests passed")

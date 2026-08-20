@@ -169,13 +169,11 @@ assert.strictEqual(assets.pickLongTable(0, 0, 340, 295), null)
 // 而我按「2 小时」设缓存 TTL，怎么修都修不掉。现在整条链路删掉了。
 assert.ok(!("backgroundStyles" in assets), "临时链接机制应当已移除")
 assert.ok(!("resolveTempUrls" in assets), "临时链接机制应当已移除")
-// 断言只看实际代码，不看注释——顶部那条「不要用 getTempFileURL」的警示注释
-// 本身就含这个词，直接全文匹配会把有价值的注释一起判死。
-function codeOnly(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
-}
-const uiSrc = codeOnly(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8"))
-assert.ok(!/getTempFileURL|tempFileURL/.test(uiSrc), "不该再解析临时链接")
+// 匹配**带左括号的调用形式**。顶部那条「不要用 getTempFileURL」的警示注释写的是
+// 不带括号的名字，所以天然不会误伤——比先剥注释再匹配可靠得多，
+// 也不用维护一个假的注释解析器（那个剥离器会把字符串里 cloud:// 之后的内容也吃掉）。
+const uiSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")
+assert.ok(!/getTempFileURL\s*\(/.test(uiSrc), "不该再调用 getTempFileURL")
 
 // 四类原本走 CSS 背景的图，现在都要以 cloud:// 出现在图标集里
 ;["tableRound", "homeBg", "floor", "seal"].forEach(key => {
@@ -184,7 +182,9 @@ assert.ok(!/getTempFileURL|tempFileURL/.test(uiSrc), "不该再解析临时链�
 // 地毯跟着个人偏好走
 const palette = assets.floorOptions()
 assert.strictEqual(palette.floorOptions.length, assets.FLOOR_COLORS.length)
-assert.ok(palette.floorSrc.startsWith("cloud://"))
+// 当前地毯图只有 ui.floor 这一个出口，别再开第二个
+assert.ok(icons.floor.startsWith("cloud://"))
+assert.ok(!("floorSrc" in palette), "当前地毯图不该有第二个出口")
 palette.floorOptions.forEach(option => {
   assert.ok(option.src && option.src.startsWith("cloud://"), "色板也要用 cloud://，不能走 CSS 背景")
   assert.ok(option.key && option.name)
@@ -232,12 +232,18 @@ const roomWxml = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "page
 // 先确认这个类真的有元素在用。踩过的坑：给一条**没有任何元素命中的死规则**加了
 // background-size，测试照样绿，实机纹丝不动——play.wxss 里那条 .compact-table-stage
 // 就是重构遗留，wxml 用的一直是 .compact-stage。断言样式前必须先断言类名活着。
-function assertStageCover(wxss, wxml, cls, label) {
+function assertStageFloor(wxml, cls, label) {
   assert.ok(new RegExp(`class="[^"]*\\b${cls}\\b`).test(wxml), `${label} 的类 ${cls} 在 wxml 里没有元素在用`)
-  assert.match(wxss, new RegExp(`\\.${cls} \\{[^}]*background-size:\\s*cover`, "s"), `${label}必须 cover 铺地毯`)
+  // 地毯改成垫底 <image> 之后，铺满由 mode="scaleToFill" 负责，不再是 CSS 的 cover
+  const stage = wxml.slice(wxml.indexOf(cls))
+  assert.match(stage.slice(0, 400), /<image class="stage-floor"[^>]*mode="scaleToFill"/,
+    `${label}要有铺满的垫底地毯图`)
 }
-assertStageCover(playWxss, playWxml, "compact-stage", "对局台面")
-assertStageCover(roomWxss, roomWxml, "lobby-table-stage", "候场台面")
+assertStageFloor(playWxml, "compact-stage", "对局台面")
+assertStageFloor(roomWxml, "lobby-table-stage", "候场台面")
+// 垫底图的位置与铺满统一在 app.wxss 声明，别在各页面重复
+const appWxssFloor = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
+assert.match(appWxssFloor, /\.stage-floor,[\s\S]{0,120}\{[^}]*position: absolute/, "垫底图样式应统一在 app.wxss")
 assert.ok(!/compact-table-stage/.test(playWxss), "已删除的死规则不该再出现")
 // 桌面和地面都是正俯视平光，没有可见投影桌子就像贴纸浮在毯子上
 const appWxss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")

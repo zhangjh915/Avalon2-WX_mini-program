@@ -32,7 +32,17 @@ function friendlyMessage(error) {
 // 超时**不代表没执行成功**：云函数很可能已经写完库，只是响应没等到。
 // 所以只对超时重试，而且只重一次——服务端对这些操作都有幂等保护
 // （重复入座无害、startGame 会拒第二次并让客户端改读状态）。
+const TIMEOUT_CODE = -504003
 const TIMEOUT_PATTERN = /-504003|timed out|timeout/i
+// 只读操作不重试：900ms 后的下一轮轮询本来就是一次免费重试，
+// 而重试期间页面的 loading 闸门一直关着，等于把「拿不到新状态」的时间翻倍。
+const READ_ONLY = ["getState", "getResult", "findRoom"]
+
+function isTimeout(error) {
+  // errCode 是结构化的，优先用它；正则只兜住拿不到 errCode 的情况
+  if (error && error.errCode === TIMEOUT_CODE) return true
+  return TIMEOUT_PATTERN.test(String(error && (error.errMsg || error.message) || ""))
+}
 
 function invoke(action, payload) {
   return wx.cloud.callFunction({ name: functionName, data: { action, ...(payload || {}) } })
@@ -41,7 +51,7 @@ function invoke(action, payload) {
 function call(action, payload) {
   if (!wx.cloud) return Promise.reject(new Error("请先开启微信云开发"))
   return invoke(action, payload).catch(error => {
-    if (!TIMEOUT_PATTERN.test(String(error && (error.errMsg || error.message) || ""))) throw error
+    if (READ_ONLY.indexOf(action) >= 0 || !isTimeout(error)) throw error
     console.warn("[avalonGame] 冷启动超时，重试一次", action)
     return invoke(action, payload)
   }).then(response => {

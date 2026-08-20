@@ -1455,17 +1455,16 @@ button::after {
 /* 已提交状态压成紧凑横排，不再是撑满的居中块 */
 .submitted-state { display: flex; margin: 8rpx 0; align-items: center; justify-content: center; gap: 14rpx; text-align: center; }
 .submitted-state .waiting-title { margin: 0; font-size: 27rpx; }
-/* seal-base.png 是 208px 见方，而这个圆圈只有 32pt。内联下发的是 background-image，
-   不给铺法就按原图 1:1 渲染——只能看到左上角一丢丢，和地毯栽的是同一个跟头。 */
 /* 印章里放自己的角色立绘，状态交给边框。
    原来 10 处共用一张底纹、只靠一个汉字区分，「该我动」和「我交完了」在视觉上
    几乎没差别，玩家得读字才知道要不要动。现在动静一分就够了：
    会呼吸的 = 在等别人，压死的 = 你已经交了。
    放大到 132rpx 是因为 64rpx 的圆里人脸只有 10pt，糊成一团。 */
-.submitted-seal { position: relative; display: flex; width: 132rpx; height: 132rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; background-position: center; background-size: cover; overflow: hidden; box-sizing: border-box; }
+.submitted-seal { position: relative; display: flex; width: 132rpx; height: 132rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; overflow: hidden; box-sizing: border-box; }
 /* 印章里放自己的座位头像（名字首字），不是角色立绘、也不是卡背——
    那两样都会在身份揭示前后把牌面又摆一遍。状态仍然由边框的动静表达。 */
-.seal-base { position: absolute; left: 0; top: 0; z-index: 0; width: 100%; height: 100%; border-radius: 50%; }
+/* 位置与铺满在 app.wxss 的垫底图规则里，这里只补圆角 */
+.seal-base { border-radius: 50%; }
 .seal-initial { position: relative; z-index: 1; display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border-radius: 50%; background: #2c3a34; color: #e8e3d8; font-size: 44rpx; font-weight: 900; }
 .submitted-seal.spectator { border-color: #647169; }
 
@@ -1549,7 +1548,7 @@ button::after {
 .loyalty-button[disabled] { border-color: #c7c8c4; background: #e5e5e2; color: #a0a39e; opacity: 1; }
 .loyalty-button.selected-loyalty { box-shadow: 0 0 0 7rpx rgba(47, 115, 88, 0.16); transform: translateY(-2rpx); }
 .ceremony-content { min-height: 650rpx; justify-content: center; }
-.ceremony-mark { position: relative; overflow: hidden; display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; background-position: center; background-size: cover; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
+.ceremony-mark { position: relative; overflow: hidden; display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
 .ceremony-step { color: #909993; font-size: 21rpx; text-align: center; }
 .ceremony-text { min-height: 240rpx; padding: 42rpx 12rpx; color: #f0f2ef; font-size: 34rpx; font-weight: 700; line-height: 1.8; text-align: center; animation: script-enter 260ms ease both; }
 .ceremony-controls { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
@@ -1584,10 +1583,8 @@ button::after {
 .sheet-actions { position: sticky; bottom: -24rpx; z-index: 5; padding: 16rpx 0 calc(24rpx + env(safe-area-inset-bottom)); background: #eceae4; }
 .sheet-actions-syncing { pointer-events: none; }
 .sheet-actions button[disabled] { background: #b9ad90; color: #f3eee4; opacity: 1; }
-/* 内联下发的只有 background-image，铺法必须写在这里。漏掉 background-size 就会按
-   原图 1080px 逻辑像素渲染，只看得到左上角一块，花纹瞬间大到读作「有图案的墙」。
-   底色也要跟着地毯转深，图没加载出来时才不会闪一下浅灰。 */
-.compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #4a4038; border-radius: 8rpx; background: #241d18; background-position: center; background-size: cover; box-sizing: border-box; }
+/* 底色跟着地毯转深，垫底图没加载出来时才不会闪一下浅灰 */
+.compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #4a4038; border-radius: 8rpx; background: #241d18; box-sizing: border-box; }
 .game-seat-token { width: 72rpx; min-height: 72rpx; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
 .game-seat-token .seat-avatar { width: 64rpx; height: 64rpx; margin: 0; border: 3rpx solid #8f9993; background: #405049; font-size: 22rpx; box-sizing: border-box; }
 .game-seat-token .seat-caption { position: absolute; top: 70rpx; left: 50%; width: 126rpx; overflow: hidden; color: #e6e2d8; font-size: 18rpx; font-weight: 800; line-height: 27rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; transform: translateX(-50%); }

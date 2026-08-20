@@ -46,7 +46,7 @@ Page({
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     preloadList: [],
     myRoleArt: "", identityBackArt: "", cardFlipped: false, identityUnlocked: false, myInitial: "", readingHint: "", readingUrgent: false,
-    ui: {}, roundTableBg: "", longTableBg: "", floorBg: "", sealBg: "",
+    ui: {},
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonySymbolImage: "", ceremonyTitle: "",
     ceremonySubtitle: "", ceremonyTarget: null
@@ -65,7 +65,8 @@ Page({
 
   onLoad(options) {
     this.windowWidth = (wx.getSystemInfoSync() || {}).windowWidth || 375
-    this.setData({ roomId: options.roomId })
+    // 图标集是常量，下发一次即可——放进 applyState 会被 900ms 轮询带着每轮重推
+    this.setData({ roomId: options.roomId, ui: assets.uiIcons() })
     this.loadState(true)
     this.startTimers()
   },
@@ -265,7 +266,6 @@ Page({
         assets.missionCard(missionSkin, "fail")
       ].filter(Boolean),
       identityBackArt: assets.identityBack(roleSkin),
-      ui: assets.uiIcons(),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
       missionCardFail: assets.missionCard(missionSkin, "fail"),

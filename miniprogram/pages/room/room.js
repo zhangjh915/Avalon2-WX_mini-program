@@ -10,8 +10,7 @@ Page({
     playerName: "",
     isHost: false,
     devMode: false,
-    ui: {}, roundTableBg: "", longTableBg: "", floorBg: "",
-    floorColor: "", floorOptions: [],
+    ui: {}, floorColor: "", floorOptions: [],
     mySeatNo: 0,
     seatedCount: 0,
     tableType: "round",
@@ -42,7 +41,8 @@ Page({
   },
 
   enterRoom(roomId) {
-    this.setData({ roomId })
+    // 图标集与色板都是常量，进房时下发一次即可，不必跟着 1200ms 的轮询重推
+    this.setData({ roomId, ui: assets.uiIcons(), ...assets.floorOptions() })
     this.loadRoom(true)
     this.startPolling()
   },
@@ -136,7 +136,6 @@ Page({
       tableWidth: tableGeometry.width,
       tableHeight: tableGeometry.height,
       isHost: !!result.isHost,
-      ui: assets.uiIcons(),
       // 以房间创建时写入的测试模式为准；服务端对每个测试操作另有独立校验
       devMode: !!room.devMode,
       mySeatNo: mySeat ? mySeat.seatNo : 0,
@@ -153,9 +152,9 @@ Page({
 
   // 地毯是个人偏好，只写本地 storage，不进房间数据——不同玩家看到不同颜色不影响对局
   selectFloorColor(event) {
-    const floorColor = assets.setFloorColor(event.currentTarget.dataset.color)
-    const option = this.data.floorOptions.find(item => item.key === floorColor)
-    this.setData({ floorColor, floorBg: option ? option.bg : "" })
+    assets.setFloorColor(event.currentTarget.dataset.color)
+    // 台面那张图挂在 ui.floor 上，跟着一起换
+    this.setData({ ...assets.floorOptions(), ui: assets.uiIcons() })
   },
 
   // 离开候场页。必须先停轮询并上锁：轮询每 1200ms 就会再发一次 redirectTo，

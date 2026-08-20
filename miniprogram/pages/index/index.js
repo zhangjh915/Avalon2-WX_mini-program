@@ -57,7 +57,6 @@ Page({
     skinPickerCurrent: "",
     roleConfigValid: true,
     homeEmblem: "",
-    homeBg: ""
   },
 
   onLoad() {
@@ -84,9 +83,9 @@ Page({
         front: assets.roleArt(key, "morgan", 0)
       }))
     })
-    this.setData({ homeEmblem: assets.uiAsset("home-emblem.png") })
+    this.setData({ homeEmblem: assets.uiAsset("home-emblem.png"), ui: assets.uiIcons() })
     // CSS 背景不认 cloud://，先换成 https 临时链接
-    this.setData({ ui: assets.uiIcons() })
+
     this.refreshSkinSelection()
     this.resetRoles(false)
   },

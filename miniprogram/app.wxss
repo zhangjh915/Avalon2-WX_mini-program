@@ -171,8 +171,6 @@ button:active,
   top: 50%;
   transform: translate(-50%, -50%);
   border: 0;
-  background-position: center;
-  background-size: cover;
   /* 投影必须保留、而且必须够深。桌面和地面都是正俯视平光，没有可见投影就完全
      没有深度线索，桌子读起来像一张贴在地毯上的贴纸。实机验证过这一条。 */
   box-shadow: 0 14rpx 25rpx rgba(20, 14, 10, 0.45);
@@ -308,7 +306,9 @@ button:active,
    （实测生成后十几分钟就失效）。改用 <image src="cloud://"> 由微信自己解析，
    彻底不经手临时链接。代价是要多一层垫底元素，样式统一放在这里。 */
 .stage-floor,
-.page-bg {
+.page-bg,
+.seal-base,
+.floor-swatch-art {
   position: absolute;
   left: 0;
   top: 0;
@@ -317,7 +317,12 @@ button:active,
   height: 100%;
   display: block;
 }
-/* 台面里的桌子、座位都要压在地毯之上 */
+/* 垫底图沉在最下，其余内容压在它上面。
+   **只碰 z-index，绝对不要顺手加 position: relative**——.seat-token / .table-slot /
+   .table-emblem 都是 absolute 定位的，而 `.table-stage > view` 的特异度 (0,1,1)
+   高于 `.seat-token` 的 (0,1,0)，会把它们的 absolute 改写掉，
+   left/top 于是相对文档流而不是台面，座位会整体跑出台面（实测跑到 137%、160%）。
+   也不要给垫底图用 z-index: -1：.table-stage 自身没有建立层叠上下文，
+   负值会让它掉到祖先背景后面，那是更难查的坑。 */
 .table-stage > view,
-.table-stage > image:not(.stage-floor) { position: relative; z-index: 1; }
-.table-slot, .round-table, .seat-token, .table-emblem, .deliver-token { z-index: 2; }
+.table-stage > image:not(.stage-floor) { z-index: 1; }
