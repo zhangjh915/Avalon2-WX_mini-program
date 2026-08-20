@@ -89,61 +89,6 @@ function pickLongTable(widthPct, heightPct, stageW, stageH) {
 // src 认。直接把 fileID 写进 background-image 不会报错，图就是不显示——
 // 圆桌换图后一片空白就是这么来的。
 //
-// 临时链接约 2 小时失效，过期后请求返回 403（渲染层报 Failed to load image）。
-//
-// 两层都必须有，缺一个都不管用：
-//   1. 缓存带时效——否则命中就返回，永远拿到过期链接。
-//   2. **要有人定期来问**——页面只在 onLoad / onShow 调 loadBackgrounds，
-//      而线下一局能打一两个小时、玩家全程不切后台，onShow 根本不会再触发。
-//      光有 TTL 没人调用，等于没修：链接照样过期成 403。
-//      所以页面轮询里要用 backgroundsStale() 顺带检查一次。
-const TEMP_URL_TTL = 90 * 60 * 1000
-// 提前量：别等真过期才换，留出一次请求往返的余量
-const REFRESH_AHEAD = 5 * 60 * 1000
-// 取不到时的退避，避免每个轮询周期都去撞同一个失败
-const RETRY_BACKOFF = 30 * 1000
-const tempUrlCache = {}
-const tempUrlAt = {}
-let lastAttemptAt = 0
-
-// 背景链接是不是该换一批了。页面每个轮询周期调一次，开销就是几次数值比较。
-function backgroundsStale() {
-  const now = Date.now()
-  const ids = Object.keys(tempUrlAt)
-  if (!ids.length) return now - lastAttemptAt > RETRY_BACKOFF
-  const oldest = ids.reduce((min, id) => Math.min(min, tempUrlAt[id]), Infinity)
-  if (now - oldest <= TEMP_URL_TTL - REFRESH_AHEAD) return false
-  return now - lastAttemptAt > RETRY_BACKOFF
-}
-
-function resolveTempUrls(fileIDs) {
-  // 云开发不可用时退化成「没有背景图」，不要让整页起不来。
-  // 单元测试没有 wx 全局对象，这条同时保证 require 页面不炸。
-  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.getTempFileURL) {
-    return Promise.resolve(tempUrlCache)
-  }
-  const now = Date.now()
-  const missing = fileIDs.filter(id => !tempUrlCache[id] || now - (tempUrlAt[id] || 0) > TEMP_URL_TTL - REFRESH_AHEAD)
-  if (!missing.length) return Promise.resolve(tempUrlCache)
-  lastAttemptAt = now
-  return new Promise(resolve => {
-    wx.cloud.getTempFileURL({
-      fileList: missing,
-      success: res => {
-        (res.fileList || []).forEach(item => {
-          if (item.tempFileURL) {
-            tempUrlCache[item.fileID] = item.tempFileURL
-            tempUrlAt[item.fileID] = Date.now()
-          }
-        })
-        resolve(tempUrlCache)
-      },
-      // 取不到就退化成没有背景图，不至于整页白屏
-      fail: () => resolve(tempUrlCache)
-    })
-  })
-}
-
 // 地毯四个配色，纯装饰、不承载任何游戏信息，所以做成**个人偏好**而不是房间级设置：
 // 房间级要动房间结构和云函数（missionSkin / roleSkin 是那么做的，因为卡面必须全场一致），
 // 个人偏好只要本地一个 key，零服务端改动，还能随时换不用重开房。
@@ -176,32 +121,16 @@ function setFloorColor(color) {
   return next
 }
 
-// 页面需要的全部 CSS 背景，一次解析好再 setData。
-// 四张地毯一次全解析（getTempFileURL 一次调用就能带完），换色才是纯本地 setData，
-// 不然每换一次都要等一趟网络。
-function backgroundStyles() {
-  const singles = {
-    roundTableBg: "table-round.jpg",
-    sealBg: "seal-base.png",
-    homeBg: "home-bg.jpg"
+// 地毯色板。四色一次给全，换色是纯本地 setData。
+// 注意这里返回的是 cloud:// 而不是 https 临时链接——色块用 <image> 渲染，
+// 不再走 CSS background，也就没有临时链接过期那一类问题。
+function floorOptions() {
+  const active = floorColor()
+  return {
+    floorColor: active,
+    floorSrc: floorAsset(active),
+    floorOptions: FLOOR_COLORS.map(item => ({ ...item, src: floorAsset(item.key) }))
   }
-  const ids = Object.keys(singles).map(key => uiAsset(singles[key]))
-    .concat(FLOOR_COLORS.map(item => floorAsset(item.key)))
-  return resolveTempUrls(ids).then(cache => {
-    const styles = {}
-    Object.keys(singles).forEach(key => {
-      const url = cache[uiAsset(singles[key])]
-      styles[key] = url ? `background-image:url(${url})` : ""
-    })
-    const active = floorColor()
-    styles.floorColor = active
-    styles.floorOptions = FLOOR_COLORS.map(item => {
-      const url = cache[floorAsset(item.key)]
-      return { ...item, bg: url ? `background-image:url(${url})` : "" }
-    })
-    styles.floorBg = (styles.floorOptions.find(item => item.key === active) || {}).bg || ""
-    return styles
-  })
 }
 
 // 界面上一次性用到的所有图标，applyState 时整体下发，避免逐个拼路径
@@ -215,7 +144,12 @@ function uiIcons() {
     crestEvil: uiAsset("crest-evil.png"),
     missionPending: uiAsset("mission-pending.png"),
     missionCurrent: uiAsset("mission-current.png"),
-    seal: uiAsset("seal-base.png")
+    seal: uiAsset("seal-base.png"),
+    // 下面四个原先走 CSS background，必须先换成 https 临时链接，于是会过期 403。
+    // 改成 <image src="cloud://"> 之后由微信自己解析，不再经手临时链接。
+    tableRound: uiAsset("table-round.jpg"),
+    homeBg: uiAsset("home-bg.jpg"),
+    floor: floorAsset(floorColor())
   }
 }
 
@@ -226,7 +160,7 @@ function missionCard(skin, face) {
 
 module.exports = {
   CLOUD_PREFIX,
-  backgroundsStale,
+  floorOptions,
   FLOOR_COLORS,
   DEFAULT_FLOOR,
   normalizeFloorColor,
@@ -235,8 +169,6 @@ module.exports = {
   setFloorColor,
   uiAsset,
   uiIcons,
-  resolveTempUrls,
-  backgroundStyles,
   LONG_TABLES,
   pickLongTable,
   roleArtPath,

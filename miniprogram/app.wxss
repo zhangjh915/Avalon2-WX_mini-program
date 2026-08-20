@@ -303,3 +303,21 @@ button:active,
   padding: 0 8rpx;
   font-size: 18rpx;
 }
+
+/* 原先这些图走 CSS background，要先换成 https 临时链接，而临时链接会过期成 403
+   （实测生成后十几分钟就失效）。改用 <image src="cloud://"> 由微信自己解析，
+   彻底不经手临时链接。代价是要多一层垫底元素，样式统一放在这里。 */
+.stage-floor,
+.page-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* 台面里的桌子、座位都要压在地毯之上 */
+.table-stage > view,
+.table-stage > image:not(.stage-floor) { position: relative; z-index: 1; }
+.table-slot, .round-table, .seat-token, .table-emblem, .deliver-token { z-index: 2; }

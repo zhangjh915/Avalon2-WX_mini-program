@@ -17,13 +17,13 @@
     <view class="section-row">
       <view class="section-title">选择座位</view>
       <view class="floor-swatches">
-        <view wx:for="{{floorOptions}}" wx:key="key" class="floor-swatch {{floorColor === item.key ? 'active' : ''}}" style="{{item.bg}}" data-color="{{item.key}}" bindtap="selectFloorColor" aria-role="button" aria-label="{{item.name}}地毯"></view>
+        <view wx:for="{{floorOptions}}" wx:key="key" class="floor-swatch {{floorColor === item.key ? 'active' : ''}}" data-color="{{item.key}}" bindtap="selectFloorColor" aria-role="button" aria-label="{{item.name}}地毯"><image class="floor-swatch-art" src="{{item.src}}" mode="scaleToFill" /></view>
       </view>
       <view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view>
     </view>
-    <view style="{{floorBg}}" class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
+    <view class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" />
       <block wx:if="{{tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
-      <view wx:else class="round-table" style="{{roundTableBg}}"></view>
+      <image wx:else class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
       <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
       <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="chooseSeat" data-seat="{{item.seatNo}}">
         <view class="seat-avatar">{{item.name ? item.initial : ''}}</view>

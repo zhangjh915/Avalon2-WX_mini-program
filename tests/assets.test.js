@@ -164,20 +164,25 @@ assert.ok(worst < 0.095, `最大拉伸 ${(worst * 100).toFixed(1)}%`)
 assert.strictEqual(assets.pickLongTable(32, 60, 0, 0), null)
 assert.strictEqual(assets.pickLongTable(0, 0, 340, 295), null)
 
-// CSS 的 background-image 不认 cloud:// 协议，必须先换成 https 临时链接。
-// 没有 wx.cloud 时（单元测试、云开发未初始化）要安全退化成空串而不是抛错。
-assets.backgroundStyles().then(styles => {
-  ;["roundTableBg", "floorBg", "sealBg", "homeBg"].forEach(key => {
-    assert.ok(key in styles, `缺少背景样式 ${key}`)
-    assert.ok(!String(styles[key]).includes("cloud://"), `${key} 不能把 cloud:// 写进 CSS`)
-  })
-  // 四色地毯一次全解析：换色才能是纯本地 setData，不用每换一次等一趟网络
-  assert.strictEqual(styles.floorOptions.length, assets.FLOOR_COLORS.length, "四色地毯要一次全下发")
-  assert.strictEqual(styles.floorColor, assets.DEFAULT_FLOOR)
-  styles.floorOptions.forEach(option => {
-    assert.ok(option.key && option.name, "色板要带 key 和中文名")
-    assert.ok(!String(option.bg).includes("cloud://"), "色板预览同样不能把 cloud:// 写进 CSS")
-  })
+// 图一律走 <image src="cloud://">，不再有临时链接这一环。
+// 反复三轮的 403 就是它带来的：临时链接实测生成后十几分钟就失效，
+// 而我按「2 小时」设缓存 TTL，怎么修都修不掉。现在整条链路删掉了。
+assert.ok(!("backgroundStyles" in assets), "临时链接机制应当已移除")
+assert.ok(!("resolveTempUrls" in assets), "临时链接机制应当已移除")
+const uiSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")
+assert.ok(!/getTempFileURL|tempFileURL/.test(uiSrc), "不该再解析临时链接")
+
+// 四类原本走 CSS 背景的图，现在都要以 cloud:// 出现在图标集里
+;["tableRound", "homeBg", "floor", "seal"].forEach(key => {
+  assert.ok(icons[key] && icons[key].startsWith("cloud://"), `${key} 应当是 cloud:// 让 <image> 自己解析`)
+})
+// 地毯跟着个人偏好走
+const palette = assets.floorOptions()
+assert.strictEqual(palette.floorOptions.length, assets.FLOOR_COLORS.length)
+assert.ok(palette.floorSrc.startsWith("cloud://"))
+palette.floorOptions.forEach(option => {
+  assert.ok(option.src && option.src.startsWith("cloud://"), "色板也要用 cloud://，不能走 CSS 背景")
+  assert.ok(option.key && option.name)
 })
 
 // ---- 地毯四色是个人偏好，不进房间数据 ----

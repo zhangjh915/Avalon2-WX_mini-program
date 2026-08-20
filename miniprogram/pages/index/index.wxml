@@ -1,4 +1,4 @@
-<view class="page" style="{{homeBg}}">
+<view class="page"><image class="page-bg" src="{{ui.homeBg}}" mode="aspectFill" />
   <view class="home-brand">
     <image class="home-emblem" src="{{homeEmblem}}" mode="aspectFit" />
     <view class="title">圆桌秘闻</view>

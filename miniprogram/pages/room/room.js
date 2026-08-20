@@ -43,17 +43,11 @@ Page({
 
   enterRoom(roomId) {
     this.setData({ roomId })
-    this.loadBackgrounds()
     this.loadRoom(true)
     this.startPolling()
   },
 
   onUnload() { this.stopPolling() },
-
-  // CSS 背景不认 cloud://，先换成 https 临时链接
-  loadBackgrounds() {
-    assets.backgroundStyles().then(styles => this.setData(styles))
-  },
 
   // 切后台时停止轮询省流量，回到前台立刻补一次拉取，
   // 不必等下一个轮询周期才恢复到最新状态。
@@ -63,7 +57,6 @@ Page({
 
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
-    this.loadBackgrounds()
     this.startPolling()
     this.loadRoom(false)
   },
@@ -72,11 +65,7 @@ Page({
 
   startPolling() {
     this.stopPolling()
-    this.pollTimer = setInterval(() => {
-      this.loadRoom(false)
-      // 临时链接会过期成 403，而 onShow 在一局里根本不会再触发
-      if (assets.backgroundsStale()) this.loadBackgrounds()
-    }, 1200)
+    this.pollTimer = setInterval(() => this.loadRoom(false), 1200)
   },
 
   stopPolling() {

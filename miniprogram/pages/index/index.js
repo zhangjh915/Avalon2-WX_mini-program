@@ -6,6 +6,7 @@ const assets = require("../../utils/assets")
 
 Page({
   data: {
+    ui: {},
     playerName: "",
     joinCode: "",
     joinSlots: ["", "", "", "", "", ""],
@@ -85,7 +86,7 @@ Page({
     })
     this.setData({ homeEmblem: assets.uiAsset("home-emblem.png") })
     // CSS 背景不认 cloud://，先换成 https 临时链接
-    assets.backgroundStyles().then(styles => this.setData({ homeBg: styles.homeBg }))
+    this.setData({ ui: assets.uiIcons() })
     this.refreshSkinSelection()
     this.resetRoles(false)
   },

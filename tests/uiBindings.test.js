@@ -54,7 +54,8 @@ assert.ok(/seal-waiting/.test(playWxml) && /seal-sealed/.test(playWxml), "等待
 // 放的是自己的座位头像（名字首字），有个人标识而不带任何身份信息。
 assert.ok(!/class="submitted-seal[^"]*"[^>]*>\s*<image[^>]*(myRoleArt|identityBackArt)/.test(playWxml),
   "状态印里不能放角色立绘或卡背")
-assert.match(playWxml, /class="submitted-seal[^"]*"[^>]*>\s*<view class="seal-initial">/, "状态印应当放座位头像")
+assert.match(playWxml, /class="submitted-seal[^"]*"[^>]*>\s*<image class="seal-base"[^>]*\/>\s*<view class="seal-initial">/,
+  "状态印应当是「印章底纹垫底 + 座位头像」")
 
 // 翻开身份牌之前，密录和「本局思路」里直接写着自己的角色，点开就等于提前看牌
 assert.match(playWxml, /bindtap="openDossier"/, "对局中要能打开密录")
@@ -78,6 +79,16 @@ assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier
   const slotEnd = slot.indexOf("</view>")
   assert.ok(!/table-emblem/.test(slot.slice(0, slotEnd)), `${name} 纹章不能放进 table-slot（会跟着旋转）`)
 })
+
+// 走 CSS background 的图必须先换成 https 临时链接，而临时链接会过期成 403
+// （实测生成后十几分钟就失效，反复修了三轮都是在错的方向上使劲）。
+// 现在一律改用 <image src="cloud://">，由微信自己解析，不再经手临时链接。
+;["index", "room", "play", "result"].forEach(name => {
+  const wxml = fs.readFileSync(path.join(root, name, `${name}.wxml`), "utf8")
+  assert.ok(!/style="\{\{[a-zA-Z]*Bg[\s}]/.test(wxml), `${name}.wxml 不能再把图放进 CSS background`)
+})
+const assetsSrc2 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
+assert.ok(!/getTempFileURL/.test(assetsSrc2), "不该再需要临时链接")
 
 delete global.Page
 console.log("UI binding tests passed")

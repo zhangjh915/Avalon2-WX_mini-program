@@ -59,7 +59,7 @@ page { height: 100%; overflow: hidden; background: #f4eee4; }
 /* 地毯换色。纯个人偏好、不进房间数据，所以就近放在台面上方——所见即所得，
    点一下立刻换，不用进设置页。色块直接用地毯图本身做预览，比调色准。 */
 .floor-swatches { display: flex; flex: none; align-items: center; gap: 10rpx; }
-.floor-swatch { width: 34rpx; height: 34rpx; border: 2rpx solid rgba(61,51,42,.22); border-radius: 50%; background-position: center; background-size: cover; box-sizing: border-box; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.floor-swatch { position: relative; overflow: hidden; width: 34rpx; height: 34rpx; border: 2rpx solid rgba(61,51,42,.22); border-radius: 50%; background-position: center; background-size: cover; box-sizing: border-box; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
 .floor-swatch.active { border-color: #3d332a; box-shadow: 0 0 0 4rpx rgba(61,51,42,.14); transform: scale(1.12); }
 
 .lobby-table-stage { align-self: center; border-color: #cdbda7; border-radius: 8rpx; background-position: center; background-size: cover; }
@@ -123,3 +123,5 @@ page { height: 100%; overflow: hidden; background: #f4eee4; }
 @media (max-height: 680px) {
   .role-candidate-row { padding-top: 15rpx; padding-bottom: 14rpx; }
 }
+
+.floor-swatch-art { display: block; width: 100%; height: 100%; }

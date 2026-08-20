@@ -66,15 +66,8 @@ Page({
   onLoad(options) {
     this.windowWidth = (wx.getSystemInfoSync() || {}).windowWidth || 375
     this.setData({ roomId: options.roomId })
-    this.loadBackgrounds()
     this.loadState(true)
     this.startTimers()
-  },
-
-  // CSS 背景不认 cloud://，要先换成 https 临时链接。链接 2 小时过期，
-  // 每次 onShow 重新解析一次，覆盖长时间对局。
-  loadBackgrounds() {
-    assets.backgroundStyles().then(styles => this.setData(styles))
   },
 
   // 切后台停表，回到前台立刻补一次拉取：锁屏或切微信聊天回来后
@@ -85,7 +78,6 @@ Page({
 
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
-    this.loadBackgrounds()
     this.startTimers()
     this.loadState(false)
   },
@@ -94,11 +86,7 @@ Page({
 
   startTimers() {
     this.stopTimers()
-    this.pollTimer = setInterval(() => {
-      this.loadState(false)
-      // 临时链接会过期成 403，而 onShow 在一局里根本不会再触发
-      if (assets.backgroundsStale()) this.loadBackgrounds()
-    }, 900)
+    this.pollTimer = setInterval(() => this.loadState(false), 900)
     this.clockTimer = setInterval(() => this.updateClock(), 200)
   },
 
