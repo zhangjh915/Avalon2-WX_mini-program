@@ -24,3 +24,4 @@ miniprogram/assets/cards/identity/
 # Python 缓存（脚本互相 import 时产生）
 __pycache__/
 *.pyc
+scripts/.table-tiers.json

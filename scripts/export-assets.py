@@ -8,6 +8,7 @@
   身份牌 330x440pt → 990x1320
 """
 import pathlib
+import json
 import shutil
 import sys
 
@@ -107,10 +108,6 @@ def main():
     print(f"\n小程序主包上限 2MB —— {'超了 %.1f 倍' % (grand/1024/1024/2) if grand > 2*1024*1024 else '没超'}")
 
 
-if __name__ == "__main__":
-    main()
-
-
 # ---- 界面资产（图标 / 场景）----
 # 尺寸 = 该资产在界面上的最大用途 × DPR3，留一点余量。改尺寸前先回 wxss 查，别拍脑袋。
 #
@@ -167,17 +164,35 @@ def export_ui():
         f = src / (name[:-4] + (".png" if name.startswith("table-round") else ".jpeg"))
         n = export(f, DST / "ui" / name, size, q=q); total += n
         rows.append(("ui/" + name, "x".join(map(str, size)), n, why))
-    # 长桌改成整图分档：7 张覆盖 29 种布局，最大拉伸 ±7.4%。
+    # 长桌整图分档，10 档，最大拉伸 8.6%。档位由 scripts/pick-table-tiers.py 挑，
+    # 别手改——第一版就是手算的，只按 play 页 compact-stage（比 1.19）算需求，
+    # 漏了选人页那个 flex:1 撑满屏高的舞台（比 0.55），5-10 人默认布局全在外插。
     # 九宫格废弃——边条与中心的色差、角块与 border-radius 的配对，
     # 修了两轮实机仍有可见接缝。整图一次性消掉了这一整类问题。
-    for f in sorted((src / "table-long").glob("*.png")):
+    # sorted() 要按数字排，不然 10.png 会排到 2.png 前面。
+    meta = []
+    for f in sorted((src / "table-long").glob("*.png"), key=lambda f: int(f.stem)):
         im = Image.open(f)
         n = export_png(f, DST / "ui/table-long" / f.name, max(im.size))
         rows.append(("ui/table-long/" + f.name, "%dx%d" % im.size, n,
                      "第%s档 比例 %.2f" % (f.stem, im.width / im.height)))
+        meta.append({"i": int(f.stem), "aspect": round(max(im.size) / min(im.size), 4),
+                     "w": im.width, "h": im.height})
         total += n
+    # 比例表跟着图一起写，别手维护——小程序侧 utils/table-long-meta.js 是这份的副本。
+    (DST / "ui/table-long/_meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     w = max(len(r[0]) for r in rows)
     for path, size, n, why in rows:
         print("  %-*s %-11s %7.1f KB   %s" % (w, path, size, n / 1024, why))
     print("\n界面资产合计 %.2f MB" % (total / 1024 / 1024))
     return total
+
+
+if __name__ == "__main__":
+    # main() 会先 rmtree 掉整个 miniprogram/assets，所以 export_ui() 必须跟在它后面
+    # 一起跑。早先这个入口卡在文件中间、export_ui 定义在它下面，直接跑这个脚本
+    # 等于把 ui/ 整个删掉再不补回来——真删过一次。
+    main()
+    print()
+    export_ui()
