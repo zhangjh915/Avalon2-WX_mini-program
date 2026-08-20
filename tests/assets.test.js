@@ -83,10 +83,10 @@ const icons = assets.uiIcons()
 assert.ok(!("LONG_TABLE_SLICES" in assets), "九宫格已废弃，不该再导出切片表")
 // 长桌不再走 CSS background，改成 <image>，所以背景样式里不该再有它
 assert.ok(!("longTableBackground" in assets), "九宫格的背景拼装函数应当已删除")
-assert.strictEqual(assets.LONG_TABLES.length, 7)
+assert.strictEqual(assets.LONG_TABLES.length, 8)
 assets.LONG_TABLES.forEach(item => {
   assert.ok(item.aspect >= 1, "只存长宽比 >= 1 的一半，竖桌用横图转 90 度")
-  assert.ok(item.i >= 1 && item.i <= 7)
+  assert.ok(item.i >= 1 && item.i <= 8)
 })
 
 // 档位表必须和资产目录里那份一致。副本是必须的——assets/ui 被 packOptions.ignore
@@ -133,10 +133,12 @@ for (let h = 0; h <= 5; h += 1) {
     geometries.push(tableLayout.tableGeometry({ top: h, bottom: h, left: v, right: v }))
   }
 }
-// stage 在选人面板里是 flex 撑开的，宽随屏宽、高随屏高，长宽比因此随机型变——
-// 375pt 屏上约 1.19、414pt 屏上约 1.32。两端都要覆盖，这也是挑档必须用
-// 运行时实测尺寸的原因。
-const STAGES = [[351, 295], [389, 295]]
+// 两个舞台形状差别极大，必须都覆盖：
+//   play 页 .compact-stage      高固定 590rpx  -> 约 366x295，比 1.24
+//   选人页 .selector-page 那个   flex:1 撑满屏高 -> 实测 366x656，比 0.56
+// 这里的数字来自模拟器实测，不是估的。上一版我按估的 1.19/1.32 写，
+// 结果整个漏掉了选人页那个撑满屏高的舞台，把最坏情况从 20.4% 误算成 9.8%。
+const STAGES = [[366, 295], [366, 656], [414, 736]]
 let worst = 0
 STAGES.forEach(([stageW, stageH]) => {
   geometries.forEach(geo => {
@@ -148,17 +150,15 @@ STAGES.forEach(([stageW, stageH]) => {
     const tier = assets.LONG_TABLES.find(item => item.i === picked.tier)
     const stretch = Math.abs(Math.log(target / tier.aspect))
     worst = Math.max(worst, stretch)
-    // 阈值 10.5% 是防退化线，不是目标。实测最差 9.8%，出现在 68%x28% @1.32 屏：
-    // 目标比 3.20 已经超出最大档 2.90，是**外插**不是内插——七档的上限不够宽。
-    // 另有 1.28->1.54 之间的间隙偏大（中点 9.4%）。已反馈给资产会话补档；
-    // 补完之后把这个阈值收回 0.085。
-    assert.ok(stretch < 0.105,
+    // 9.5% 是候选池的物理下限，不是随便设的：最差落在需求比 1.29~1.54 之间的
+    // 中点（9.3%），而候选池里这段区间没有图，再补档也补不上——要压下去得重新生图。
+    assert.ok(stretch < 0.095,
       `${geo.width}%x${geo.height}% @${stageW}x${stageH} 挑到 ${picked.tier} 档，拉伸 ${(stretch * 100).toFixed(1)}% 超标`)
     // 旋转判断必须和实际形状一致
     assert.strictEqual(picked.rotate, boxW < boxH, "旋转判断与实际形状不符")
   })
 })
-assert.ok(worst < 0.105, `最大拉伸 ${(worst * 100).toFixed(1)}%`)
+assert.ok(worst < 0.095, `最大拉伸 ${(worst * 100).toFixed(1)}%`)
 
 // 尺寸缺失时返回 null 而不是算出 NaN 塞进样式
 assert.strictEqual(assets.pickLongTable(32, 60, 0, 0), null)
