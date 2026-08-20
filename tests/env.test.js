@@ -38,10 +38,15 @@ assert.strictEqual(loadWith("trial").isDevBuild(), false)
 assert.strictEqual(loadWith("release").isDevBuild(), false)
 
 delete global.wx
-// 云函数超时。config.json 留空等于用默认的 3 秒，而冷启动实测能到 5.7 秒——
-// 撞上就失败，表现是「同样的操作有时成功有时失败」。这是真实排查出来的。
+// 云函数超时。默认 3 秒，而冷启动实测能到 5.7 秒——撞上就失败，
+// 表现是「同样的操作有时成功有时失败」。线下玩的节奏（讨论几分钟点一次）
+// 恰好每次都赶上冷启动，所以特别致命。
+//
+// 注意：这个值**微信开发者工具的 cli deploy 不会读**（实测部署后线上仍是 3 秒），
+// 只能在云开发控制台手动改。这里断言的是「期望值有记录」，
+// 真正的防线是下面那条客户端重试。
 const fnConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "cloudfunctions", "avalonGame", "config.json"), "utf8"))
-assert.ok(Number(fnConfig.timeout) >= 10, `云函数超时必须调高，当前 ${fnConfig.timeout || "未设置(默认3秒)"}`)
+assert.ok(Number(fnConfig.timeout) >= 10, `云函数超时期望值要记在 config.json 里，当前 ${fnConfig.timeout || "未设置"}`)
 
 // 客户端还要对超时重试一次兜底：超时不代表没执行成功，服务端有幂等保护
 const storeSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "roomStore.js"), "utf8")

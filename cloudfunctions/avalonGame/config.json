@@ -1,4 +1,5 @@
 {
+  "_comment": "timeout / memorySize 微信开发者工具的 cli deploy 不会读，实测部署后线上仍是 3 秒。这两项只能在【云开发控制台 → 云函数 → avalonGame → 配置】里手动改。留在这里是给将来改用 tcb/CloudBase CLI 部署时用的，也作为期望值的记录。",
   "timeout": 20,
   "memorySize": 256
 }
