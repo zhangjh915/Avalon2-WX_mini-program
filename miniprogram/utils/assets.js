@@ -37,28 +37,51 @@ function uiAsset(name) {
   return CLOUD_PREFIX + "assets/ui/" + name
 }
 
-// 长桌是九宫格拼的：四角固定像素、四边只沿单轴平铺、中心 cover。
-// 原因是长桌比例不是几个预设值，而是 30 种连续比值（上下边人数决定宽、
-// 左右边人数决定高，两者独立），整图拉伸会把桌沿和铆钉抻变形。
+// 长桌是七张不同比例的整桌图，按最近的比例挑一张。
 //
-// 数组顺序即层序：先列的画在上层，所以角在最上、边其次、中心垫底。不要重排。
-// 数组顺序即层序：先列的画在上层，所以角在最上、边其次、中心垫底。不要重排。
+// 九宫格方案已废弃：它把一张图变成九张的拼装，每处接缝都是一个要精确对齐的约束，
+// 实机上始终能看出接缝（边条与中心的色差、角块与 border-radius 的配对）。
+// 整图没有拼接，也就没有这一类问题。
 //
-// 边条只能用 repeat，**不要改成 round**。踩过：round 是按整个盒子算整数次填充的，
-// 而这里用 background-position 把边条起点偏移了一个角块的距离——两者根本不兼容，
-// 边条的接缝会跟角块完全对不齐，桌子看起来像拼错了。
-// 现在这套是「从偏移点平铺、超出部分裁掉、角块盖在上层」，是能工作的。
-const LONG_TABLE_SLICES = [
-  ["corner_tl.png", "left top", "48rpx 48rpx", "no-repeat"],
-  ["corner_tr.png", "right top", "48rpx 48rpx", "no-repeat"],
-  ["corner_bl.png", "left bottom", "48rpx 48rpx", "no-repeat"],
-  ["corner_br.png", "right bottom", "48rpx 48rpx", "no-repeat"],
-  ["edge_top.jpg", "48rpx top", "auto 48rpx", "repeat-x"],
-  ["edge_bottom.jpg", "48rpx bottom", "auto 48rpx", "repeat-x"],
-  ["edge_left.jpg", "left 48rpx", "48rpx auto", "repeat-y"],
-  ["edge_right.jpg", "right 48rpx", "48rpx auto", "repeat-y"],
-  ["center.jpg", "center", "cover", "no-repeat"]
-]
+// .long-table 的长宽比是 29 个连续值（宽只看上下边人数、高只看左右边人数，
+// 两个参数独立）。竖向布局用横图转 90°，所以只存长宽比 >= 1 的那一半，
+// 七张覆盖 29 个值，最大拉伸 ±8%，绝大多数在 1~5%，肉眼看不出来。
+//
+// 档位表不手抄，是从 assets/ui/table-long/_meta.json 生成的副本。
+// 必须是 .js 不能是 .json：小程序不支持 require .json，会让整个模块抛异常。
+// 详见 table-long-meta.js 顶部。
+const LONG_TABLES = require("./table-long-meta")
+
+// 挑档。
+// 注意 stage 的宽随屏宽变而高固定，所以长宽比必须用**运行时实测的 stage 尺寸**算，
+// 不能写死——375pt 屏上 stage 是 1.19、414pt 屏上是 1.32，差 11%，写死会挑错档。
+function pickLongTable(widthPct, heightPct, stageW, stageH) {
+  const w = (Number(stageW) || 0) * (Number(widthPct) || 0) / 100
+  const h = (Number(stageH) || 0) * (Number(heightPct) || 0) / 100
+  if (!(w > 0 && h > 0)) return null
+  // 竖桌就是横图转 90 度，所以长宽比一律取 >= 1 的那个方向
+  const rotate = w < h
+  const aspect = rotate ? h / w : w / h
+  // 比的是对数距离：拉伸 8% 无论发生在 1.1 还是 2.9 档上，观感代价是一样的，
+  // 用差值会偏袒大比例那几档。
+  let best = LONG_TABLES[0]
+  LONG_TABLES.forEach(item => {
+    if (Math.abs(Math.log(aspect / item.aspect)) < Math.abs(Math.log(aspect / best.aspect))) best = item
+  })
+  // 转 90 度后宽高互换，所以图要按「转之前」的尺寸给，转完才贴合 slot。
+  // 圣杯纹章绝不能放进这个元素里——transform 对整个子树生效，会把它一起转过去。
+  const boxW = rotate ? h : w
+  const boxH = rotate ? w : h
+  const centering = "position:absolute;left:50%;top:50%;"
+  return {
+    src: uiAsset(`table-long/${best.i}.png`),
+    tier: best.i,
+    rotate,
+    slot: `width:${Math.round(w)}px;height:${Math.round(h)}px;`,
+    style: `${centering}width:${Math.round(boxW)}px;height:${Math.round(boxH)}px;` +
+      `transform:translate(-50%,-50%)${rotate ? " rotate(90deg)" : ""};`
+  }
+}
 
 // 走 CSS background 的图必须先换成 https 临时链接。
 //
@@ -164,7 +187,6 @@ function backgroundStyles() {
   }
   const ids = Object.keys(singles).map(key => uiAsset(singles[key]))
     .concat(FLOOR_COLORS.map(item => floorAsset(item.key)))
-    .concat(LONG_TABLE_SLICES.map(slice => uiAsset("table-long/" + slice[0])))
   return resolveTempUrls(ids).then(cache => {
     const styles = {}
     Object.keys(singles).forEach(key => {
@@ -178,13 +200,6 @@ function backgroundStyles() {
       return { ...item, bg: url ? `background-image:url(${url})` : "" }
     })
     styles.floorBg = (styles.floorOptions.find(item => item.key === active) || {}).bg || ""
-    const layers = LONG_TABLE_SLICES
-      .map(slice => {
-        const url = cache[uiAsset("table-long/" + slice[0])]
-        return url ? `url(${url}) ${slice[1]} / ${slice[2]} ${slice[3]}` : ""
-      })
-      .filter(Boolean)
-    styles.longTableBg = layers.length === LONG_TABLE_SLICES.length ? "background:" + layers.join(",") : ""
     return styles
   })
 }
@@ -222,7 +237,8 @@ module.exports = {
   uiIcons,
   resolveTempUrls,
   backgroundStyles,
-  LONG_TABLE_SLICES,
+  LONG_TABLES,
+  pickLongTable,
   roleArtPath,
   roleArt,
   identityBack,

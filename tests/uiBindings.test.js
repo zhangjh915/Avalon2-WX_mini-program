@@ -55,5 +55,19 @@ const prepareBlock = playWxml.slice(playWxml.indexOf("identityMode === 'prepare'
 assert.ok(/seal-portrait" src="\{\{identityBackArt\}\}"/.test(prepareBlock), "揭示身份前的等待印只能用卡背，不能用角色立绘")
 assert.ok(!/seal-portrait" src="\{\{myRoleArt\}\}"/.test(prepareBlock), "揭示身份前不能把自己的立绘露出来")
 
+// 长桌整图的两条硬约束
+;[["play", playWxml], ["room", roomWxml]].forEach(([name, wxml]) => {
+  if (!/class="long-table"/.test(wxml)) return
+  // ±8% 的拉伸靠 scaleToFill 吸收。aspectFit 会留边、aspectFill 会裁掉桌沿。
+  assert.match(wxml, /class="long-table"[^>]*mode="scaleToFill"/, `${name} 长桌必须用 scaleToFill`)
+  // 纹章绝不能放进 .long-table 里：竖桌靠 rotate(90deg) 实现，
+  // transform 对整个子树生效，会把圣杯一起转过去。真实踩过。
+  assert.ok(!/<image class="long-table"[^>]*>[\s\S]*?table-emblem[\s\S]*?<\/image>/.test(wxml),
+    `${name} 纹章不能嵌在长桌图里`)
+  const slot = wxml.slice(wxml.indexOf('class="table-slot"'))
+  const slotEnd = slot.indexOf("</view>")
+  assert.ok(!/table-emblem/.test(slot.slice(0, slotEnd)), `${name} 纹章不能放进 table-slot（会跟着旋转）`)
+})
+
 delete global.Page
 console.log("UI binding tests passed")

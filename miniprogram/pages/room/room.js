@@ -16,6 +16,7 @@ Page({
     seatedCount: 0,
     tableType: "round",
     tableOrientation: "horizontal",
+    longTable: null, stageW: 0, stageH: 0,
     tableWidth: 44,
     tableHeight: 34,
     settingsSummary: "",
@@ -56,6 +57,10 @@ Page({
 
   // 切后台时停止轮询省流量，回到前台立刻补一次拉取，
   // 不必等下一个轮询周期才恢复到最新状态。
+  onReady() {
+    this.measureStage()
+  },
+
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
     this.loadBackgrounds()
@@ -154,6 +159,7 @@ Page({
       roleCandidates,
       filteredRoleCandidates
     })
+    this.refreshLongTable()
   },
 
   // 地毯是个人偏好，只写本地 storage，不进房间数据——不同玩家看到不同颜色不影响对局
@@ -179,6 +185,29 @@ Page({
         console.error("[room] 跳转失败", url, error && error.errMsg)
       }
     })
+  },
+
+  // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
+  // 375pt 屏上长宽比 1.19、414pt 屏上 1.32，差 11%，写死会挑错档。
+  measureStage() {
+    wx.createSelectorQuery().in(this).selectAll(".lobby-table-stage").boundingClientRect(rects => {
+      const rect = (rects || []).find(item => item && item.width > 0 && item.height > 0)
+      if (!rect) return
+      if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
+      this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
+    }).exec()
+  },
+
+  refreshLongTable() {
+    const data = this.data
+    if (!data.stageW || !data.stageH) return
+    const longTable = assets.pickLongTable(data.tableWidth, data.tableHeight, data.stageW, data.stageH)
+    if (!longTable) return
+    const previous = data.longTable || {}
+    // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
+    // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
+    if (longTable.src === previous.src && longTable.style === previous.style) return
+    this.setData({ longTable })
   },
 
   openRoleViewer() { this.setData({ roleViewerVisible: true }) },

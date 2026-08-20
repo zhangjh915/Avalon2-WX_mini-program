@@ -207,7 +207,9 @@
           <text>{{finalTargets.length}} / 2</text>
         </view>
         <view style="{{floorBg}}" class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
-          <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
+          <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
+        <view wx:else class="round-table" style="{{roundTableBg}}"></view>
+        <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
         <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
             <view class="seat-avatar">{{item.initial}}</view><view class="seat-caption"><text>{{item.id}}号</text><text> {{item.name}}</text></view>
           </view>
@@ -226,7 +228,9 @@
     <view class="table-sheet selector-page">
       <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view class="selector-tools"><view class="table-icon-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>
       <view style="{{floorBg}}" class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
-        <view class="{{room.tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{room.tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}"><image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" /></view>
+        <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
+        <view wx:else class="round-table" style="{{roundTableBg}}"></view>
+        <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
         <view wx:if="{{deliverIcon}}" class="deliver-token {{deliverFlying ? 'flying' : ''}}" style="{{deliverFlying ? 'left:' + deliverX + '%;top:' + deliverY + '%;' : ''}}">
           <image class="deliver-icon" src="{{deliverIcon}}" mode="aspectFit" />
         </view>

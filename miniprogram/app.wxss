@@ -165,8 +165,7 @@ button:active,
   box-sizing: border-box;
 }
 
-.round-table,
-.long-table {
+.round-table {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -175,27 +174,33 @@ button:active,
   background-position: center;
   background-size: cover;
   /* 投影必须保留、而且必须够深。桌面和地面都是正俯视平光，没有可见投影就完全
-     没有深度线索，桌子读起来像一张贴在地毯上的贴纸。原来的暖褐 24%
-     打在深色绒毯上几乎看不见，等同于没有。实机验证过这一条。 */
+     没有深度线索，桌子读起来像一张贴在地毯上的贴纸。实机验证过这一条。 */
   box-shadow: 0 14rpx 25rpx rgba(20, 14, 10, 0.45);
-}
-
-.round-table {
   width: 360rpx;
   height: 360rpx;
+  /* 必须保留：table-round.jpg 带黑色四角，靠这个圆角裁掉 */
   border-radius: 50%;
   overflow: hidden;
 }
 
-.long-table {
-  width: 430rpx;
-  height: 220rpx;
-  border-radius: 42rpx;
+/* 长桌是七张整图按比例挑一张，尺寸和旋转都由 js 内联下发（要用运行时实测的
+   stage 尺寸才能挑对档）。这里只负责不去干扰它。 */
+.table-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  /* 投影放在**不旋转的外层**：直接给 .long-table 加 box-shadow 的话，
+     竖桌的 rotate(90deg) 会把阴影方向一起转过去（向下变成向右）。
+     drop-shadow 跟随图片 alpha 形状，正好贴合图自带的圆角。 */
+  filter: drop-shadow(0 7px 12px rgba(20, 14, 10, 0.45));
 }
 
-.long-table.vertical {
-  width: 220rpx;
-  height: 430rpx;
+.long-table {
+  display: block;
+  border: 0;
+  /* 圆角由图自带，别再裁：桌角的雕花包角伸出了圆弧之外，一裁就切掉 */
+  border-radius: 0;
 }
 
 .table-emblem {

@@ -23,6 +23,7 @@ Page({
     leader: null, isLeader: false, missionSize: 0, protectedText: "", missionTrack: [],
     canControlLeader: false,
     tableOrientation: "horizontal",
+    longTable: null, stageW: 0, stageH: 0,
     tableWidth: 44,
     tableHeight: 34,
     tableVisible: false, tableMode: "team", tableTitle: "选择同行骑士", tableHint: "",
@@ -76,6 +77,10 @@ Page({
 
   // 切后台停表，回到前台立刻补一次拉取：锁屏或切微信聊天回来后
   // 不用等下一个轮询周期，也能马上追上其他玩家的进度。
+  onReady() {
+    this.measureStage()
+  },
+
   onShow() {
     if (!this.data.roomId || this.fatalHandled) return
     this.loadBackgrounds()
@@ -258,6 +263,7 @@ Page({
       myVotes: dossier.myVotes,
       syncing: false
     })
+    this.refreshLongTable()
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
@@ -625,6 +631,29 @@ Page({
   },
   enterMission() { this.sendAction("enterMission") },
 
+  // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
+  // 375pt 屏上长宽比 1.19、414pt 屏上 1.32，差 11%，写死会挑错档。
+  measureStage() {
+    wx.createSelectorQuery().in(this).selectAll(".compact-stage").boundingClientRect(rects => {
+      const rect = (rects || []).find(item => item && item.width > 0 && item.height > 0)
+      if (!rect) return
+      if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
+      this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
+    }).exec()
+  },
+
+  refreshLongTable() {
+    const data = this.data
+    if (!data.stageW || !data.stageH) return
+    const longTable = assets.pickLongTable(data.tableWidth, data.tableHeight, data.stageW, data.stageH)
+    if (!longTable) return
+    const previous = data.longTable || {}
+    // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
+    // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
+    if (longTable.src === previous.src && longTable.style === previous.style) return
+    this.setData({ longTable })
+  },
+
   openTable(event) {
     const mode = event.currentTarget.dataset.mode || "status"
     const titles = { team: "选择同行骑士", magic: "交付魔法指示物", leader: "移交皇冠", amuletOwner: "交付护身符", inspect: "选择查验对象", final: "选择两位玩家", status: "圆桌座位" }
@@ -637,7 +666,7 @@ Page({
       tableVisible: true, tableMode: mode, tableTitle: titles[mode], tableHint: hints[mode] || "查看本局玩家",
       // 单目标交付的模式才亮出道具；组队模式没有道具
       deliverIcon: this.deliverIconFor(mode), deliverFlying: false
-    })
+    }, () => this.measureStage())
   },
 
   openHistory() { this.setData({ historyVisible: true }) },

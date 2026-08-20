@@ -1217,14 +1217,6 @@ button::after {
   line-height: 1.4;
 }
 
-.round-table,
-.long-table {
-  width: 420rpx;
-  height: 200rpx;
-  /* 九宫格背景的直角由它裁掉；和角块圆弧未必严丝合缝，观感不对就微调 */
-  border-radius: 32rpx;
-}
-
 .round-table {
   width: 330rpx;
   height: 330rpx;
@@ -1233,11 +1225,7 @@ button::after {
   overflow: hidden;
 }
 
-.long-table {
-  width: 420rpx;
-  height: 200rpx;
-  border-radius: 32rpx;
-}
+/* 长桌尺寸由 js 按实测 stage 算好内联下发，这里不能再写死宽高或圆角 */
 
 .table-emblem {
   position: absolute;

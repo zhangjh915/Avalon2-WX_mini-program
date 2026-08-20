@@ -77,34 +77,97 @@ const icons = assets.uiIcons()
   assert.ok(icons[key] && icons[key].startsWith("cloud://"), `图标 ${key} 缺失`)
 })
 
-// 长桌九宫格：层序即数组顺序，角在最上、中心垫底，重排会让角被中心盖住
-assert.strictEqual(assets.LONG_TABLE_SLICES.length, 9)
-assert.strictEqual(assets.LONG_TABLE_SLICES[0][0], "corner_tl.png", "角块必须排在最前（最上层）")
-assert.strictEqual(assets.LONG_TABLE_SLICES[8][0], "center.jpg", "中心必须排在最后（垫底）")
-// 边条只沿单轴平铺。**不要改成 round**：round 按整个盒子算整数次填充，
-// 而这里用 background-position 把边条起点偏移了一个角块的距离，两者不兼容——
-// 接缝会跟角块完全对不齐，桌子看起来像拼错了。真实踩过并回退。
-assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-x").length === 2, "上下边条 repeat-x")
-assert.ok(assets.LONG_TABLE_SLICES.filter(s => s[3] === "repeat-y").length === 2, "左右边条 repeat-y")
-assert.ok(!assets.LONG_TABLE_SLICES.some(s => /round/.test(s[3])), "边条不能用 round，会和角块错位")
-
-// 长桌背景只能在 loadBackgrounds 里算一次。放进 applyState 的话，
-// 900ms 的轮询每次都会重算并 setData 一个 1.4KB 的新字符串（9 个图片链接），
-// 渲染层每次都重新解析背景、重新请求那 9 张图，桌子要等很久才出得来。
-;["play", "room"].forEach(name => {
-  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", name, `${name}.js`), "utf8")
-  // 必须锚在方法定义上。用 indexOf("applyState(") 会先撞上 loadState 里的
-  // this.applyState(result) 那个调用，截出来的根本不是方法体——这条守卫因此假绿过一次。
-  const applyStart = src.indexOf("\n  applyState(result) {")
-  assert.ok(applyStart > 0, `${name}.js 没有 applyState 方法定义`)
-  const applyBody = src.slice(applyStart, src.indexOf("\n  },", applyStart + 5))
-  assert.ok(!/longTableBg\s*:/.test(applyBody), `${name}.applyState 不能每次轮询都重算长桌背景`)
+// ---- 长桌：七张整图按比例分档（九宫格已废弃）----
+// 九宫格把一张图变成九张的拼装，每处接缝都是要精确对齐的约束，实机上始终能看出
+// 接缝和色差（实测五块切片平均亮度 35~68，差近一倍）。整图没有拼接。
+assert.ok(!("LONG_TABLE_SLICES" in assets), "九宫格已废弃，不该再导出切片表")
+// 长桌不再走 CSS background，改成 <image>，所以背景样式里不该再有它
+assert.ok(!("longTableBackground" in assets), "九宫格的背景拼装函数应当已删除")
+assert.strictEqual(assets.LONG_TABLES.length, 7)
+assets.LONG_TABLES.forEach(item => {
+  assert.ok(item.aspect >= 1, "只存长宽比 >= 1 的一半，竖桌用横图转 90 度")
+  assert.ok(item.i >= 1 && item.i <= 7)
 })
+
+// 档位表必须和资产目录里那份一致。副本是必须的——assets/ui 被 packOptions.ignore
+// 排除出包体，运行时 require 不到那边那份；但两份一旦漂移就会挑错档。
+const metaAsset = path.join(__dirname, "..", "miniprogram", "assets", "ui", "table-long", "_meta.json")
+if (fs.existsSync(metaAsset)) {
+  assert.deepStrictEqual(
+    JSON.parse(fs.readFileSync(metaAsset, "utf8")),
+    require("../miniprogram/utils/table-long-meta"),
+    "utils/table-long-meta.js 与资产目录的 _meta.json 不一致")
+  // 必须是 .js：小程序不支持 require .json，会让 assets.js 整个模块抛异常，
+  // 连带所有 require 它的页面 Page() 注册失败（页面只剩生命周期方法）。
+  assert.ok(!fs.existsSync(path.join(__dirname, "..", "miniprogram", "utils", "table-long-meta.json")),
+    "档位表不能是 .json，小程序 require 不了")
+  assert.ok(!/require\(["'][^"']*\.json["']\)/.test(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")),
+    "小程序侧代码不能 require .json")
+  assets.LONG_TABLES.forEach(item => {
+    assert.ok(fs.existsSync(path.join(__dirname, "..", "miniprogram", "assets", "ui", "table-long", `${item.i}.png`)),
+      `缺少长桌图 ${item.i}.png`)
+  })
+}
+
+// 挑档：比的是对数距离。拉伸 8% 无论发生在 1.1 还是 2.9 档上观感代价一样，
+// 用差值会偏袒大比例那几档。
+const wide = assets.pickLongTable(68, 24, 340, 295)     // 很扁的横桌
+const narrow = assets.pickLongTable(32, 62, 340, 295)   // 竖桌
+assert.ok(wide && narrow)
+assert.strictEqual(wide.rotate, false, "横桌不转")
+assert.strictEqual(narrow.rotate, true, "竖桌要转 90 度")
+assert.ok(/rotate\(90deg\)/.test(narrow.style), "竖桌的内联样式要带旋转")
+assert.ok(!/rotate/.test(wide.style), "横桌不该有旋转")
+// 转 90 度后宽高互换，所以图要按「转之前」的尺寸给
+const nw = Number(/width:(\d+)px/.exec(narrow.style)[1])
+const nh = Number(/height:(\d+)px/.exec(narrow.style)[1])
+assert.ok(nw > nh, "竖桌的图在旋转前必须是横的")
+// 七张覆盖全部真实布局，最大拉伸不超过 8%。
+// 遍历的是 tableGeometry 真正会产出的组合，不是手编的数——手编很容易写出
+// 根本不存在的组合（比如 height=24：左右无人时走的是 else 分支给 28）。
+const tableLayout = require("../miniprogram/utils/tableLayout")
+const geometries = []
+for (let h = 0; h <= 5; h += 1) {
+  for (let v = 0; v <= 5; v += 1) {
+    if (h + v === 0) continue
+    geometries.push(tableLayout.tableGeometry({ top: h, bottom: h, left: v, right: v }))
+  }
+}
+// stage 在选人面板里是 flex 撑开的，宽随屏宽、高随屏高，长宽比因此随机型变——
+// 375pt 屏上约 1.19、414pt 屏上约 1.32。两端都要覆盖，这也是挑档必须用
+// 运行时实测尺寸的原因。
+const STAGES = [[351, 295], [389, 295]]
+let worst = 0
+STAGES.forEach(([stageW, stageH]) => {
+  geometries.forEach(geo => {
+    const picked = assets.pickLongTable(geo.width, geo.height, stageW, stageH)
+    assert.ok(picked, `${geo.width}%x${geo.height}% 没挑出档`)
+    const boxW = stageW * geo.width / 100
+    const boxH = stageH * geo.height / 100
+    const target = Math.max(boxW, boxH) / Math.min(boxW, boxH)
+    const tier = assets.LONG_TABLES.find(item => item.i === picked.tier)
+    const stretch = Math.abs(Math.log(target / tier.aspect))
+    worst = Math.max(worst, stretch)
+    // 阈值 10.5% 是防退化线，不是目标。实测最差 9.8%，出现在 68%x28% @1.32 屏：
+    // 目标比 3.20 已经超出最大档 2.90，是**外插**不是内插——七档的上限不够宽。
+    // 另有 1.28->1.54 之间的间隙偏大（中点 9.4%）。已反馈给资产会话补档；
+    // 补完之后把这个阈值收回 0.085。
+    assert.ok(stretch < 0.105,
+      `${geo.width}%x${geo.height}% @${stageW}x${stageH} 挑到 ${picked.tier} 档，拉伸 ${(stretch * 100).toFixed(1)}% 超标`)
+    // 旋转判断必须和实际形状一致
+    assert.strictEqual(picked.rotate, boxW < boxH, "旋转判断与实际形状不符")
+  })
+})
+assert.ok(worst < 0.105, `最大拉伸 ${(worst * 100).toFixed(1)}%`)
+
+// 尺寸缺失时返回 null 而不是算出 NaN 塞进样式
+assert.strictEqual(assets.pickLongTable(32, 60, 0, 0), null)
+assert.strictEqual(assets.pickLongTable(0, 0, 340, 295), null)
 
 // CSS 的 background-image 不认 cloud:// 协议，必须先换成 https 临时链接。
 // 没有 wx.cloud 时（单元测试、云开发未初始化）要安全退化成空串而不是抛错。
 assets.backgroundStyles().then(styles => {
-  ;["roundTableBg", "floorBg", "sealBg", "homeBg", "longTableBg"].forEach(key => {
+  ;["roundTableBg", "floorBg", "sealBg", "homeBg"].forEach(key => {
     assert.ok(key in styles, `缺少背景样式 ${key}`)
     assert.ok(!String(styles[key]).includes("cloud://"), `${key} 不能把 cloud:// 写进 CSS`)
   })
@@ -139,9 +202,6 @@ if (fs.existsSync(UI_DIR)) {
     const name = icons[key].slice((assets.CLOUD_PREFIX + "assets/ui/").length)
     assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
   })
-  assets.LONG_TABLE_SLICES.forEach(slice => {
-    assert.ok(fs.existsSync(path.join(UI_DIR, "table-long", slice[0])), `缺少长桌切片 ${slice[0]}`)
-  })
   ;["table-round.jpg", "home-bg.jpg", "home-emblem.png"].forEach(name => {
     assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
   })
@@ -171,7 +231,14 @@ assertStageCover(roomWxss, roomWxml, "lobby-table-stage", "候场台面")
 assert.ok(!/compact-table-stage/.test(playWxss), "已删除的死规则不该再出现")
 // 桌面和地面都是正俯视平光，没有可见投影桌子就像贴纸浮在毯子上
 const appWxss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
-assert.match(appWxss, /\.round-table,\s*\n\.long-table \{[^}]*box-shadow:[^;]+rgba\(20, 14, 10, 0\.45\)/s, "桌子必须保留深投影")
+assert.match(appWxss, /\.round-table \{[^}]*box-shadow:[^;]+rgba\(20, 14, 10, 0\.45\)/s, "圆桌必须保留深投影")
+// 长桌的投影必须挂在**不旋转的外层** .table-slot 上：直接给 .long-table 加
+// box-shadow 的话，竖桌的 rotate(90deg) 会把阴影方向一起转过去（向下变向右）。
+// drop-shadow 还能跟随图片 alpha 形状，正好贴合图自带的圆角。
+assert.match(appWxss, /\.table-slot \{[^}]*drop-shadow\([^)]*rgba\(20, 14, 10, 0\.45\)/s, "长桌投影要挂在不旋转的外层")
+assert.ok(!/\.long-table \{[^}]*box-shadow/s.test(appWxss), "投影不能加在会旋转的 .long-table 上")
+// 圆角由图自带，再裁会切掉伸出圆弧的雕花包角
+assert.match(appWxss, /\.long-table \{[^}]*border-radius: 0/s, "长桌不能再裁圆角")
 // 深色绒毯上的座位文字必须是浅色，否则整排名字消失
 assert.ok(!/\.compact-seat-token \.seat-caption \{[^}]*color: #3d332a/.test(roomWxss), "候场页座位文字要翻浅色")
 

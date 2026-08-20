@@ -22,9 +22,9 @@
       <view class="section-meta">{{mySeatNo ? '已选 ' + mySeatNo + '号' : '点击空位入座'}}</view>
     </view>
     <view style="{{floorBg}}" class="table-stage lobby-table-stage {{tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}">
-      <view class="{{tableType === 'long' ? 'long-table ' + tableOrientation : 'round-table'}}" style="{{tableType === 'long' ? longTableBg + ';width:' + tableWidth + '%;height:' + tableHeight + '%;' : roundTableBg}}">
-        <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
-      </view>
+      <block wx:if="{{tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
+      <view wx:else class="round-table" style="{{roundTableBg}}"></view>
+      <image class="table-emblem" src="{{ui.tableEmblem}}" mode="aspectFit" />
       <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="chooseSeat" data-seat="{{item.seatNo}}">
         <view class="seat-avatar">{{item.name ? item.initial : ''}}</view>
         <view class="seat-caption"><text>{{item.seatNo}}号</text><text wx:if="{{item.name}}"> {{item.name}}</text></view>
