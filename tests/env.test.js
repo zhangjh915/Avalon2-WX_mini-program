@@ -1,9 +1,10 @@
+const fs = require("fs")
+const path = require("path")
 // 测试模式的可用范围。
 // 这是「正式对局不会被测试玩家破坏」的最后一道客户端防线，
 // 服务端另有 requireDevRoom 独立校验，两边都不能松。
 
 const assert = require("assert")
-const path = require("path")
 
 const envPath = path.join(__dirname, "..", "miniprogram", "utils", "env.js")
 
@@ -37,4 +38,14 @@ assert.strictEqual(loadWith("trial").isDevBuild(), false)
 assert.strictEqual(loadWith("release").isDevBuild(), false)
 
 delete global.wx
+// 云函数超时。config.json 留空等于用默认的 3 秒，而冷启动实测能到 5.7 秒——
+// 撞上就失败，表现是「同样的操作有时成功有时失败」。这是真实排查出来的。
+const fnConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "cloudfunctions", "avalonGame", "config.json"), "utf8"))
+assert.ok(Number(fnConfig.timeout) >= 10, `云函数超时必须调高，当前 ${fnConfig.timeout || "未设置(默认3秒)"}`)
+
+// 客户端还要对超时重试一次兜底：超时不代表没执行成功，服务端有幂等保护
+const storeSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "roomStore.js"), "utf8")
+assert.match(storeSrc, /-504003/, "要能识别云函数超时错误码")
+assert.match(storeSrc, /invoke\(action, payload\)[\s\S]{0,400}invoke\(action, payload\)/, "超时后要重试一次")
+
 console.log("env tests passed")

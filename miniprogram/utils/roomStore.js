@@ -25,11 +25,25 @@ function friendlyMessage(error) {
   return text
 }
 
+// 云函数冷启动能跑到 5 秒，而超时上限默认只有 3 秒——实测同一个操作
+// 有时 400ms、有时 5720ms，撞上就失败，表现就是「经常操作失败」。
+// 根治是把 config.json 的 timeout 调到 20 秒；这里再加一层重试兜底。
+//
+// 超时**不代表没执行成功**：云函数很可能已经写完库，只是响应没等到。
+// 所以只对超时重试，而且只重一次——服务端对这些操作都有幂等保护
+// （重复入座无害、startGame 会拒第二次并让客户端改读状态）。
+const TIMEOUT_PATTERN = /-504003|timed out|timeout/i
+
+function invoke(action, payload) {
+  return wx.cloud.callFunction({ name: functionName, data: { action, ...(payload || {}) } })
+}
+
 function call(action, payload) {
   if (!wx.cloud) return Promise.reject(new Error("请先开启微信云开发"))
-  return wx.cloud.callFunction({
-    name: functionName,
-    data: { action, ...(payload || {}) }
+  return invoke(action, payload).catch(error => {
+    if (!TIMEOUT_PATTERN.test(String(error && (error.errMsg || error.message) || ""))) throw error
+    console.warn("[avalonGame] 冷启动超时，重试一次", action)
+    return invoke(action, payload)
   }).then(response => {
     const result = response.result
     if (!result) throw new Error("云函数未返回数据")
