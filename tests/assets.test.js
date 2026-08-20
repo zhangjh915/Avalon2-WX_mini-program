@@ -169,7 +169,12 @@ assert.strictEqual(assets.pickLongTable(0, 0, 340, 295), null)
 // 而我按「2 小时」设缓存 TTL，怎么修都修不掉。现在整条链路删掉了。
 assert.ok(!("backgroundStyles" in assets), "临时链接机制应当已移除")
 assert.ok(!("resolveTempUrls" in assets), "临时链接机制应当已移除")
-const uiSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")
+// 断言只看实际代码，不看注释——顶部那条「不要用 getTempFileURL」的警示注释
+// 本身就含这个词，直接全文匹配会把有价值的注释一起判死。
+function codeOnly(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
+}
+const uiSrc = codeOnly(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8"))
 assert.ok(!/getTempFileURL|tempFileURL/.test(uiSrc), "不该再解析临时链接")
 
 // 四类原本走 CSS 背景的图，现在都要以 cloud:// 出现在图标集里

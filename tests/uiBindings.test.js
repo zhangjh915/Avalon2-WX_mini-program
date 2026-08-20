@@ -87,7 +87,9 @@ assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier
   const wxml = fs.readFileSync(path.join(root, name, `${name}.wxml`), "utf8")
   assert.ok(!/style="\{\{[a-zA-Z]*Bg[\s}]/.test(wxml), `${name}.wxml 不能再把图放进 CSS background`)
 })
+// 同 assets.test.js：只看实际代码，顶部的警示注释里本来就写着这个词
 const assetsSrc2 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "")
 assert.ok(!/getTempFileURL/.test(assetsSrc2), "不该再需要临时链接")
 
 delete global.Page
