@@ -167,3 +167,9 @@
 .kind-role .skin-card { gap: 20rpx; }
 .kind-role .skin-card-thumb { width: 216rpx; height: 288rpx; }
 
+
+/* 首页底图是绝对定位的 <image>，而 CSS 层叠顺序里**定位元素画在非定位块级元素之上**，
+   所以它会把 static 的兄弟节点整个盖住——首页曾因此只剩一张木纹底图。
+   正文统一包一层抬上来即可；弹层留在 .page-body 外面，
+   它们是 position: fixed，被 relative 改写就废了。 */
+.page-body { position: relative; z-index: 1; }
