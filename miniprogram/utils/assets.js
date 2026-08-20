@@ -13,6 +13,17 @@
 // （?...&imageMogr2/thumbnail/300x 实测有效），所以只需存一份高清，
 // 将来结算页要小头像时按需缩，不必再存缩略图档。
 
+// 取图一律用 <image src="cloud://">，**不要用 wx.cloud.getTempFileURL**。
+//
+// CSS 的 background-image 只认 https，所以用它就必须先换临时链接——而临时链接
+// 的有效期实测只有 **约 10 分钟**（连续 curl 同一条链接：9 分 4 秒仍 200，
+// 10 分 4 秒变 403）。不是文档给人的「2 小时」印象。
+// 我按 2 小时设过 90 分钟的缓存 TTL，比真实有效期长了 9 倍，403 反复出现、
+// 修了三轮都没修掉，最后是把整条链路删掉才根治的。
+//
+// <image src="cloud://"> 由微信自己解析并管理有效期，不经手临时链接，没有这个问题。
+// 需要背景图的地方就垫一张绝对定位铺满的 <image>（见 .stage-floor / .page-bg / .seal-base）。
+
 const CLOUD_PREFIX = "cloud://cloudbase-d6gh6eo4ce2c13e2b.636c-cloudbase-d6gh6eo4ce2c13e2b-1466527090/"
 
 // 一局能出现多次的角色有多张立绘，文件名是 <key>-v<N>.jpg；
