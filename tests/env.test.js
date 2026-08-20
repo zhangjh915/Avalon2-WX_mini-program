@@ -53,4 +53,12 @@ const storeSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "util
 assert.match(storeSrc, /-504003/, "要能识别云函数超时错误码")
 assert.match(storeSrc, /invoke\(action, payload\)[\s\S]{0,400}invoke\(action, payload\)/, "超时后要重试一次")
 
+// 云函数部署必须走 scripts/deploy-cloudfunction.sh，它带了 -r。
+// 不带 -r 时 CLI 会上传本地 node_modules，而本地从没装过依赖，
+// 部署包里就只有源文件、没有 wx-server-sdk——部署显示成功，但所有调用立刻全挂
+// （Cannot find module 'wx-server-sdk'），整个小程序不可用。踩过一次。
+const deployScript = fs.readFileSync(path.join(__dirname, "..", "scripts", "deploy-cloudfunction.sh"), "utf8")
+assert.match(deployScript, /functions deploy[^\n]*\s-r(\s|$)/, "部署脚本必须带 -r，否则云端缺依赖")
+assert.ok(fs.existsSync(path.join(__dirname, "..", "cloudfunctions", "avalonGame", "package.json")), "云函数要有 package.json 供云端装依赖")
+
 console.log("env tests passed")
