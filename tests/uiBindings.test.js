@@ -50,10 +50,20 @@ assert.match(playWxss, /round-seat-stage\s*\{[^}]*width:\s*650rpx;[^}]*height:\s
 // 现在圆圈里是自己的角色立绘，状态由边框的动静表达。
 assert.ok(!/class="submitted-seal[^"]*"[^>]*>\s*[\u4e00-\u9fa5]/.test(playWxml), "状态印里不该再出现汉字")
 assert.ok(/seal-waiting/.test(playWxml) && /seal-sealed/.test(playWxml), "等待态与已封存态必须能区分")
-// prepare 阶段身份还没揭示，那处只能放卡背，放立绘就直接泄底了
-const prepareBlock = playWxml.slice(playWxml.indexOf("identityMode === 'prepare'"), playWxml.indexOf("identity-progress"))
-assert.ok(/seal-portrait" src="\{\{identityBackArt\}\}"/.test(prepareBlock), "揭示身份前的等待印只能用卡背，不能用角色立绘")
-assert.ok(!/seal-portrait" src="\{\{myRoleArt\}\}"/.test(prepareBlock), "揭示身份前不能把自己的立绘露出来")
+// 状态印里不能出现任何身份图——立绘会泄底，卡背等于把牌又摆了一遍。
+// 放的是自己的座位头像（名字首字），有个人标识而不带任何身份信息。
+assert.ok(!/class="submitted-seal[^"]*"[^>]*>\s*<image[^>]*(myRoleArt|identityBackArt)/.test(playWxml),
+  "状态印里不能放角色立绘或卡背")
+assert.match(playWxml, /class="submitted-seal[^"]*"[^>]*>\s*<view class="seal-initial">/, "状态印应当放座位头像")
+
+// 翻开身份牌之前，密录和「本局思路」里直接写着自己的角色，点开就等于提前看牌
+assert.match(playWxml, /bindtap="openDossier"/, "对局中要能打开密录")
+;[/wx:if="\{\{privateView\.roleName && identityUnlocked\}\}"[^>]*dossier-button/,
+  /<button wx:if="\{\{identityUnlocked\}\}"[^>]*>查看本局思路<\/button>/].forEach(re => {
+  assert.match(playWxml, re, "身份揭示前必须藏起密录/攻略入口")
+})
+const playJsSrc = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier 要有兜底防护")
 
 // 长桌整图的两条硬约束
 ;[["play", playWxml], ["room", roomWxml]].forEach(([name, wxml]) => {

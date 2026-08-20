@@ -189,10 +189,14 @@ Page({
 
   // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
   // 375pt 屏上长宽比 1.19、414pt 屏上 1.32，差 11%，写死会挑错档。
-  measureStage() {
+  measureStage(attempt) {
     wx.createSelectorQuery().in(this).selectAll(".lobby-table-stage").boundingClientRect(rects => {
       const rect = (rects || []).find(item => item && item.width > 0 && item.height > 0)
-      if (!rect) return
+      if (!rect) {
+        // 量到 0 就挑不出档、桌子整个不渲染。布局没完成时补量几次。
+        if ((attempt || 0) < 5) setTimeout(() => this.measureStage((attempt || 0) + 1), 120)
+        return
+      }
       if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
       this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
     }).exec()

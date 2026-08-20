@@ -1463,7 +1463,9 @@ button::after {
    会呼吸的 = 在等别人，压死的 = 你已经交了。
    放大到 132rpx 是因为 64rpx 的圆里人脸只有 10pt，糊成一团。 */
 .submitted-seal { position: relative; display: flex; width: 132rpx; height: 132rpx; margin: 0; align-items: center; justify-content: center; border: 3rpx solid #a98d4e; border-radius: 50%; background-position: center; background-size: cover; overflow: hidden; box-sizing: border-box; }
-.seal-portrait { display: block; width: 100%; height: 100%; border-radius: 50%; }
+/* 印章里放自己的座位头像（名字首字），不是角色立绘、也不是卡背——
+   那两样都会在身份揭示前后把牌面又摆一遍。状态仍然由边框的动静表达。 */
+.seal-initial { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border-radius: 50%; background: #2c3a34; color: #e8e3d8; font-size: 44rpx; font-weight: 900; }
 .submitted-seal.spectator { border-color: #647169; }
 
 /* 等着别人——边框呼吸 */
@@ -1850,3 +1852,8 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
   0%, 100% { transform: rotate(-7deg) translateY(0); }
   50% { transform: rotate(7deg) translateY(-12rpx); }
 }
+
+/* 预加载池。用 0 尺寸而不是 display:none——display:none 的 <image> 微信不会去请求，
+   预加载就失效了。width/height 为 0 但仍在渲染树里，图会照常下载。 */
+.preload-pool { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+.preload-pool image { width: 1rpx; height: 1rpx; }

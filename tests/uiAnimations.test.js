@@ -95,6 +95,8 @@ const teamContext = {
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
   flyDeliverTo: definition.flyDeliverTo,
+  seatCenter: definition.seatCenter,
+  seatCenter: definition.seatCenter,
   deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
@@ -119,6 +121,8 @@ const finalContext = {
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
   flyDeliverTo: definition.flyDeliverTo,
+  seatCenter: definition.seatCenter,
+  seatCenter: definition.seatCenter,
   deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
@@ -188,13 +192,35 @@ const deliverCtx = {
   },
   setData(v) { Object.assign(this.data, v) },
   flyDeliverTo: definition.flyDeliverTo,
+  seatCenter: definition.seatCenter,
   deliverIconFor: definition.deliverIconFor
 }
 deliverCtx.flyDeliverTo({ currentTarget: { dataset: { id: 2 } } })
 assert.strictEqual(deliverCtx.data.deliverFlying, true, "选中后道具应开始飞行")
-assert.strictEqual(deliverCtx.data.deliverX, 18, "应飞向该座位的横坐标")
-assert.strictEqual(deliverCtx.data.deliverY, 72, "应飞向该座位的纵坐标")
+assert.strictEqual(deliverCtx.data.deliverX, 18, "拿不到台面尺寸时退回座位原坐标")
+assert.strictEqual(deliverCtx.data.deliverY, 72, "拿不到台面尺寸时退回座位原坐标")
 clearTimeout(deliverCtx.deliverTimer)
+
+// 座位的 left/top 定的是元素**左上角**（.seat-token 没有 translate(-50%,-50%)），
+// 而道具按中心定位。不补半个座位的偏移，道具就停在头像左上角外面。
+const centered = {
+  data: {
+    ui: { crown: "cloud://crown" }, deliverIcon: "cloud://crown", deliverFlying: false,
+    deliverX: 50, deliverY: 50, stageW: 366, stageH: 656,
+    decoratedPlayers: [{ id: 2, x: 18, y: 72 }]
+  },
+  windowWidth: 375,
+  setData(v) { Object.assign(this.data, v) },
+  flyDeliverTo: definition.flyDeliverTo,
+  seatCenter: definition.seatCenter
+}
+centered.flyDeliverTo({ currentTarget: { dataset: { id: 2 } } })
+assert.ok(centered.data.deliverX > 18, "落点要往右补半个座位")
+assert.ok(centered.data.deliverY > 72, "落点要往下补半个座位")
+// 半个座位 = 36rpx，375pt 屏上是 18pt
+assert.ok(Math.abs(centered.data.deliverX - (18 + 18 / 366 * 100)) < 0.01)
+assert.ok(Math.abs(centered.data.deliverY - (72 + 18 / 656 * 100)) < 0.01)
+clearTimeout(centered.deliverTimer)
 
 // 三种单目标模式各自对应一件道具，组队模式没有
 assert.strictEqual(deliverCtx.deliverIconFor("leader"), "cloud://crown")

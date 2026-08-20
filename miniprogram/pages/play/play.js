@@ -44,7 +44,8 @@ Page({
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
-    myRoleArt: "", identityBackArt: "", cardFlipped: false, readingHint: "", readingUrgent: false,
+    preloadList: [],
+    myRoleArt: "", identityBackArt: "", cardFlipped: false, identityUnlocked: false, myInitial: "", readingHint: "", readingUrgent: false,
     ui: {}, roundTableBg: "", longTableBg: "", floorBg: "", sealBg: "",
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
     ceremonyVisible: false, ceremonyType: "", ceremonySymbol: "", ceremonySymbolImage: "", ceremonyTitle: "",
@@ -63,6 +64,7 @@ Page({
   stateGeneration: 0,
 
   onLoad(options) {
+    this.windowWidth = (wx.getSystemInfoSync() || {}).windowWidth || 375
     this.setData({ roomId: options.roomId })
     this.loadBackgrounds()
     this.loadState(true)
@@ -197,6 +199,13 @@ Page({
     // 顺序写反的话 applyState 会在这里抛 TypeError，而 game 还没 setData，
     // 于是外层 wx:if="{{game}}" 永远不成立——整个对局页白屏。
     const dossier = this.buildDossier(privateView, decoratedPlayers)
+    // 密录和「本局思路」里直接写着自己的角色和阵营。身份揭示前点开就等于提前看牌，
+    // 所以这两个入口在本人翻牌之前必须关掉（对局阶段不受影响，那时早就看过了）。
+    const identityUnlocked = room.phase !== "reveal" || this.data.cardFlipped
+    // 状态印里绝不能出现身份图（卡背也不行，等于把牌又摆了一遍）。
+    // 放自己的座位头像：有个人标识，又不泄露任何身份信息。
+    const mySeat = decoratedPlayers.find(player => Number(player.id) === Number(privateView.id))
+    const myInitial = mySeat ? mySeat.initial : ""
     const history = this.buildGameHistory(game, decoratedPlayers, dossier.myVotes)
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
@@ -255,6 +264,18 @@ Page({
       myInspections: dossier.myInspections,
       waitingHint,
       myRoleArt,
+      identityUnlocked,
+      myInitial,
+      // 图在第一次真正显示时才开始下载，于是每换一个阶段都要白等一次。
+      // 这里把本局用得到的图挂进一个 0 尺寸的隐藏容器，进对局页就先下完，
+      // 轮到显示时直接命中缓存。只放本局真的会用到的，不整批预热。
+      preloadList: [
+        assets.identityBack(roleSkin),
+        myRoleArt,
+        assets.missionCard(missionSkin, "back"),
+        assets.missionCard(missionSkin, "success"),
+        assets.missionCard(missionSkin, "fail")
+      ].filter(Boolean),
       identityBackArt: assets.identityBack(roleSkin),
       ui: assets.uiIcons(),
       missionCardBack: assets.missionCard(missionSkin, "back"),
@@ -633,10 +654,15 @@ Page({
 
   // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
   // 375pt 屏上长宽比 1.19、414pt 屏上 1.32，差 11%，写死会挑错档。
-  measureStage() {
+  measureStage(attempt) {
     wx.createSelectorQuery().in(this).selectAll(".compact-stage").boundingClientRect(rects => {
       const rect = (rects || []).find(item => item && item.width > 0 && item.height > 0)
-      if (!rect) return
+      if (!rect) {
+        // 面板是 wx:if 出来的，setData 回调里布局往往还没完成，量到 0 就挑不出档、
+        // 桌子整个不渲染（第一轮点「选择骑士」桌子不见了就是这么来的）。补量几次。
+        if ((attempt || 0) < 5) setTimeout(() => this.measureStage((attempt || 0) + 1), 120)
+        return
+      }
       if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
       this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
     }).exec()
@@ -677,7 +703,7 @@ Page({
   flipIdentityCard() {
     if (this.data.cardFlipped) return
     this.identityFlippedAt = Date.now()
-    this.setData({ cardFlipped: true })
+    this.setData({ cardFlipped: true, identityUnlocked: true })
     this.vibrate("medium")
   },
 
@@ -697,7 +723,14 @@ Page({
     })
   },
 
-  openDossier() { this.setData({ dossierVisible: true }) },
+  openDossier() {
+    // 兜底：界面上已经藏了入口，这里再挡一层，免得别处误调
+    if (!this.data.identityUnlocked) {
+      wx.showToast({ title: "先翻开身份牌", icon: "none" })
+      return
+    }
+    this.setData({ dossierVisible: true })
+  },
   closeDossier() { this.setData({ dossierVisible: false }) },
 
   closeTable() {
@@ -721,9 +754,22 @@ Page({
     const id = Number(event.currentTarget.dataset.id)
     const seat = this.data.decoratedPlayers.find(player => Number(player.id) === id)
     if (!seat) return
-    this.setData({ deliverFlying: true, deliverX: seat.x, deliverY: seat.y })
+    // 座位的 left/top 定的是元素**左上角**（.seat-token 没有 translate(-50%,-50%)），
+    // 而道具是按中心定位的。直接用 seat.x/y 道具会停在头像左上角外面，
+    // 要加上半个座位的偏移才落在头像正中。
+    const target = this.seatCenter(seat)
+    this.setData({ deliverFlying: true, deliverX: target.x, deliverY: target.y })
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
     this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
+  },
+
+  // 座位头像的中心点（百分比，相对台面）。座位宽 72rpx，头像在其中居中。
+  seatCenter(seat) {
+    const half = 36 * ((this.windowWidth || 375) / 750)   // rpx -> pt
+    const stageW = this.data.stageW || 0
+    const stageH = this.data.stageH || 0
+    if (!stageW || !stageH) return { x: seat.x, y: seat.y }
+    return { x: seat.x + half / stageW * 100, y: seat.y + half / stageH * 100 }
   },
 
   deliverIconFor(mode) {
