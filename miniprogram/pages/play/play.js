@@ -756,15 +756,25 @@ Page({
   // 待交付的道具：皇冠/护身符/火球。组队模式没有道具，返回空串即不渲染。
   // 选中后道具飘向该玩家的头像位置；座位坐标本来就是百分比，直接过渡 left/top
   flyDeliverTo(event) {
-    if (!this.data.deliverIcon || this.data.deliverFlying) return
     const id = Number(event.currentTarget.dataset.id)
     const seat = this.data.decoratedPlayers.find(player => Number(player.id) === id)
     if (!seat) return
+    // 改选另一个人时也要能重播：原先第一句是
+    //   if (!deliverIcon || deliverFlying) return
+    // 而道具飞完 720ms 就被清空，于是第二次点击直接被挡在门外，一点动静都没有。
+    const icon = this.data.deliverIcon || this.deliverIconFor(this.data.tableMode)
+    if (!icon) return
+    if (this.deliverTimer) clearTimeout(this.deliverTimer)
+    // 先瞬回桌心（不带过渡），下一帧再飞出去，这样每次改选都看得到完整的飞行
+    this.setData({ deliverIcon: icon, deliverFlying: false, deliverX: 50, deliverY: 50 })
+    this.deliverTimer = setTimeout(() => this.flyDeliverStep(seat), 40)
+  },
+
+  flyDeliverStep(seat) {
     // 直接用座位坐标：.seat-token 带 translate(-50%,-50%)（app.wxss），
     // 所以 left/top 定的就是**中心**，道具也是按中心定位的，两者天然对齐。
     // 别再自作聪明补半个座位的偏移——那会把道具推到头像右下方。
     this.setData({ deliverFlying: true, deliverX: seat.x, deliverY: seat.y })
-    if (this.deliverTimer) clearTimeout(this.deliverTimer)
     this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
   },
 

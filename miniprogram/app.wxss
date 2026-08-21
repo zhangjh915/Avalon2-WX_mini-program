@@ -326,3 +326,7 @@ button:active,
    负值会让它掉到祖先背景后面，那是更难查的坑。 */
 .table-stage > view,
 .table-stage > image:not(.stage-floor) { z-index: 1; }
+/* 飞行中的道具要压在座位之上。注意特异度：上面那条是 (0,1,1)，
+   单写 .deliver-token 只有 (0,1,0) 会被它压成 z-index:1，
+   而道具在 DOM 里排在座位之前，于是飞过去就被头像盖住了。 */
+.table-stage > .deliver-token { z-index: 6; }

@@ -107,10 +107,21 @@ const rlStart = playSrc3.indexOf("\n  refreshLongTable() {")
 assert.ok(rlStart > 0, "找不到 refreshLongTable 方法定义")
 const rlBody = playSrc3.slice(rlStart, playSrc3.indexOf("\n  },", rlStart + 5))
 assert.ok(/preloadList/.test(rlBody), "长桌图要在挑档后补进预加载池")
-// 预加载池必须用 0 尺寸而不是 display:none——display:none 的 image 微信不会去请求
 const playWxssPre = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
-assert.match(playWxssPre, /\.preload-pool \{[^}]*width: 0/, "预加载池要用 0 尺寸")
-assert.ok(!/\.preload-pool \{[^}]*display: none/.test(playWxssPre), "display:none 的 image 不会被请求，预加载会失效")
+
+// 预加载池必须是「屏幕外的正常可见元素」。display:none 的 <image> 微信不会请求，
+// 0 尺寸 + opacity:0 也可能被跳过——那样预加载等于没做，玩的时候还是要现等图。
+const poolCss = /\.preload-pool \{[^}]*\}/.exec(playWxssPre)
+assert.ok(poolCss, "找不到预加载池样式")
+assert.ok(!/display: none/.test(poolCss[0]), "display:none 的 image 不会被请求")
+assert.ok(!/opacity: 0/.test(poolCss[0]), "opacity:0 可能让请求被跳过")
+assert.match(poolCss[0], /left: -\d+rpx/, "预加载池应当挪到屏幕外")
+
+// 金冠与灰冠不能同时挂在一个人身上（待接任者既是 nextLeader 又可能 hasLed）
+assert.match(playWxml, /retired-badge/, "要有退伍队长标识")
+const retiredCond = /wx:if="\{\{([^"]*?)\}\}" class="seat-badge retired-badge"/.exec(playWxml)
+assert.ok(retiredCond, "找不到退伍皇冠条件")
+assert.ok(/nextLeaderId/.test(retiredCond[1]), "退伍皇冠要排除待接任者，否则金灰两枚重叠")
 
 delete global.Page
 console.log("UI binding tests passed")

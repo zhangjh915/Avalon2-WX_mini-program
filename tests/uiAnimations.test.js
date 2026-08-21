@@ -95,6 +95,7 @@ const teamContext = {
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
   flyDeliverTo: definition.flyDeliverTo,
+  flyDeliverStep: definition.flyDeliverStep,
   deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
@@ -119,6 +120,7 @@ const finalContext = {
   setData(value) { this.data = { ...this.data, ...value } },
   refreshSelections: definition.refreshSelections,
   flyDeliverTo: definition.flyDeliverTo,
+  flyDeliverStep: definition.flyDeliverStep,
   deliverIconFor: definition.deliverIconFor,
   vibrate() {}
 }
@@ -188,12 +190,29 @@ const deliverCtx = {
   },
   setData(v) { Object.assign(this.data, v) },
   flyDeliverTo: definition.flyDeliverTo,
+  flyDeliverStep: definition.flyDeliverStep,
   deliverIconFor: definition.deliverIconFor
 }
+// 飞行分两段：先瞬回桌心（不带过渡），下一帧再飞出去。
+// 这样改选另一个人时也看得到完整飞行——原先第一句 if (!deliverIcon || deliverFlying) return
+// 会把第二次点击整个挡住，而道具飞完 720ms 就清空了，于是换人一点动静都没有。
 deliverCtx.flyDeliverTo({ currentTarget: { dataset: { id: 2 } } })
-assert.strictEqual(deliverCtx.data.deliverFlying, true, "选中后道具应开始飞行")
-assert.strictEqual(deliverCtx.data.deliverX, 18, "拿不到台面尺寸时退回座位原坐标")
-assert.strictEqual(deliverCtx.data.deliverY, 72, "拿不到台面尺寸时退回座位原坐标")
+assert.strictEqual(deliverCtx.data.deliverX, 50, "第一段：先瞬回桌心")
+assert.strictEqual(deliverCtx.data.deliverY, 50)
+assert.strictEqual(deliverCtx.data.deliverFlying, false, "第一段不能带飞行态，否则没有过渡起点")
+clearTimeout(deliverCtx.deliverTimer)
+
+deliverCtx.flyDeliverStep({ id: 2, x: 18, y: 72 })
+assert.strictEqual(deliverCtx.data.deliverFlying, true, "第二段：开始飞行")
+assert.strictEqual(deliverCtx.data.deliverX, 18, "落点就是座位坐标（座位本身按中心定位）")
+assert.strictEqual(deliverCtx.data.deliverY, 72)
+clearTimeout(deliverCtx.deliverTimer)
+
+// 道具已被清空（飞完那一下）后再点别人，仍要能重新亮出来飞一次
+deliverCtx.data.deliverIcon = ""
+deliverCtx.data.tableMode = "leader"
+deliverCtx.flyDeliverTo({ currentTarget: { dataset: { id: 2 } } })
+assert.ok(deliverCtx.data.deliverIcon, "改选目标时要重新亮出道具，而不是直接返回")
 clearTimeout(deliverCtx.deliverTimer)
 
 // 座位的 left/top 就是**中心**（.seat-token 带 translate(-50%,-50%)，见 app.wxss），
