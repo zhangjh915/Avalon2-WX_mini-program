@@ -101,12 +101,11 @@ const playSrc3 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
   // 锚在 applyState 里那个多行数组上，别匹配到 data 里的 preloadList: []
   assert.match(playSrc3, new RegExp(`preloadList: \\[\\s*\\n[\\s\\S]{0,500}?${token}`), `预加载池要包含${label}`)
 })
-// 长桌图要等挑完档才知道是哪张，所以在 refreshLongTable 里补
-// 提取方法体再判断：用「相隔多少字符」的正则很脆，注释一长就失配（真踩过）
+// 长桌图改走「落本地再渲染」，比预加载池更彻底（见下面的 localCopy 断言）
 const rlStart = playSrc3.indexOf("\n  refreshLongTable() {")
 assert.ok(rlStart > 0, "找不到 refreshLongTable 方法定义")
 const rlBody = playSrc3.slice(rlStart, playSrc3.indexOf("\n  },", rlStart + 5))
-assert.ok(/preloadList/.test(rlBody), "长桌图要在挑档后补进预加载池")
+assert.ok(/localCopy/.test(rlBody), "长桌图要落到本地再上屏，否则每次开面板都重下")
 const playWxssPre = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
 
 // 预加载池必须是「屏幕外的正常可见元素」。display:none 的 <image> 微信不会请求，
@@ -117,11 +116,27 @@ assert.ok(!/display: none/.test(poolCss[0]), "display:none 的 image 不会被�
 assert.ok(!/opacity: 0/.test(poolCss[0]), "opacity:0 可能让请求被跳过")
 assert.match(poolCss[0], /left: -\d+rpx/, "预加载池应当挪到屏幕外")
 
-// 金冠与灰冠不能同时挂在一个人身上（待接任者既是 nextLeader 又可能 hasLed）
-assert.match(playWxml, /retired-badge/, "要有退伍队长标识")
+// 全场只能有一枚金冠，且它戴在「即将掌权的人」头上：
+//   还没选接任者时是现任队长；一旦选定，金冠归接任者、现任转灰（他马上卸任了）。
+const goldCond = /wx:if="\{\{([^"]*?)\}\}" class="seat-badge leader-badge"/.exec(playWxml)
 const retiredCond = /wx:if="\{\{([^"]*?)\}\}" class="seat-badge retired-badge"/.exec(playWxml)
-assert.ok(retiredCond, "找不到退伍皇冠条件")
-assert.ok(/nextLeaderId/.test(retiredCond[1]), "退伍皇冠要排除待接任者，否则金灰两枚重叠")
+assert.ok(goldCond && retiredCond, "找不到金冠/灰冠条件")
+assert.ok(/nextLeaderId/.test(goldCond[1]) && /!nextLeaderId/.test(goldCond[1]),
+  "选定接任者后，金冠该归接任者而不是现任")
+assert.ok(/nextLeaderId/.test(retiredCond[1]), "灰冠要排除接任者，否则金灰两枚重叠")
+
+// 道具的飞行终点必须是它自己那枚徽标的位置，否则会「飞到中间淡出 + 角上突然冒出来」
+const playSrc4 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+assert.match(playSrc4, /BADGE_OFFSET/, "要按徽标位置定飞行终点")
+;["leader", "amuletOwner", "magic"].forEach(mode => {
+  assert.ok(new RegExp(`BADGE_OFFSET[\\s\\S]{0,200}${mode}`).test(playSrc4), `缺少 ${mode} 的徽标偏移`)
+})
+
+// 云端图必须落到本地再渲染：cloud:// 每次渲染都要重新解析、HTTP 缓存命中不了，
+// 于是每次开选人面板桌子和地毯都重新下一遍
+assert.match(playSrc4, /localCopy/, "长桌与地毯要落本地复用")
+const assetsSrc5 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
+assert.match(assetsSrc5, /downloadFile/, "localCopy 要真的把文件下下来")
 
 delete global.Page
 console.log("UI binding tests passed")

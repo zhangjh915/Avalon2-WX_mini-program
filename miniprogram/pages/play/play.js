@@ -66,7 +66,12 @@ Page({
   onLoad(options) {
     this.windowWidth = (wx.getSystemInfoSync() || {}).windowWidth || 375
     // 图标集是常量，下发一次即可——放进 applyState 会被 900ms 轮询带着每轮重推
-    this.setData({ roomId: options.roomId, ui: assets.uiIcons() })
+    const ui = assets.uiIcons()
+    this.setData({ roomId: options.roomId, ui })
+    // 地毯在云端，同样落到本地再用，免得每次开面板重下
+    assets.localCopy(ui.floor).then(local => {
+      if (local !== ui.floor) this.setData({ "ui.floor": local })
+    })
     this.loadState(true)
     this.startTimers()
   },
@@ -680,10 +685,15 @@ Page({
     // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
     // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
     if (longTable.src === previous.src && longTable.style === previous.style) return
-    // 长桌图也挂进预加载池常驻：选人面板是 wx:if 出来的，关掉再开元素会重建、
-    // 图会重新请求，于是每次发车都要重等一次桌子。池子里留着就不用重下。
-    const preloadList = (this.data.preloadList || []).filter(item => !/table-long/.test(item)).concat(longTable.src)
-    this.setData({ longTable, preloadList })
+    // 先把桌子图落到本地再上屏：cloud:// 每次渲染都要重新解析、缓存命中不了，
+    // 于是每次开选人面板桌子都要重下一遍。本地路径读盘，零网络。
+    this.setData({ longTable })
+    assets.localCopy(longTable.src).then(local => {
+      if (local === longTable.src) return
+      const current = this.data.longTable || {}
+      if (current.tier !== longTable.tier) return      // 期间又换了档，丢弃这次结果
+      this.setData({ longTable: { ...current, src: local } })
+    })
   },
 
   openTable(event) {
@@ -767,14 +777,29 @@ Page({
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
     // 先瞬回桌心（不带过渡），下一帧再飞出去，这样每次改选都看得到完整的飞行
     this.setData({ deliverIcon: icon, deliverFlying: false, deliverX: 50, deliverY: 50 })
-    this.deliverTimer = setTimeout(() => this.flyDeliverStep(seat), 40)
+    this.deliverTimer = setTimeout(() => this.flyDeliverStep(seat, this.data.tableMode), 40)
   },
 
-  flyDeliverStep(seat) {
-    // 直接用座位坐标：.seat-token 带 translate(-50%,-50%)（app.wxss），
-    // 所以 left/top 定的就是**中心**，道具也是按中心定位的，两者天然对齐。
-    // 别再自作聪明补半个座位的偏移——那会把道具推到头像右下方。
-    this.setData({ deliverFlying: true, deliverX: seat.x, deliverY: seat.y })
+  // 每件道具最终都落在座位上自己那枚徽标里：皇冠在左上、火球在右上、护身符在右下
+  // （见 play.wxss 的 .leader-badge / .magic-badge / .amulet-badge）。
+  // 飞行终点必须就是徽标位置，否则会看到「飞到头像中间淡出 + 徽标在角上突然冒出来」
+  // 两段割裂的动作。偏移相对座位中心，单位 rpx：座位 72rpx 见方、徽标 28rpx。
+  BADGE_OFFSET: {
+    leader: { x: -24, y: -31 },
+    amuletOwner: { x: 24, y: 24 },
+    magic: { x: 24, y: -31 }
+  },
+
+  flyDeliverStep(seat, mode) {
+    // 座位的 left/top 就是中心（.seat-token 带 translate(-50%,-50%)），
+    // 在此基础上偏到徽标那个角，让飞行终点和徽标出现的位置重合。
+    const offset = this.BADGE_OFFSET[mode || this.data.tableMode] || { x: 0, y: 0 }
+    const rpx = (this.windowWidth || 375) / 750
+    const stageW = this.data.stageW || 0
+    const stageH = this.data.stageH || 0
+    const x = stageW ? seat.x + offset.x * rpx / stageW * 100 : seat.x
+    const y = stageH ? seat.y + offset.y * rpx / stageH * 100 : seat.y
+    this.setData({ deliverFlying: true, deliverX: x, deliverY: y })
     this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
   },
 

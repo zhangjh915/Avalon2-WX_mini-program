@@ -181,6 +181,31 @@ function floorOptions() {
   }
 }
 
+// 把云端图**落到本地文件**，之后一律用本地路径渲染。
+//
+// 为什么必须这么做：<image src="cloud://"> 每次渲染微信都要重新解析 fileID，
+// 拿到的临时 URL 带每次不同的 sign/t，HTTP 缓存永远命中不了——于是每次开选人面板
+// 桌子和地毯都要重新下一遍。预加载池救不了这个（池子里的图和面板里的是两次独立请求）。
+// downloadFile 拿到的 tempFilePath 在小程序生命周期内有效，读本地零网络。
+const localFiles = {}
+
+function localCopy(fileID) {
+  if (!fileID || fileID.indexOf("cloud://") !== 0) return Promise.resolve(fileID)
+  if (localFiles[fileID]) return Promise.resolve(localFiles[fileID])
+  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.downloadFile) return Promise.resolve(fileID)
+  return new Promise(resolve => {
+    wx.cloud.downloadFile({
+      fileID,
+      success: res => {
+        if (res && res.tempFilePath) localFiles[fileID] = res.tempFilePath
+        resolve(localFiles[fileID] || fileID)
+      },
+      // 下不下来就退回 cloud://，至少还能显示
+      fail: () => resolve(fileID)
+    })
+  })
+}
+
 // 任务牌在包内，返回绝对路径
 function missionCard(skin, face) {
   return `/assets/cards/mission/skin-${skin || "a"}/${face}.jpg`
@@ -189,6 +214,7 @@ function missionCard(skin, face) {
 module.exports = {
   CLOUD_PREFIX,
   floorOptions,
+  localCopy,
   FLOOR_COLORS,
   DEFAULT_FLOOR,
   normalizeFloorColor,
