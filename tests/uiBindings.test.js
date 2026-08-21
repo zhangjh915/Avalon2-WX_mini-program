@@ -102,8 +102,11 @@ const playSrc3 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
   assert.match(playSrc3, new RegExp(`preloadList: \\[\\s*\\n[\\s\\S]{0,500}?${token}`), `预加载池要包含${label}`)
 })
 // 长桌图要等挑完档才知道是哪张，所以在 refreshLongTable 里补
-// 锚在方法定义（带 {）上，否则会先撞上 this.refreshLongTable() 这些调用点
-assert.match(playSrc3, /refreshLongTable\(\) \{[\s\S]{0,700}?preloadList/, "长桌图要在挑档后补进预加载池")
+// 提取方法体再判断：用「相隔多少字符」的正则很脆，注释一长就失配（真踩过）
+const rlStart = playSrc3.indexOf("\n  refreshLongTable() {")
+assert.ok(rlStart > 0, "找不到 refreshLongTable 方法定义")
+const rlBody = playSrc3.slice(rlStart, playSrc3.indexOf("\n  },", rlStart + 5))
+assert.ok(/preloadList/.test(rlBody), "长桌图要在挑档后补进预加载池")
 // 预加载池必须用 0 尺寸而不是 display:none——display:none 的 image 微信不会去请求
 const playWxssPre = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
 assert.match(playWxssPre, /\.preload-pool \{[^}]*width: 0/, "预加载池要用 0 尺寸")
