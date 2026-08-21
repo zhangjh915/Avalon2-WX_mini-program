@@ -1564,7 +1564,9 @@ button::after {
 .final-timer { margin: 34rpx 0 20rpx; color: #ecdfb8; font-size: 92rpx; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
 .inline-final-selector { width: 100%; margin-top: 18rpx; }
 .final-selection-status { display: flex; margin-bottom: 12rpx; align-items: center; justify-content: space-between; color: #d8ddd9; font-size: 23rpx; font-weight: 900; }
-.final-inline-stage { height: 590rpx; min-height: 590rpx; border-color: #4c5752; background: #d8d4ca; }
+/* 终局选人区要放得下满编座位：10 人局左右各 5 个，590rpx（295pt）高摆不开、
+   座位会挤成一串。抬到 760rpx，桌子也才展示得全。 */
+.final-inline-stage { height: 760rpx; min-height: 760rpx; border-color: #4c5752; background: #241d18; }
 .final-selection-actions { min-height: 108rpx; padding-top: 4rpx; }
 .final-selection-hint { padding: 28rpx 0 16rpx; color: #8f9a94; font-size: 22rpx; text-align: center; }
 .text-command { margin-top: 18rpx; border: 0; background: transparent; color: #9da69f; font-size: 23rpx; text-decoration: underline; }
@@ -1614,7 +1616,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .selector-page .compact-stage { height: auto; min-height: 0; flex: 1; margin: 8rpx 0 140rpx; }
 /* 台面往上靠：按钮浮在它下缘，居中会把按钮推到地毯外面 */
 .selector-page .compact-stage.round-seat-stage { width: 650rpx; height: 650rpx; min-height: 650rpx; flex: none; align-self: center; margin: 8rpx 0 140rpx; }
-.final-inline-stage.round-seat-stage { width: 590rpx; height: 590rpx; min-height: 590rpx; align-self: center; }
+.final-inline-stage.round-seat-stage { width: 660rpx; height: 660rpx; min-height: 660rpx; align-self: center; }
 .selector-tools { display: flex; flex: none; align-items: center; gap: 4rpx; }
 .selector-history { width: 58rpx; min-width: 58rpx; max-width: 58rpx; height: 58rpx; min-height: 58rpx; max-height: 58rpx; border-radius: 5rpx; }
 /* 按钮区浮在地毯上：不占布局高度，桌子就不会因为按钮出现而上移；

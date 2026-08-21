@@ -188,7 +188,7 @@
         <view wx:else class="submitted-state"><view class="submitted-seal spectator seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">等待盲眼杀手表态</view></view>
       </view>
       <view wx:if="{{finalStage === 'hunterTargets'}}">
-        <view wx:if="{{canOperateHunter}}"><view class="role-reveal-small">盲眼杀手</view><view class="waiting-copy">其他人禁止交谈。选择两位正义玩家；有教士时必须包含教士。</view></view>
+        <view wx:if="{{canOperateHunter}}"><view wx:if="{{privateView.role !== 'hunter'}}" class="role-reveal-small">代测试盲眼杀手选择</view><view class="waiting-copy">其他人禁止交谈。选择两位正义玩家；有教士时必须包含教士。</view></view>
         <view wx:else class="submitted-state"><view class="submitted-seal danger-seal seal-danger"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">盲眼杀手已经现身</view><view class="waiting-copy">保持沉默，等待猎杀结果。</view></view>
       </view>
       <view wx:if="{{finalStage === 'identify'}}">

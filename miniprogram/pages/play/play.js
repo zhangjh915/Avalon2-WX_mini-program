@@ -489,8 +489,15 @@ Page({
         const voted = Number(game.final.hunterVoteCount || 0)
         return { text: "等待全员提交猎杀票", progress: `${voted}/${allIds.length}` }
       }
-      if (game.final.stage === "hunterDecision") return { text: "等待盲眼杀手做出决定", progress: "" }
-      if (game.final.stage === "hunterTargets") return { text: "等待盲眼杀手选择猎杀目标", progress: "" }
+      // 「等待盲眼杀手…」是说给别人听的。轮到本人（或房主代操作）时要换成行动指令，
+      // 否则他会以为在等别人。
+      const mine = this.data.canOperateHunter
+      if (game.final.stage === "hunterDecision") {
+        return { text: mine ? "请决定是否发动猎杀" : "等待盲眼杀手做出决定", progress: "" }
+      }
+      if (game.final.stage === "hunterTargets") {
+        return { text: mine ? "请选择两位猎杀目标" : "等待盲眼杀手选择猎杀目标", progress: "" }
+      }
     }
     return null
   },
