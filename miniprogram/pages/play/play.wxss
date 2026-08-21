@@ -1788,7 +1788,13 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 @keyframes flip-hint-pulse { 0%,100% { opacity: .34; } 50% { opacity: .60; } }
 
 /* 牌面下半部的信息层：渐变保证文字在任何立绘上都可读 */
-.card-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 90rpx 24rpx 22rpx; background: linear-gradient(to top, rgba(9,13,11,.97) 0%, rgba(9,13,11,.92) 52%, rgba(9,13,11,0) 100%); }
+/* 底色压到 .78/.46：原先 .97/.92 几乎完全不透明，立绘下半截整个看不见。
+   文字靠 text-shadow 保证可读，不再靠糊住画面。 */
+.card-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 100rpx 24rpx 22rpx; background: linear-gradient(to top, rgba(9,13,11,.78) 0%, rgba(9,13,11,.46) 48%, rgba(9,13,11,0) 100%); }
+.card-overlay .overlay-faction,
+.card-overlay .overlay-name,
+.card-overlay .overlay-desc,
+.card-overlay .overlay-intel-line { text-shadow: 0 2rpx 10rpx rgba(0,0,0,.92), 0 0 3rpx rgba(0,0,0,.7); }
 .overlay-faction { font-size: 21rpx; font-weight: 800; letter-spacing: 2rpx; }
 .overlay-faction.faction-good { color: #8ecdb3; }
 .overlay-faction.faction-evil { color: #e09b9e; }
@@ -1845,11 +1851,11 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 /* 待交付的道具：选人前在桌心放大晃动，选中后飘向该玩家头像。
    座位坐标本来就是百分比，所以直接过渡 left/top 即可，不需要算像素。
    用 transition 不用 animation——轮询 setData 会重启带 fill-mode 的动画。 */
-.deliver-token { position: absolute; left: 50%; top: 50%; z-index: 6; transform: translate(-50%, -50%); transition: left 620ms cubic-bezier(.3,0,.2,1), top 620ms cubic-bezier(.3,0,.2,1), opacity 260ms ease 400ms, transform 620ms cubic-bezier(.3,0,.2,1); }
+.deliver-token { position: absolute; left: 50%; top: 50%; z-index: 6; transform: translate(-50%, -50%); transition: left 620ms cubic-bezier(.3,0,.2,1), top 620ms cubic-bezier(.3,0,.2,1), transform 620ms cubic-bezier(.3,0,.2,1); }
 .deliver-icon { display: block; width: 104rpx; height: 104rpx; filter: drop-shadow(0 8rpx 18rpx rgba(0,0,0,.45)); animation: deliver-wobble 1.7s ease-in-out infinite; }
-/* 收到徽标那么大再淡出（徽标 28rpx / 道具 104rpx ≈ 0.27），
-   落点又正好是徽标位置，于是道具消失和徽标显形是同一处、同一尺寸，看着是一个动作 */
-.deliver-token.flying { opacity: 0; transform: translate(-50%, -50%) scale(.27); }
+/* 只缩小、**不淡出**：终点就是徽标位置、缩到徽标那么大（28/104 ≈ 0.27），
+   飞完瞬间撤掉道具、徽标顶上，看不出交接。淡出会让人看到「先消失再冒出来」两段。 */
+.deliver-token.flying { transform: translate(-50%, -50%) scale(.27); }
 .deliver-token.flying .deliver-icon { animation: none; }
 @keyframes deliver-wobble {
   0%, 100% { transform: rotate(-7deg) translateY(0); }

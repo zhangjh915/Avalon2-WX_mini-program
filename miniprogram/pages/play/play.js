@@ -685,14 +685,14 @@ Page({
     // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
     // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
     if (longTable.src === previous.src && longTable.style === previous.style) return
-    // 先把桌子图落到本地再上屏：cloud:// 每次渲染都要重新解析、缓存命中不了，
-    // 于是每次开选人面板桌子都要重下一遍。本地路径读盘，零网络。
-    this.setData({ longTable })
+    // **等本地文件就绪再上屏**，中途不要先用 cloud:// 顶一下——src 变两次
+    // 等于让 <image> 重新加载一次，看到的就是桌子闪一下。
+    // 落本地的理由：cloud:// 每次渲染都要重新解析、HTTP 缓存命中不了，
+    // 每次开选人面板都要重下一遍；本地路径读盘，零网络。
     assets.localCopy(longTable.src).then(local => {
-      if (local === longTable.src) return
       const current = this.data.longTable || {}
-      if (current.tier !== longTable.tier) return      // 期间又换了档，丢弃这次结果
-      this.setData({ longTable: { ...current, src: local } })
+      if (current.tier === longTable.tier && current.src === (local || longTable.src)) return
+      this.setData({ longTable: { ...longTable, src: local || longTable.src } })
     })
   },
 

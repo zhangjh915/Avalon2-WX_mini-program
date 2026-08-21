@@ -71,16 +71,32 @@ function packedAsset(name) {
 // 详见 table-long-meta.js 顶部。
 const LONG_TABLES = require("./table-long-meta")
 
+// 对局页选人面板的舞台宽高比（实测 366x656）。桌子形状以它为准，
+// 免得同一局在候场页和对局页长得不一样。
+const REFERENCE_STAGE_ASPECT = 366 / 656
+
 // 挑档。
 // 注意 stage 的宽随屏宽变而高固定，所以长宽比必须用**运行时实测的 stage 尺寸**算，
 // 不能写死——375pt 屏上 stage 是 1.19、414pt 屏上是 1.32，差 11%，写死会挑错档。
 function pickLongTable(widthPct, heightPct, stageW, stageH) {
-  const w = (Number(stageW) || 0) * (Number(widthPct) || 0) / 100
-  const h = (Number(stageH) || 0) * (Number(heightPct) || 0) / 100
-  if (!(w > 0 && h > 0)) return null
-  // 竖桌就是横图转 90 度，所以长宽比一律取 >= 1 的那个方向
-  const rotate = w < h
-  const aspect = rotate ? h / w : w / h
+  const availW = (Number(stageW) || 0) * (Number(widthPct) || 0) / 100
+  const availH = (Number(stageH) || 0) * (Number(heightPct) || 0) / 100
+  if (!(availW > 0 && availH > 0)) return null
+  // 桌子的形状该由**座位布局**决定，不该随舞台形状变。
+  // widthPct / heightPct 分别相对舞台宽和舞台高，直接拿像素比会把舞台形状混进来：
+  // 同一局 8 人左5右3，候场页舞台 360x438 算出需求比 2.36（挑第 6 档），
+  // 对局页 366x656 算出 3.47（挑第 8 档）——两处桌子长得不一样，就是这么来的。
+  //
+  // 以**对局页选人面板**的舞台比为基准定形状（那处的观感是认可的），
+  // 再在各自的可用空间里按这个形状取最大尺寸。这样候场页和对局页长得一样，
+  // 且对局页保持原尺寸不变。
+  const shapeAspect = (Number(widthPct) || 1) / (Number(heightPct) || 1) * REFERENCE_STAGE_ASPECT
+  const rotate = shapeAspect < 1
+  const aspect = rotate ? 1 / shapeAspect : shapeAspect
+  // 按固定形状塞进可用空间：先顶满宽，放不下再退到顶满高
+  let w = availW
+  let h = w / shapeAspect
+  if (h > availH) { h = availH; w = h * shapeAspect }
   // 比的是对数距离：拉伸 8% 无论发生在 1.1 还是 2.9 档上，观感代价是一样的，
   // 用差值会偏袒大比例那几档。
   let best = LONG_TABLES[0]

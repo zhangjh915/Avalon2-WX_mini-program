@@ -161,8 +161,10 @@ STAGES.forEach(([stageW, stageH]) => {
   geometries.forEach(geo => {
     const picked = assets.pickLongTable(geo.width, geo.height, stageW, stageH)
     assert.ok(picked, `${geo.width}%x${geo.height}% 没挑出档`)
-    const boxW = stageW * geo.width / 100
-    const boxH = stageH * geo.height / 100
+    // 拉伸要拿**桌子实际占的方框**（slot）算，不能拿可用空间算：
+    // 桌子按固定形状缩放，本来就不填满可用空间。
+    const boxW = Number(/width:(\d+)px/.exec(picked.slot)[1])
+    const boxH = Number(/height:(\d+)px/.exec(picked.slot)[1])
     const target = Math.max(boxW, boxH) / Math.min(boxW, boxH)
     const tier = assets.LONG_TABLES.find(item => item.i === picked.tier)
     const stretch = Math.abs(Math.log(target / tier.aspect))
@@ -171,11 +173,24 @@ STAGES.forEach(([stageW, stageH]) => {
     // 中点（9.3%），而候选池里这段区间没有图，再补档也补不上——要压下去得重新生图。
     assert.ok(stretch < 0.095,
       `${geo.width}%x${geo.height}% @${stageW}x${stageH} 挑到 ${picked.tier} 档，拉伸 ${(stretch * 100).toFixed(1)}% 超标`)
-    // 旋转判断必须和实际形状一致
     assert.strictEqual(picked.rotate, boxW < boxH, "旋转判断与实际形状不符")
   })
 })
 assert.ok(worst < 0.095, `最大拉伸 ${(worst * 100).toFixed(1)}%`)
+
+// 同一局在候场页和对局页必须长得一样。
+// 桌子形状原先由「舞台形状 × 百分比」共同决定，两个页面舞台比差很远
+// （候场 360x438、对局 366x656），于是同一布局挑到不同的档、桌子一胖一瘦。
+// 现在形状以对局页舞台比为基准，尺寸再各自适配可用空间。
+;[{ top: 0, right: 3, bottom: 0, left: 5 },
+  { top: 3, right: 1, bottom: 3, left: 1 },
+  { top: 0, right: 5, bottom: 0, left: 5 }].forEach(seatLayout => {
+  const geo = tableLayout.tableGeometry(seatLayout)
+  const lobby = assets.pickLongTable(geo.width, geo.height, 360, 438)
+  const play = assets.pickLongTable(geo.width, geo.height, 366, 656)
+  assert.strictEqual(lobby.tier, play.tier, `${JSON.stringify(seatLayout)} 两处挑到了不同的档，桌子会一胖一瘦`)
+  assert.strictEqual(lobby.rotate, play.rotate, "旋转方向也要一致")
+})
 
 // 尺寸缺失时返回 null 而不是算出 NaN 塞进样式
 assert.strictEqual(assets.pickLongTable(32, 60, 0, 0), null)
