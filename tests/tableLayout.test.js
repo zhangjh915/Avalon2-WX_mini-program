@@ -27,7 +27,22 @@ const vertical = { ...layout.emptyLayout(), left: 4, right: 4 }
 const verticalPositions = Array.from({ length: 8 }, (_, index) => layout.longPosition(index, 8, vertical))
 assert.strictEqual(verticalPositions[0].x, 74)
 assert.strictEqual(verticalPositions[4].x, 26)
-assert.ok(verticalPositions[3].y - verticalPositions[0].y > 40, "long-side seats should use most of the table edge")
+// 座位改成「按最长边的间距开格子、居中占用」后，跨度是边长的 (count-1)/count，
+// 4 人时占 75%（52 → 39）。旧算法贴着两端所以能到 100%，阈值跟着调。
+assert.ok(verticalPositions[3].y - verticalPositions[0].y > 35, "long-side seats should use most of the table edge")
+
+// 两条对边人数不同时，间距必须一致、人少的那边居中——
+// 否则人少的边只剩两头各一个、中间空一大片（左4右2 时右边正好和左边最上最下平齐）。
+const uneven = { ...layout.emptyLayout(), left: 4, right: 2, bottom: 2 }
+const un = Array.from({ length: 8 }, (_, i) => layout.longPosition(i, 8, uneven))
+const rightYs = [un[0].y, un[1].y]                       // right 先排
+const leftYs = [un[4].y, un[5].y, un[6].y, un[7].y]
+const gap = (ys) => Math.abs(ys[1] - ys[0])
+assert.ok(Math.abs(gap(rightYs) - gap(leftYs)) < 0.01, "对边座位间距要一致")
+const mid = (ys) => (Math.min(...ys) + Math.max(...ys)) / 2
+assert.ok(Math.abs(mid(rightYs) - mid(leftYs)) < 0.01, "人少的那边要居中，不能贴两端")
+// 且不能贴到边缘（贴边正是旧算法的毛病）
+assert.ok(Math.min(...rightYs) > Math.min(...leftYs) + 1, "人少的边不该和人多的边最上端平齐")
 
 const verticalWithBottomSeat = { top: 0, right: 4, bottom: 1, left: 4 }
 const verticalMixedGeometry = layout.tableGeometry(verticalWithBottomSeat)

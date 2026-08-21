@@ -93,5 +93,21 @@ assert.match(playSrc2, /tableVisible:\s*phaseChanged \?/, "applyState 仍会自�
 assert.match(playSrc2, /refreshLongTable\(\) \{[\s\S]{0,400}?measureStage\(\)/,
   "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则自动打开的面板挑不出档")
 
+// 预加载池要覆盖「本局会现用的图」。漏一张，玩的时候那张就要现拉：
+// 换火球要等一会儿才出现、任务牌翻面动画跑完了图还没到、每次发车桌子重新加载。
+const playSrc3 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+;[["identityBack", "身份卡背"], ["myRoleArt", "自己的立绘"], ["missionCard", "任务牌"],
+  ["uiIcons\\(\\).floor", "地毯"]].forEach(([token, label]) => {
+  // 锚在 applyState 里那个多行数组上，别匹配到 data 里的 preloadList: []
+  assert.match(playSrc3, new RegExp(`preloadList: \\[\\s*\\n[\\s\\S]{0,500}?${token}`), `预加载池要包含${label}`)
+})
+// 长桌图要等挑完档才知道是哪张，所以在 refreshLongTable 里补
+// 锚在方法定义（带 {）上，否则会先撞上 this.refreshLongTable() 这些调用点
+assert.match(playSrc3, /refreshLongTable\(\) \{[\s\S]{0,700}?preloadList/, "长桌图要在挑档后补进预加载池")
+// 预加载池必须用 0 尺寸而不是 display:none——display:none 的 image 微信不会去请求
+const playWxssPre = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
+assert.match(playWxssPre, /\.preload-pool \{[^}]*width: 0/, "预加载池要用 0 尺寸")
+assert.ok(!/\.preload-pool \{[^}]*display: none/.test(playWxssPre), "display:none 的 image 不会被请求，预加载会失效")
+
 delete global.Page
 console.log("UI binding tests passed")

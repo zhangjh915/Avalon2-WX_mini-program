@@ -12,7 +12,27 @@
       },
       {
         "type": "folder",
-        "value": "assets/ui"
+        "value": "assets/ui/table-long"
+      },
+      {
+        "type": "file",
+        "value": "assets/ui/floor-green.jpg"
+      },
+      {
+        "type": "file",
+        "value": "assets/ui/floor-indigo.jpg"
+      },
+      {
+        "type": "file",
+        "value": "assets/ui/floor-wine.jpg"
+      },
+      {
+        "type": "file",
+        "value": "assets/ui/floor-umber.jpg"
+      },
+      {
+        "type": "file",
+        "value": "assets/ui/home-bg.jpg"
       }
     ],
     "include": []

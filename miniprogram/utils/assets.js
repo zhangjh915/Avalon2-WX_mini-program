@@ -43,9 +43,17 @@ function identityBack(skin) {
   return `${CLOUD_PREFIX}assets/cards/identity/${skin || "painted"}/back.jpg`
 }
 
-// 界面图标与场景。和角色立绘一样走云存储，路径即 fileID 后缀。
+// 大图走云存储（体积上不了主包）。
 function uiAsset(name) {
   return CLOUD_PREFIX + "assets/ui/" + name
+}
+
+// 图标与小图**打进包内**，用绝对路径取——包内图零网络、零解析，点开即有。
+// 走云存储时它们每次都要现拉：换个火球要等一会儿才出现、任务牌翻面动画跑完了
+// 图还没到、任务结果只剩一个红圈圈（队徽没加载出来）。这些都是加载延迟的表现。
+// 11 张合计 610KB，主包上限 2MB、当前约 460KB，装得下。
+function packedAsset(name) {
+  return "/assets/ui/" + name
 }
 
 // 长桌是七张不同比例的整桌图，按最近的比例挑一张。
@@ -144,16 +152,18 @@ function setFloorColor(color) {
 // **不要放进 applyState** —— 那是 900ms 轮询驱动的，每轮重建并整体 setData
 // 1.4KB 全常量，渲染层还要把十几处绑定重新求值一遍。
 const STATIC_ICONS = {
-  crown: uiAsset("crown.png"),
-  amulet: uiAsset("amulet.png"),
-  fire: uiAsset("magic-fire.png"),
-  tableEmblem: uiAsset("table-emblem.png"),
-  crestGood: uiAsset("crest-good.png"),
-  crestEvil: uiAsset("crest-evil.png"),
-  missionPending: uiAsset("mission-pending.png"),
-  missionCurrent: uiAsset("mission-current.png"),
-  seal: uiAsset("seal-base.png"),
-  tableRound: uiAsset("table-round.jpg"),
+  crown: packedAsset("crown.png"),
+  amulet: packedAsset("amulet.png"),
+  fire: packedAsset("magic-fire.png"),
+  tableEmblem: packedAsset("table-emblem.png"),
+  crestGood: packedAsset("crest-good.png"),
+  crestEvil: packedAsset("crest-evil.png"),
+  missionPending: packedAsset("mission-pending.png"),
+  missionCurrent: packedAsset("mission-current.png"),
+  seal: packedAsset("seal-base.png"),
+  tableRound: packedAsset("table-round.jpg"),
+  homeEmblem: packedAsset("home-emblem.png"),
+  // 这两类体积大，只能留在云存储
   homeBg: uiAsset("home-bg.jpg")
 }
 
@@ -186,6 +196,7 @@ module.exports = {
   floorColor,
   setFloorColor,
   uiAsset,
+  packedAsset,
   uiIcons,
   LONG_TABLES,
   pickLongTable,

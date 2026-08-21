@@ -87,9 +87,20 @@ function tableGeometry(layout) {
   }
 }
 
-function linePosition(index, count, start, end, reverse) {
+// 一条边上的座位怎么排。
+//
+// 不能用 (count-1) 等分——那会把首末两人**钉在边的两端**，于是人少的那条边只剩
+// 两头各一个、中间空一大片（左4右2 时右边两人正好和左边的最上最下平齐，很丑）。
+//
+// 改成按「对边里人最多的那条」的间距开格子，自己这条边的人**居中占用**其中几格：
+// 每个人占的宽度一样，人少的边自然收在中间，看起来才像围着一张桌子坐。
+function linePosition(index, count, start, end, reverse, peerCount) {
   if (count <= 1) return (start + end) / 2
-  const value = start + (end - start) / (count - 1) * index
+  const span = end - start
+  const slots = Math.max(count, Number(peerCount) || 0)
+  const slot = span / slots
+  const offset = (span - slot * count) / 2      // 居中：两端各留半格 × 差额
+  const value = start + offset + slot * (index + 0.5)
   return reverse ? start + end - value : value
 }
 
@@ -105,10 +116,11 @@ function regionPosition(region, index, layout) {
   const horizontalEnd = bounds.right - 5
   const verticalStart = bounds.top + 4
   const verticalEnd = bounds.bottom - 4
-  if (region === "top") return { x: linePosition(index, layout.top, horizontalStart, horizontalEnd), y: Math.max(14, bounds.top - 9) }
-  if (region === "right") return { x: Math.min(90, bounds.right + 8), y: linePosition(index, layout.right, verticalStart, verticalEnd) }
-  if (region === "bottom") return { x: linePosition(index, layout.bottom, horizontalStart, horizontalEnd, true), y: Math.min(88, bounds.bottom + 9) }
-  return { x: Math.max(10, bounds.left - 8), y: linePosition(index, layout.left, verticalStart, verticalEnd, true) }
+  // 传入对边人数，让上下两条边、左右两条边的座位间距保持一致
+  if (region === "top") return { x: linePosition(index, layout.top, horizontalStart, horizontalEnd, false, layout.bottom), y: Math.max(14, bounds.top - 9) }
+  if (region === "right") return { x: Math.min(90, bounds.right + 8), y: linePosition(index, layout.right, verticalStart, verticalEnd, false, layout.left) }
+  if (region === "bottom") return { x: linePosition(index, layout.bottom, horizontalStart, horizontalEnd, true, layout.top), y: Math.min(88, bounds.bottom + 9) }
+  return { x: Math.max(10, bounds.left - 8), y: linePosition(index, layout.left, verticalStart, verticalEnd, true, layout.right) }
 }
 
 function longPosition(index, playerCount, seatLayout, legacySides) {

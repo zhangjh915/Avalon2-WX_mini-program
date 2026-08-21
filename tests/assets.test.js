@@ -66,16 +66,33 @@ assert.ok(!ignored.some(v => v.startsWith("assets/cards/mission")), "任务牌�
 
 // ---- 界面图标与场景 ----
 
-// 全部走云存储：包内绝对路径取不到（assets/ui 已排除出包体）
-assert.ok(assets.uiAsset("crown.png").startsWith("cloud://"))
-assert.strictEqual(assets.uiAsset("crown.png"), assets.CLOUD_PREFIX + "assets/ui/crown.png")
+// uiAsset 仍是云存储路径的拼接器（大图用它）；图标改用 packedAsset 走包内
+assert.ok(assets.uiAsset("home-bg.jpg").startsWith("cloud://"))
+assert.strictEqual(assets.uiAsset("home-bg.jpg"), assets.CLOUD_PREFIX + "assets/ui/home-bg.jpg")
+assert.strictEqual(assets.packedAsset("crown.png"), "/assets/ui/crown.png")
 
-// applyState 一次性下发的图标集，键名与界面绑定一一对应
+// 图标与小图**打进包内**：走云存储时每次都要现拉，表现是换个火球要等一会儿才出现、
+// 任务牌翻面动画跑完了图还没到、任务结果只剩个红圈圈（队徽没加载出来）。
+// 包内图零网络零解析，点开即有。11 张合计 610KB，主包上限 2MB。
 const icons = assets.uiIcons()
-;["crown", "amulet", "fire", "tableEmblem", "crestGood", "crestEvil",
-  "missionPending", "missionCurrent", "seal"].forEach(key => {
-  assert.ok(icons[key] && icons[key].startsWith("cloud://"), `图标 ${key} 缺失`)
+const PACKED = ["crown", "amulet", "fire", "tableEmblem", "crestGood", "crestEvil",
+  "missionPending", "missionCurrent", "seal", "tableRound", "homeEmblem"]
+PACKED.forEach(key => {
+  assert.ok(icons[key], `图标 ${key} 缺失`)
+  assert.ok(icons[key].startsWith("/assets/ui/"), `图标 ${key} 必须走包内路径，实际 ${icons[key]}`)
+  const abs = path.join(__dirname, "..", "miniprogram", icons[key].replace(/^\//, ""))
+  assert.ok(fs.existsSync(abs), `包内图标文件缺失 ${icons[key]}`)
 })
+// 大图上不了主包，只能留云存储
+;["homeBg", "floor"].forEach(key => {
+  assert.ok(icons[key] && icons[key].startsWith("cloud://"), `${key} 应留在云存储`)
+})
+// 打包排除要跟着走：排掉大图、别把图标一起排了
+const ignoredNow = (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "project.config.json"), "utf8"))
+  .packOptions.ignore || []).map(x => x.value)
+assert.ok(!ignoredNow.includes("assets/ui"), "整个 assets/ui 被排除的话，包内图标就取不到了")
+assert.ok(ignoredNow.includes("assets/ui/table-long"), "长桌 8 张 3.8MB，必须排除")
+assert.ok(ignoredNow.some(v => /floor-.*\.jpg/.test(v)), "地毯要排除")
 
 // ---- 长桌：七张整图按比例分档（九宫格已废弃）----
 // 九宫格把一张图变成九张的拼装，每处接缝都是要精确对齐的约束，实机上始终能看出
@@ -175,9 +192,11 @@ assert.ok(!("resolveTempUrls" in assets), "临时链接机制应当已移除")
 const uiSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")
 assert.ok(!/getTempFileURL\s*\(/.test(uiSrc), "不该再调用 getTempFileURL")
 
-// 四类原本走 CSS 背景的图，现在都要以 cloud:// 出现在图标集里
+// 四类原本走 CSS 背景的图，现在都由 <image> 渲染（不再有临时链接那一环）。
+// 其中 tableRound / seal 已进包走绝对路径，floor / homeBg 体积大留云存储。
 ;["tableRound", "homeBg", "floor", "seal"].forEach(key => {
-  assert.ok(icons[key] && icons[key].startsWith("cloud://"), `${key} 应当是 cloud:// 让 <image> 自己解析`)
+  assert.ok(icons[key], `${key} 缺失`)
+  assert.ok(/^(\/assets\/|cloud:\/\/)/.test(icons[key]), `${key} 取图方式不对：${icons[key]}`)
 })
 // 地毯跟着个人偏好走
 const palette = assets.floorOptions()
@@ -208,7 +227,7 @@ assert.strictEqual(assets.setFloorColor("不存在的颜色"), assets.DEFAULT_FL
 // ---- 云端文件必须真实存在（本地那份是上传中转，两者应一致）----
 const UI_DIR = path.join(__dirname, "..", "miniprogram", "assets", "ui")
 if (fs.existsSync(UI_DIR)) {
-  Object.keys(icons).forEach(key => {
+  Object.keys(icons).filter(k => icons[k].startsWith("cloud://")).forEach(key => {
     const name = icons[key].slice((assets.CLOUD_PREFIX + "assets/ui/").length)
     assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
   })
@@ -258,7 +277,6 @@ assert.match(appWxss, /\.long-table \{[^}]*border-radius: 0/s, "长桌不能再�
 // 深色绒毯上的座位文字必须是浅色，否则整排名字消失
 assert.ok(!/\.compact-seat-token \.seat-caption \{[^}]*color: #3d332a/.test(roomWxss), "候场页座位文字要翻浅色")
 
-// ---- 界面资产必须排除出包体，否则 1.1MB 会挤占 2MB 主包 ----
-assert.ok(ignored.includes("assets/ui"), "assets/ui 必须排除出包体")
+// ---- 大图排除、图标进包，见上文 PACKED 那组断言 ----
 
 console.log("asset path tests passed")

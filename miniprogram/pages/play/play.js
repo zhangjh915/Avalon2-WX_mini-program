@@ -258,12 +258,16 @@ Page({
       // 图在第一次真正显示时才开始下载，于是每换一个阶段都要白等一次。
       // 这里把本局用得到的图挂进一个 0 尺寸的隐藏容器，进对局页就先下完，
       // 轮到显示时直接命中缓存。只放本局真的会用到的，不整批预热。
+      // 预加载池：进对局页就把本局用得到的图全部拉到内存。
+      // 选人面板是 wx:if 出来的，关掉再开元素会重建、图会重新请求——所以长桌和地毯
+      // 也要挂在这里常驻，否则每次发车都要重等一次桌子。
       preloadList: [
         assets.identityBack(roleSkin),
         myRoleArt,
         assets.missionCard(missionSkin, "back"),
         assets.missionCard(missionSkin, "success"),
-        assets.missionCard(missionSkin, "fail")
+        assets.missionCard(missionSkin, "fail"),
+        assets.uiIcons().floor
       ].filter(Boolean),
       identityBackArt: assets.identityBack(roleSkin),
       missionCardBack: assets.missionCard(missionSkin, "back"),
@@ -676,7 +680,10 @@ Page({
     // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
     // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
     if (longTable.src === previous.src && longTable.style === previous.style) return
-    this.setData({ longTable })
+    // 长桌图也挂进预加载池常驻：选人面板是 wx:if 出来的，关掉再开元素会重建、
+    // 图会重新请求，于是每次发车都要重等一次桌子。池子里留着就不用重下。
+    const preloadList = (this.data.preloadList || []).filter(item => !/table-long/.test(item)).concat(longTable.src)
+    this.setData({ longTable, preloadList })
   },
 
   openTable(event) {
@@ -753,22 +760,12 @@ Page({
     const id = Number(event.currentTarget.dataset.id)
     const seat = this.data.decoratedPlayers.find(player => Number(player.id) === id)
     if (!seat) return
-    // 座位的 left/top 定的是元素**左上角**（.seat-token 没有 translate(-50%,-50%)），
-    // 而道具是按中心定位的。直接用 seat.x/y 道具会停在头像左上角外面，
-    // 要加上半个座位的偏移才落在头像正中。
-    const target = this.seatCenter(seat)
-    this.setData({ deliverFlying: true, deliverX: target.x, deliverY: target.y })
+    // 直接用座位坐标：.seat-token 带 translate(-50%,-50%)（app.wxss），
+    // 所以 left/top 定的就是**中心**，道具也是按中心定位的，两者天然对齐。
+    // 别再自作聪明补半个座位的偏移——那会把道具推到头像右下方。
+    this.setData({ deliverFlying: true, deliverX: seat.x, deliverY: seat.y })
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
     this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
-  },
-
-  // 座位头像的中心点（百分比，相对台面）。座位宽 72rpx，头像在其中居中。
-  seatCenter(seat) {
-    const half = 36 * ((this.windowWidth || 375) / 750)   // rpx -> pt
-    const stageW = this.data.stageW || 0
-    const stageH = this.data.stageH || 0
-    if (!stageW || !stageH) return { x: seat.x, y: seat.y }
-    return { x: seat.x + half / stageW * 100, y: seat.y + half / stageH * 100 }
   },
 
   deliverIconFor(mode) {
