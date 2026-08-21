@@ -138,5 +138,25 @@ assert.match(playSrc4, /localCopy/, "长桌与地毯要落本地复用")
 const assetsSrc5 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
 assert.match(assetsSrc5, /downloadFile/, "localCopy 要真的把文件下下来")
 
+// 道具在飞的时候，目标身上那枚徽标必须先藏起来。
+// 徽标是点击瞬间就随数据出现的，如果不藏，就会和还在飞的道具同时存在——
+// 看着就是「两个火球」，也就是反复被指出的「两阶段」。
+;["leader-badge", "amulet-badge", "magic-badge"].forEach(cls => {
+  const cond = new RegExp(`wx:if="\\{\\{([^"]*?)\\}\\}" class="seat-badge ${cls}"`).exec(playWxml)
+  assert.ok(cond, `找不到 ${cls} 的条件`)
+  assert.ok(/deliverFlying/.test(cond[1]) && /deliverTargetId/.test(cond[1]),
+    `${cls} 要在道具飞行期间隐藏，否则和飞行中的道具重复出现`)
+})
+
+// 圣杯纹章要跟着桌子缩放：固定 116rpx 时，窄桌上它几乎和桌面一样宽，看着溢出到桌外
+assert.match(playWxml, /class="table-emblem" style="\{\{[^"]*emblemStyle/, "长桌的圣杯要随桌缩放")
+const assetsSrc6 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
+assert.match(assetsSrc6, /emblemStyle/, "pickLongTable 要给出圣杯尺寸")
+
+// 阅读时间结束要自动收起密录，否则它是全屏浮层会把「我已记住」整个挡住
+const playSrc5 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+assert.match(playSrc5, /identityMode === "remember"[\s\S]{0,200}dossierVisible: false/,
+  "阅读结束要自动收起密录")
+
 delete global.Page
 console.log("UI binding tests passed")

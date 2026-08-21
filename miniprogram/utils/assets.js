@@ -108,8 +108,13 @@ function pickLongTable(widthPct, heightPct, stageW, stageH) {
   const boxW = rotate ? h : w
   const boxH = rotate ? w : h
   const centering = "position:absolute;left:50%;top:50%;"
+  // 圣杯纹章要跟着桌子缩放。它原先固定 116rpx（58pt），而窄桌只有 78pt 宽，
+  // 圣杯几乎和桌面一样宽、看着像溢出到桌外。取桌面短边的一半，并夹在合理区间。
+  const shortSide = Math.min(w, h)
+  const emblem = Math.round(Math.max(38, Math.min(58, shortSide * 0.5)))
   return {
     src: uiAsset(`table-long/${best.i}.png`),
+    emblemStyle: `width:${emblem}px;height:${emblem}px;`,
     tier: best.i,
     rotate,
     slot: `width:${Math.round(w)}px;height:${Math.round(h)}px;`,

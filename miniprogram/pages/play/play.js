@@ -40,7 +40,7 @@ Page({
     finalClock: "5:00", lastMission: null, myInTeam: false,
     canVoteSuccess: false, canVoteFail: false, canClaimGood: false, canClaimEvil: false,
     hunterVoteValue: "", traitorSide: "", traitorTargets: [], voteChoice: "",
-    deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50,
+    deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50, deliverTargetId: 0,
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
@@ -590,6 +590,10 @@ Page({
       }
       // 只在真的变了才 setData。这个定时器 200ms 跑一次，无条件 setData 等于
     // 每秒白白推 5 次渲染，和别的更新抢通道。
+    // 阅读时间一到就收起密录/攻略：它是全屏浮层，开着会把「我已记住」整个挡住
+    if (identityMode === "remember" && this.data.identityMode !== "remember" && this.data.dossierVisible) {
+      this.setData({ dossierVisible: false })
+    }
     const next = { identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint,
                    readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 }
     if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
@@ -776,7 +780,9 @@ Page({
     if (!icon) return
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
     // 先瞬回桌心（不带过渡），下一帧再飞出去，这样每次改选都看得到完整的飞行
-    this.setData({ deliverIcon: icon, deliverFlying: false, deliverX: 50, deliverY: 50 })
+    // 记下目标：飞行期间要把那枚徽标藏起来，否则点击瞬间徽标就冒出来，
+    // 和还在飞的道具同时存在——看着就是「两个火球」。
+    this.setData({ deliverIcon: icon, deliverFlying: false, deliverX: 50, deliverY: 50, deliverTargetId: id })
     this.deliverTimer = setTimeout(() => this.flyDeliverStep(seat, this.data.tableMode), 40)
   },
 
@@ -800,7 +806,7 @@ Page({
     const x = stageW ? seat.x + offset.x * rpx / stageW * 100 : seat.x
     const y = stageH ? seat.y + offset.y * rpx / stageH * 100 : seat.y
     this.setData({ deliverFlying: true, deliverX: x, deliverY: y })
-    this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false }), 720)
+    this.deliverTimer = setTimeout(() => this.setData({ deliverIcon: "", deliverFlying: false, deliverTargetId: 0 }), 720)
   },
 
   deliverIconFor(mode) {
