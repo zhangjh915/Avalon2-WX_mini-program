@@ -770,6 +770,41 @@ async function testStepModeBotSuggest() {
   console.log("  step mode bot suggest ok")
 }
 
+// 逐步模式的交接建议必须能被 handoff 原样接受——尤其是护身符轮次。
+// 之前的用例用 5 人局，needsAmulet 永远 false，正好漏过这个洞：
+// botSuggest 给的字段名是前端的 nextAmuletId，而 handoff 读 amuletOwnerId，
+// 实机在 8 人局第 2 轮交接时当场报「本轮必须指定护身符持有者」。
+async function testStepModeHandoffAmulet() {
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 8, roleCounts: gameUtil.buildDefaultRoleCounts(8, false),
+    unknownRoles: false, hunterVoteVariant: false, tableType: "round",
+    devMode: true, stepMode: true
+  })
+  const roomId = created.roomId
+  await action("takeSeat", { roomId, seatNo: 1, name: "房主" })
+  await action("fillBots", { roomId })
+  await action("startGame", { roomId })
+  await finishIdentity(roomId)
+
+  // 第 1 轮（8 人局第 1 轮结束不发护身符），交接时指定一个 bot 接任，
+  // 确保第 2 轮队长是测试骑士、botSuggest 有活可干
+  await playMission(roomId, "good")
+  const nextBot = secret(roomId).players.find(p => p.bot && !p.hasLed)
+  await action("handoff", { roomId, nextLeaderId: nextBot.id })
+  assert.strictEqual(room(roomId).phase, "mission")
+
+  // 第 2 轮结束后 needsAmulet(8, 2) = true，建议必须带 amuletOwnerId 且能原样执行
+  await playMission(roomId, "good")
+  assert.strictEqual(room(roomId).phase, "missionResult")
+  const suggestion = await action("botSuggest", { roomId })
+  assert.strictEqual(suggestion.action, "handoff")
+  assert.ok(suggestion.payload.amuletOwnerId, "护身符轮次的交接建议必须带 amuletOwnerId")
+  await action(suggestion.action, { roomId, ...suggestion.payload })
+  assert.strictEqual(room(roomId).phase, "amulet", "带护身符的交接应当进入查验阶段")
+  console.log("  step mode handoff amulet ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -790,6 +825,7 @@ async function run() {
   await testGoodMissionHunterCannotStaySilent()
   await testHunterVoteVariant()
   await testStepModeBotSuggest()
+  await testStepModeHandoffAmulet()
   console.log("cloud function integration tests passed")
 }
 

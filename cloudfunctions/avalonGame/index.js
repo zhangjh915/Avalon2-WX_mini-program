@@ -302,8 +302,12 @@ async function botSuggest(event, openid) {
     const nextLeaderId = game.galahadLeaderId || pick(candidates).id
     const payload = { nextLeaderId }
     if (core.needsAmulet(game.playerCount, game.round)) {
+      // 字段名必须是 handoff 实际读取的 amuletOwnerId。
+      // 踩过：写成前端 data 的 nextAmuletId，服务端读不到，
+      // 报「本轮必须指定护身符持有者」——建议明明带了人，字段名不对等于没带。
       const holders = secret.players.filter(player => !player.hasLed && !player.hadAmulet && player.id !== nextLeaderId)
-      if (holders.length) payload.nextAmuletId = pick(holders).id
+      if (!holders.length) fail("没有可以接受护身符的玩家")
+      payload.amuletOwnerId = pick(holders).id
     }
     return { action: "handoff", payload, label: `${leader.name} 交接皇冠` }
   }
