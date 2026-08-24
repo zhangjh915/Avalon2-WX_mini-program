@@ -734,6 +734,42 @@ async function testInternalErrorSanitized() {
   assert.ok(error.message.length < 60, "面向玩家的错误文案必须简短")
 }
 
+// 逐步模式：bot 不自动行动，房主每点一次「让测试骑士行动」才走一步。
+// botSuggest 只给建议，执行仍走原有 action——规则校验一条都不绕过。
+async function testStepModeBotSuggest() {
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 5, roleCounts: gameUtil.buildDefaultRoleCounts(5, false),
+    unknownRoles: false, hunterVoteVariant: false, tableType: "round",
+    devMode: true, stepMode: true
+  })
+  const roomId = created.roomId
+  await action("takeSeat", { roomId, seatNo: 1, name: "房主" })
+  await action("fillBots", { roomId })
+  await action("startGame", { roomId })
+  await finishIdentity(roomId)
+
+  assert.strictEqual(room(roomId).phase, "mission")
+  const leader = secret(roomId).players.find(p => p.id === room(roomId).game.leaderId)
+  if (leader.bot) {
+    const s1 = await action("botSuggest", { roomId })
+    assert.strictEqual(s1.action, "startVote", "组队阶段该建议组队")
+    assert.strictEqual(s1.payload.team.length, room(roomId).game.missionPreset.sizes[0], "队伍人数要对")
+    assert.ok(s1.payload.team.indexOf(s1.payload.magicTargetId) >= 0, "魔法指示物必须给同行骑士")
+    await action(s1.action, { roomId, ...s1.payload })
+    assert.strictEqual(room(roomId).phase, "vote")
+
+    const s2 = await action("botSuggest", { roomId })
+    assert.strictEqual(s2.action, "submitBotVotes", "投票阶段该建议代出牌")
+  }
+
+  // 非房主不能用
+  let denied = ""
+  try { await action("botSuggest", { roomId }, "other") } catch (error) { denied = error.message }
+  assert.ok(denied, "只有房主能让测试骑士行动")
+  console.log("  step mode bot suggest ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -753,6 +789,7 @@ async function run() {
   await testHunterDecisionBranches()
   await testGoodMissionHunterCannotStaySilent()
   await testHunterVoteVariant()
+  await testStepModeBotSuggest()
   console.log("cloud function integration tests passed")
 }
 

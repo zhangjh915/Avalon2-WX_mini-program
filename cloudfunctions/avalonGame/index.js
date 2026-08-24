@@ -247,6 +247,10 @@ function autoResolveBotAmulet(game, secret, room) {
   if (!amulet) return
   const owner = core.getPlayer(secret, amulet.ownerId)
   if (!owner || !owner.bot) return
+  // 逐步模式下不替 bot 自动验人：房主要能一步一步看清每个环节，
+  // 由他点「让测试骑士行动」再走（走的还是随机，不是房主替它挑）。
+  // 绑的是 stepMode 而不是 devMode——devMode 房间也可能只想让它一口气跑完。
+  if (room.stepMode) return
   const target = secret.players.find(player => player.id !== owner.id && !player.hadAmulet && !player.fadedAmulet)
   if (!target) fail("没有可供护身符查验的玩家")
   secret.currentInspection = { targetId: target.id, displayedFaction: core.displayedFaction(target) }
@@ -257,6 +261,67 @@ function autoResolveBotAmulet(game, secret, room) {
   game.amuletHistory = (game.amuletHistory || []).concat({ round: game.round, ownerId: owner.id, targetId: target.id })
   core.syncPublicPlayers(game, secret)
   room.phase = "mission"
+}
+
+// 测试房间：算出「当前该由哪个测试骑士走、随机走成什么样」，交给前端去调对应的 action。
+//
+// 只算不执行，是刻意的——执行仍旧走 startVote / handoff / selectAmuletTarget 那几个
+// 原有入口，它们的合法性校验一条都不会被绕过。改成在这里直接改状态的话，
+// 等于把规则判断抄第二遍，迟早两边走样。
+async function botSuggest(event, openid) {
+  const state = await loadState(event.roomId)
+  requireHost(state.secret, openid)
+  if (!state.room.devMode) fail("只有测试房间可以让测试骑士自动行动")
+  const room = state.room
+  const game = room.game
+  const secret = state.secret
+  if (!game) fail("对局还没开始")
+  const pick = list => list[Math.floor(Math.random() * list.length)]
+  const leader = core.getPlayer(secret, game.leaderId)
+
+  if (room.phase === "mission") {
+    if (!leader || !leader.bot) fail("当前队长不是测试骑士")
+    const size = game.missionPreset.sizes[game.round - 1]
+    const pool = secret.players.map(player => player.id)
+    const team = []
+    while (team.length < size && team.length < pool.length) {
+      const id = pick(pool)
+      if (team.indexOf(id) < 0) team.push(id)
+    }
+    return { action: "startVote", payload: { team, magicTargetId: pick(team) }, label: `${leader.name} 组队` }
+  }
+
+  if (room.phase === "vote") {
+    return { action: "submitBotVotes", payload: {}, label: "测试骑士出牌" }
+  }
+
+  if (room.phase === "missionResult") {
+    if (!leader || !leader.bot) fail("当前队长不是测试骑士")
+    const candidates = secret.players.filter(player => !player.hasLed && !player.hadAmulet)
+    if (!candidates.length) fail("没有可以接任队长的玩家")
+    const nextLeaderId = game.galahadLeaderId || pick(candidates).id
+    const payload = { nextLeaderId }
+    if (core.needsAmulet(game.playerCount, game.round)) {
+      const holders = secret.players.filter(player => !player.hasLed && !player.hadAmulet && player.id !== nextLeaderId)
+      if (holders.length) payload.nextAmuletId = pick(holders).id
+    }
+    return { action: "handoff", payload, label: `${leader.name} 交接皇冠` }
+  }
+
+  if (room.phase === "amulet" && game.amulet) {
+    const owner = core.getPlayer(secret, game.amulet.ownerId)
+    if (!owner || !owner.bot) fail("持符者不是测试骑士")
+    // 查验分两步：先选目标，出结果后再收起护身符。两步都要房主点一次。
+    if (game.amulet.status === "result") {
+      return { action: "completeAmulet", payload: {}, label: `${owner.name} 收起护身符` }
+    }
+    if (game.amulet.status !== "select") fail("护身符正在等待被查验者表态")
+    const targets = secret.players.filter(player => player.id !== owner.id && !player.hadAmulet && !player.fadedAmulet)
+    if (!targets.length) fail("没有可供查验的玩家")
+    return { action: "selectAmuletTarget", payload: { targetId: pick(targets).id }, label: `${owner.name} 查验` }
+  }
+
+  fail("当前阶段没有需要测试骑士决定的事")
 }
 
 async function createRoom(event, openid) {
@@ -272,6 +337,9 @@ async function createRoom(event, openid) {
     status: "lobby",
     playerCount,
     devMode: !!event.devMode,
+    // 逐步模式：bot 不自动行动，等房主点按钮，方便一步步看清每个环节
+    stepMode: !!event.devMode && !!event.stepMode,
+    hostRole: event.devMode ? String(event.hostRole || "") : "",
     missionSkin: pickSkin(event.missionSkin, missionSkins),
     roleSkin: pickSkin(event.roleSkin, roleSkins),
     settings: publicSettings(event),
@@ -368,7 +436,14 @@ async function startGame(event, openid) {
   }))
   if (seats.some(seat => !seat.bot && !seat.openid)) fail("有真人座位缺少微信身份绑定")
   core.validateSettings({ ...state.room.settings, playerCount: state.room.playerCount })
-  const built = core.createGame({ ...state.room.settings, playerCount: state.room.playerCount }, seats)
+  // 测试房间可以指定房主自己的角色，方便复现特定角色的问题
+  const hostSeatNo = Object.keys(state.secret.seatBindings || {})
+    .find(key => state.secret.seatBindings[key] === state.secret.hostOpenid)
+  const built = core.createGame(
+    { ...state.room.settings, playerCount: state.room.playerCount },
+    seats,
+    { hostRole: state.room.devMode ? state.room.hostRole : "", hostSeatNo: hostSeatNo ? Number(hostSeatNo) : 0 }
+  )
   const botIds = built.secret.players.filter(player => player.bot).map(player => player.id)
   built.publicGame.identity.readyIds = botIds.slice()
   built.publicGame.identity.rememberedIds = botIds.slice()
@@ -615,7 +690,10 @@ async function amuletAction(event, openid) {
   if (state.room.phase !== "amulet" || !amulet) fail("当前没有进行中的护身符")
   const player = requirePlayer(state.secret, openid)
   if (event.action === "selectAmuletTarget") {
-    if (player.id !== amulet.ownerId) fail("只有护身符持有者可以选择查验目标")
+    const owner = core.getPlayer(state.secret, amulet.ownerId)
+    // 持符者是测试骑士时，房主可以代它提交（目标由服务端随机给出，见 botSuggest）
+    const asBot = isHost(state.secret, openid) && owner && owner.bot && state.room.devMode
+    if (player.id !== amulet.ownerId && !asBot) fail("只有护身符持有者可以选择查验目标")
     const target = core.getPlayer(state.secret, event.targetId)
     if (!target || target.id === amulet.ownerId || target.hadAmulet || target.fadedAmulet) fail("该玩家不能被查验")
     state.secret.currentInspection = { targetId: target.id, displayedFaction: null }
@@ -643,7 +721,11 @@ async function amuletAction(event, openid) {
     core.syncPublicPlayers(game, state.secret)
   }
   if (event.action === "completeAmulet") {
-    if (player.id !== amulet.ownerId || amulet.status !== "result") fail("查验结果尚未就绪")
+    // 同 selectAmuletTarget：持符者是测试骑士时，房主可以代它收起护身符
+    const holder = core.getPlayer(state.secret, amulet.ownerId)
+    const asHolder = player.id === amulet.ownerId ||
+      (isHost(state.secret, openid) && holder && holder.bot && state.room.devMode)
+    if (!asHolder || amulet.status !== "result") fail("查验结果尚未就绪")
     state.room.phase = "mission"
   }
   await Promise.all([
@@ -783,6 +865,7 @@ async function dispatch(event, openid) {
     case "hunterTargets":
     case "traitorDecision":
     case "finalIdentify": return finaleAction(event, openid)
+    case "botSuggest": return botSuggest(event, openid)
     case "getResult": return getResult(event, openid)
     default: fail("未知游戏操作")
   }

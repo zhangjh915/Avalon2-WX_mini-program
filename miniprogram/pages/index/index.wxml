@@ -116,6 +116,20 @@
       <view><view class="setting-label">测试模式</view><view class="muted">可补满测试玩家并代其投票；正式和同事玩时请关闭</view></view>
       <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
     </view>
+    <view wx:if="{{canUseTestMode && testMode}}" class="toggle-row">
+      <view><view class="setting-label">逐步执行</view><view class="muted">测试骑士不再自动行动，每一步由你点按钮触发（选人、交接、验人、出牌）</view></view>
+      <switch checked="{{stepMode}}" color="#8b6f3f" bindchange="toggleStepMode" />
+    </view>
+    <view wx:if="{{canUseTestMode && testMode}}" class="setting-block">
+      <view class="setting-label">我的角色</view>
+      <view class="muted">指定自己开局拿到的角色，方便复现问题；其余随机</view>
+      <scroll-view class="host-role-list" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="host-role-row">
+          <view class="host-role-chip {{hostRole ? '' : 'active'}}" data-role="" bindtap="chooseHostRole">随机</view>
+          <view wx:for="{{hostRoleOptions}}" wx:key="role" class="host-role-chip {{hostRole === item.role ? 'active' : ''}} {{item.faction}}" data-role="{{item.role}}" bindtap="chooseHostRole">{{item.name}}</view>
+        </view>
+      </scroll-view>
+    </view>
     <view class="skin-row-entry" bindtap="openSkinPicker" data-kind="mission">
       <view class="setting-label">任务牌卡背</view>
       <view class="skin-entry-right">

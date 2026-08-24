@@ -224,6 +224,12 @@
     </view>
   </view>
 
+  <!-- 逐步模式：轮到测试骑士时，房主点一次它才走一步（走的是随机，不是房主替它挑） -->
+  <view wx:if="{{botPending}}" class="bot-step-bar">
+    <view class="bot-step-label">轮到 {{botPending}}</view>
+    <button class="bot-step-action" bindtap="runBotStep" disabled="{{syncing}}">{{syncing ? '执行中…' : '让测试骑士行动'}}</button>
+  </view>
+
   <view wx:if="{{tableVisible}}" class="table-overlay selector-overlay">
     <view class="table-sheet selector-page">
       <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view wx:if="{{tableMode === 'team'}}" class="team-counter {{selectedTeam.length === missionSize ? 'ready' : ''}}">{{selectedTeam.length}} / {{missionSize}}</view><view class="selector-tools"><view class="table-icon-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>

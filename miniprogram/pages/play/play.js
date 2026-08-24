@@ -42,6 +42,7 @@ Page({
     hunterVoteValue: "", traitorSide: "", traitorTargets: [], voteChoice: "",
     deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50, deliverTargetId: 0,
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
+    stepMode: false, botPending: "",
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     preloadList: [],
@@ -222,6 +223,9 @@ Page({
       nightDirective: ttsData.pickNightDisplay(Number(game.firstLeaderId || 0) + Number(game.playerCount || 0)),
       leader, isLeader: privateView.id === game.leaderId,
       devMode,
+      stepMode: !!room.stepMode,
+      // 逐步模式下，轮到测试骑士行动时给房主一个按钮，而不是替它做决定
+      botPending: this.describeBotPending(room, game, privateView, !!result.isHost),
       canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode),
       missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
       missionTrack: this.buildMissionTrack(game), decoratedPlayers,
@@ -243,7 +247,7 @@ Page({
       canVoteFail: (privateView.voteOptions || []).indexOf("fail") >= 0,
       hasBots: devMode && pendingBots.length > 0,
       botPlayers: devMode ? pendingBots : [],
-      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode))) : this.data.tableVisible,
+      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode && !room.stepMode))) : this.data.tableVisible,
       tableMode: phaseChanged && room.phase === "mission" ? "team" : this.data.tableMode,
       tableTitle: phaseChanged && room.phase === "mission" ? "选择同行骑士" : this.data.tableTitle,
       tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名同行骑士` : this.data.tableHint,
@@ -732,6 +736,41 @@ Page({
       // 单目标交付的模式才亮出道具；组队模式没有道具
       deliverIcon: this.deliverIconFor(mode), deliverFlying: false
     }, () => this.measureStage())
+  },
+
+  // 现在轮到哪个测试骑士、要做什么。返回空串表示没有需要房主推的事。
+  describeBotPending(room, game, privateView, isHost) {
+    if (!room.stepMode || !isHost || !game) return ""
+    const bot = id => {
+      const player = (game.players || []).find(item => Number(item.id) === Number(id))
+      return player && player.bot ? player : null
+    }
+    const leader = bot(game.leaderId)
+    if (room.phase === "mission" && leader) return `${leader.name} 组队`
+    if (room.phase === "vote") {
+      const pending = (game.players || []).filter(p => p.bot && (game.current.votedIds || []).indexOf(p.id) < 0)
+      return pending.length ? `${pending.length} 位测试骑士出牌` : ""
+    }
+    if (room.phase === "missionResult" && leader) return `${leader.name} 交接皇冠`
+    if (room.phase === "amulet" && game.amulet) {
+      const owner = bot(game.amulet.ownerId)
+      if (owner && game.amulet.status === "select") return `${owner.name} 查验`
+      if (owner && game.amulet.status === "result") return `${owner.name} 收起护身符`
+    }
+    return ""
+  },
+
+  // 让当前该行动的测试骑士随机走一步。
+  // 服务端只给建议，真正执行仍走原有 action，规则校验一条不少。
+  runBotStep() {
+    if (this.data.syncing) return Promise.resolve()
+    this.setData({ syncing: true })
+    return roomStore.action(this.data.roomId, "botSuggest", {}).then(suggestion => {
+      if (!suggestion || !suggestion.action) throw new Error("没有需要测试骑士决定的事")
+      return roomStore.action(this.data.roomId, suggestion.action, suggestion.payload || {})
+    }).then(result => this.applyState(result))
+      .catch(error => this.showError(error))
+      .finally(() => this.setData({ syncing: false }))
   },
 
   openHistory() { this.setData({ historyVisible: true }) },

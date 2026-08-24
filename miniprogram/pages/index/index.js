@@ -44,6 +44,7 @@ Page({
     roleErrors: [],
     canUseTestMode: false,
     testMode: false,
+    stepMode: false, hostRole: "", hostRoleOptions: [],
     missionSkin: "a",
     roleSkin: "painted",
     missionSkinOptions: [],
@@ -67,6 +68,7 @@ Page({
     this.setData({
       playerName: wx.getStorageSync("playerName") || "",
       canUseTestMode,
+      stepMode: canUseTestMode && !!wx.getStorageSync("stepMode"),
       testMode: canUseTestMode && (stored === "" ? true : !!stored)
     })
     this.setData({
@@ -361,6 +363,9 @@ Page({
     const targets = this.roleTargets(this.data.unknownRoles)
     const balance = gameUtil.estimateBalance(this.data.playerCount, this.data.roleCounts, this.data.unknownRoles, this.data.hunterVoteVariant)
     const rolePoolCount = actual.good + actual.evil
+    // 「我的角色」只能从本局真的会发出去的角色里挑；配置变了就把失效的选择清掉
+    const hostRoleOptions = selected.map(item => ({ role: item.role, name: item.name, faction: item.faction }))
+    const hostRole = hostRoleOptions.some(item => item.role === this.data.hostRole) ? this.data.hostRole : ""
     this.setData({
       goodRoleSummary: summaryFor("good"),
       evilRoleSummary: summaryFor("evil"),
@@ -374,6 +379,8 @@ Page({
       balanceWarning: balance.warning,
       balanceLevel: balance.level,
       rolePoolCount,
+      hostRoleOptions,
+      hostRole,
       roleErrors: validation.errors,
       roleConfigValid: validation.valid
     })
@@ -385,6 +392,18 @@ Page({
       return false
     }
     return true
+  },
+
+  toggleStepMode(event) {
+    const stepMode = !!event.detail.value
+    this.setData({ stepMode })
+    wx.setStorageSync("stepMode", stepMode)
+  },
+
+  // 指定自己开局拿到的角色，方便复现特定角色的问题；其余座位照旧随机
+  chooseHostRole(event) {
+    const hostRole = event.currentTarget.dataset.role || ""
+    this.setData({ hostRole })
   },
 
   createRoom() {
@@ -403,6 +422,8 @@ Page({
       seatLayout: this.data.tableType === "long" ? this.data.seatLayout : null,
       // 房间在创建时就固定是否为测试房间，开局后不再允许改变
       devMode: this.data.canUseTestMode && this.data.testMode,
+      stepMode: this.data.canUseTestMode && this.data.testMode && this.data.stepMode,
+      hostRole: this.data.canUseTestMode && this.data.testMode ? this.data.hostRole : "",
       missionSkin: this.data.missionSkin,
       roleSkin: this.data.roleSkin
     }).then(({ roomId }) => {

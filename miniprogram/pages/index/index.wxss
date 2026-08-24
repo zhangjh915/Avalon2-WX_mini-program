@@ -176,3 +176,11 @@
 
 /* 首页底图是浅橡木，跟新的深墨绿系冲突。不换图，压暗后退成背景纹理即可。 */
 .page-bg { filter: brightness(.34) saturate(.55); }
+
+/* 「我的角色」横向选择条：只列本局真的会发出去的角色 */
+.host-role-list { margin-top: 12rpx; width: 100%; }
+.host-role-row { display: flex; gap: 12rpx; padding: 4rpx 0 8rpx; }
+.host-role-chip { flex: none; padding: 10rpx 20rpx; border: 2rpx solid #3a4a43; border-radius: 999rpx; color: #cbd6cf; font-size: 23rpx; font-weight: 700; }
+.host-role-chip.active { border-color: #d8b76a; background: rgba(216,183,106,.16); color: #f0dca8; }
+.host-role-chip.evil { border-color: #5c3a3a; }
+.host-role-chip.evil.active { border-color: #c4564a; background: rgba(196,86,74,.18); color: #ffb9ae; }

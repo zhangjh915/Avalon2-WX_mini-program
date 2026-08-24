@@ -170,11 +170,25 @@ function makePlayer(seat, role, index) {
   }
 }
 
-function createGame(settings, seats) {
+function createGame(settings, seats, options) {
   validateSettings(settings)
   const prepared = prepareRoles(settings)
   const orderedSeats = seats.slice().sort((a, b) => a.seatNo - b.seatNo)
-  const players = assignArtVariants(orderedSeats.map((seat, index) => makePlayer(seat, prepared.roles[index], index)))
+  const roles = prepared.roles.slice()
+  // 测试用：把指定角色换到房主座位上，其余照旧随机。
+  // 用交换而不是重排，牌堆构成完全不变——不会因为指定角色而改变本局的角色池。
+  const wantedRole = options && options.hostRole
+  const hostSeatNo = options && options.hostSeatNo
+  if (wantedRole && hostSeatNo) {
+    const hostIndex = orderedSeats.findIndex(seat => Number(seat.seatNo) === Number(hostSeatNo))
+    const roleIndex = roles.indexOf(wantedRole)
+    if (hostIndex >= 0 && roleIndex >= 0 && hostIndex !== roleIndex) {
+      const swap = roles[hostIndex]
+      roles[hostIndex] = roles[roleIndex]
+      roles[roleIndex] = swap
+    }
+  }
+  const players = assignArtVariants(orderedSeats.map((seat, index) => makePlayer(seat, roles[index], index)))
   const firstLeader = players[Math.floor(Math.random() * players.length)]
   firstLeader.hasLed = true
   return {
