@@ -226,7 +226,9 @@ Page({
       stepMode: !!room.stepMode,
       // 逐步模式下，轮到测试骑士行动时给房主一个按钮，而不是替它做决定
       botPending: this.describeBotPending(room, game, privateView, !!result.isHost),
-      canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode),
+      // 逐步模式下 bot 队长的「代选」入口要关掉——那正是用户不要的"房主替它选"；
+      // 组队走推进条的随机建议。自己当队长时不受影响。
+      canControlLeader: privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode && !room.stepMode),
       missionSize, protectedText: gameUtil.isProtectedRound(game) ? "本轮需要2张失败票" : "",
       missionTrack: this.buildMissionTrack(game), decoratedPlayers,
       tableOrientation: tableGeometry.orientation,
