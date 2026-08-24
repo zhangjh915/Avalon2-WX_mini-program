@@ -367,7 +367,11 @@ Page({
   // 只有真正的节点值得打断全场（轮次开场、终局、猎杀现身）。
   // 皇冠交接、护身符、火球这类高频事件降级成顶部横幅：
   // 线下嘴炮才是主体，每人手机连弹三个全屏动画只会打断讨论。
-  BANNER_TYPES: ["crown", "amulet", "magic"],
+  // 全部走顶部横幅，不再有全屏过场。
+  // 轮次开场、几胜几负这类简单动画观感一般又打断线下讨论，先去掉；
+  // 过场动画后续会重新设计，到时再决定哪些值得全屏。
+  BANNER_TYPES: ["crown", "amulet", "magic", "round", "mission-good", "mission-evil",
+    "finale-good", "finale-evil", "hunter"],
 
   enqueueCeremonies(events) {
     if (!events || !events.length) return
@@ -683,6 +687,14 @@ Page({
 
   refreshLongTable() {
     const data = this.data
+    // 选人面板和终局选人区是**两个尺寸不同的台面**，却共用一份 stageW/stageH。
+    // 从一个切到另一个时若不重测，就会拿旧尺寸算桌子——终局那块台面更矮，
+    // 桌子于是超出上下边缘被切掉。这里用当前可见台面的实测值兜一层。
+    if (data.finalSelectionMode !== this.lastStageOwner) {
+      this.lastStageOwner = data.finalSelectionMode
+      this.measureStage()
+      return
+    }
     if (!data.stageW || !data.stageH) {
       // 选人面板还会被 applyState **自动**打开（队长进入组队阶段，见 tableVisible 那行），
       // 那条路径不经过 openTable，测量从来没发生过——于是挑不出档、长桌整个不渲染。

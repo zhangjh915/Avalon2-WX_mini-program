@@ -159,12 +159,19 @@ assert.strictEqual(ceremonyContext.data.bannerVisible, true, "皇冠与护身符
 assert.strictEqual(ceremonyContext.data.ceremonyVisible, false, "高频事件不应全屏打断")
 assert.strictEqual(ceremonyContext.ceremonyQueue.length, 0)
 
+// 轮次开场、几胜几负这类过场也改走横幅了：观感一般，还打断线下讨论。
+// 过场动画后续重新设计，到时再决定哪些值得全屏。
 ceremonyContext.ceremonyQueue = []
 ceremonyContext.data.ceremonyVisible = false
+ceremonyContext.data.bannerVisible = false
 ceremonyContext.enqueueCeremonies([
   { type: "round", symbol: "2", title: "第 2 轮远征", subtitle: "4名骑士即将出发" }
 ])
-assert.strictEqual(ceremonyContext.data.ceremonyVisible, true, "轮次开场仍然全屏")
+assert.strictEqual(ceremonyContext.data.ceremonyVisible, false, "轮次开场不该再全屏打断")
+assert.strictEqual(ceremonyContext.data.bannerVisible, true, "改走顶部横幅")
+;["mission-good", "mission-evil", "finale-good", "finale-evil", "hunter"].forEach(type => {
+  assert.ok(definition.BANNER_TYPES.indexOf(type) >= 0, `${type} 也应当走横幅`)
+})
 
 // 翻牌不能依赖 backface-visibility：微信渲染器里它配合 preserve-3d 不可靠，
 // 换成图片素材后正反面叠加会非常明显。必须是两段 scaleX。

@@ -35,7 +35,11 @@ global.wx = {
   redirectTo() {}, reLaunch() {}, navigateTo() {},
   setStorageSync(key, value) { storage[key] = value },
   getStorageSync(key) { return storage[key] },
-  createSelectorQuery: () => ({ in: () => ({ select: () => ({ boundingClientRect: () => ({ exec() {} }) }) }) })
+  // 查询链要能一路点下去：applyState 会经 refreshLongTable 触发台面测量
+  createSelectorQuery: () => {
+    const chain = { boundingClientRect: () => chain, fields: () => chain, exec: () => {} }
+    return { in: () => ({ select: () => chain, selectAll: () => chain, exec: () => {} }) }
+  }
 }
 
 const playPath = path.join(__dirname, "..", "miniprogram", "pages", "play", "play.js")
@@ -83,7 +87,7 @@ function contextFor(overrides) {
     data: JSON.parse(JSON.stringify(definition.data)),
     setData(patch) { Object.assign(this.data, patch) },
     ceremonyQueue: [], vibrate() {}, enqueueCeremonies() {},
-    startNightAuto() {}, stopTimers() {}, startTimers() {}
+    startNightAuto() {}, stopTimers() {}, measureStage() {}, startTimers() {}
   }, overrides || {})
 }
 
