@@ -748,7 +748,11 @@ Page({
     const leader = bot(game.leaderId)
     if (room.phase === "mission" && leader) return `${leader.name} 组队`
     if (room.phase === "vote") {
-      const pending = (game.players || []).filter(p => p.bot && (game.current.votedIds || []).indexOf(p.id) < 0)
+      // 只数**队内的** bot：队外的根本不用出牌，服务端也只等队内的。
+      // 数全部 bot 会把「7 位出牌」挂在只有 3 人的任务上，误导房主。
+      const team = (game.current && game.current.team) || []
+      const pending = (game.players || []).filter(p =>
+        p.bot && team.indexOf(p.id) >= 0 && (game.current.votedIds || []).indexOf(p.id) < 0)
       return pending.length ? `${pending.length} 位测试骑士出牌` : ""
     }
     if (room.phase === "missionResult" && leader) return `${leader.name} 交接皇冠`
