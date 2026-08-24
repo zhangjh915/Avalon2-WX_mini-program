@@ -147,6 +147,10 @@ Page({
       roleCandidates,
       filteredRoleCandidates
     })
+    // 每轮都重测台面（内部有相等守卫，尺寸没变就什么都不做）。
+    // onReady 那次量到的往往是 aspect-ratio 布局完成**之前**的高度，
+    // 之后台面长高了没人再测，桌子就一直按旧的小尺寸画——看着又小又变形。
+    this.measureStage()
     this.refreshLongTable()
   },
 

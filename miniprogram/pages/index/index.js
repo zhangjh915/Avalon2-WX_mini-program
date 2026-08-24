@@ -68,7 +68,9 @@ Page({
     this.setData({
       playerName: wx.getStorageSync("playerName") || "",
       canUseTestMode,
-      stepMode: canUseTestMode && !!wx.getStorageSync("stepMode"),
+      // 默认开启：逐步执行本来就是用户要的测试方式，不该藏在默认关闭的开关后面。
+      // 和 testMode 一样，"" 表示从没设置过 → 取默认 true
+      stepMode: canUseTestMode && (wx.getStorageSync("stepMode") === "" ? true : !!wx.getStorageSync("stepMode")),
       testMode: canUseTestMode && (stored === "" ? true : !!stored)
     })
     this.setData({

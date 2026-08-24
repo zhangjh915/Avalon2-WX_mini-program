@@ -4,6 +4,11 @@ const gameUtil = require("../miniprogram/utils/game")
 let definition = null
 global.Page = value => { definition = value }
 global.wx = {
+  // applyState 每轮会顺带重测台面，查询链要能一路点下去
+  createSelectorQuery: () => {
+    const chain = { boundingClientRect: () => chain, fields: () => chain, exec: () => {} }
+    return { in: () => ({ select: () => chain, selectAll: () => chain, exec: () => {} }) }
+  },
   getStorageSync() { return "" },
   setStorageSync() {},
   redirectTo() {},

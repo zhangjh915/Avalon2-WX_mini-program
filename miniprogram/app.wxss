@@ -1,10 +1,7 @@
-/* 全局底色统一到深墨绿。原先三套底色互不相干：
-   首页浅橡木、候场页浅米、对局页近黑，翻页像换了个应用。
-   现在全程一个色系，地毯四色是唯一的彩色变量。 */
 page {
   min-height: 100%;
-  background: #121816;
-  color: #e8e3d8;
+  background: #f6efe2;
+  color: #271f18;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 28rpx;
 }
@@ -26,8 +23,8 @@ button:active,
 }
 
 .panel {
-  background: #1a221e;
-  border: 2rpx solid #2c3a34;
+  background: #fffaf1;
+  border: 2rpx solid #ddcfba;
   border-radius: 14rpx;
   padding: 24rpx;
   box-sizing: border-box;
@@ -42,7 +39,7 @@ button:active,
 }
 
 .subtitle {
-  color: #94a49b;
+  color: #786a59;
   line-height: 1.5;
 }
 
@@ -53,7 +50,7 @@ button:active,
 }
 
 .muted {
-  color: #94a49b;
+  color: #786a59;
   font-size: 24rpx;
 }
 
@@ -71,14 +68,14 @@ button:active,
 
 .btn {
   border-radius: 10rpx;
-  background: #2f7358;
-  color: #eaf3ee;
+  background: #6f4728;
+  color: #fff8ec;
   font-weight: 700;
 }
 
 .btn.secondary {
-  background: #26312c;
-  color: #cbd6cf;
+  background: #e8ddce;
+  color: #34271c;
 }
 
 .btn.danger {
@@ -86,9 +83,9 @@ button:active,
 }
 
 .btn.ghost {
-  border: 2rpx solid #3a4a43;
-  background: transparent;
-  color: #cbd6cf;
+  border: 2rpx solid #d6c6ae;
+  background: #fffaf1;
+  color: #34271c;
 }
 
 .tag {
@@ -125,9 +122,9 @@ button:active,
 }
 
 .player-card {
-  border: 2rpx solid #2c3a34;
+  border: 2rpx solid #ddcfba;
   border-radius: 12rpx;
-  background: #1a221e;
+  background: #fffdf8;
   padding: 18rpx;
   box-sizing: border-box;
 }
@@ -147,9 +144,9 @@ button:active,
   width: 100%;
   min-height: 72rpx;
   padding: 0 18rpx;
-  border: 2rpx solid #3a4a43;
+  border: 2rpx solid #d6c6ae;
   border-radius: 10rpx;
-  background: #161d1a;
+  background: #fffdf8;
   box-sizing: border-box;
 }
 
@@ -161,7 +158,7 @@ button:active,
   position: relative;
   width: 100%;
   min-height: 620rpx;
-  border: 2rpx solid #2c3a34;
+  border: 2rpx solid #ddcfba;
   border-radius: 14rpx;
   background: radial-gradient(circle at center, #f5e4c8 0%, #ead4b2 46%, #d9bd92 100%);
   overflow: hidden;
@@ -226,8 +223,8 @@ button:active,
   width: 122rpx;
   min-height: 122rpx;
   border-radius: 50%;
-  background: #26312c;
-  border: 4rpx solid #3a4a43;
+  background: #fffaf1;
+  border: 4rpx solid #d6c6ae;
   box-shadow: 0 8rpx 18rpx rgba(64, 42, 25, 0.18);
   transform: translate(-50%, -50%);
   display: flex;
@@ -257,7 +254,7 @@ button:active,
 .seat-no {
   font-size: 22rpx;
   font-weight: 900;
-  color: #cbd6cf;
+  color: #6f4728;
 }
 
 .seat-avatar {
@@ -269,7 +266,7 @@ button:active,
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #eaf3ee;
+  color: #fff8ec;
   font-size: 24rpx;
   font-weight: 900;
 }
@@ -277,7 +274,7 @@ button:active,
 .seat-name {
   max-width: 100rpx;
   font-size: 20rpx;
-  color: #e8e3d8;
+  color: #34271c;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

@@ -1878,7 +1878,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .team-counter.ready { border-color: #3b8b6c; background: rgba(59,139,108,.18); color: #9fe0c2; }
 
 /* 逐步模式的推进条：固定在底部，和对局内容分开，一眼看到「现在卡在谁身上」 */
-.bot-step-bar { position: fixed; left: 20rpx; right: 20rpx; bottom: calc(20rpx + env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: center; gap: 16rpx; padding: 14rpx 16rpx 14rpx 22rpx; border: 2rpx solid #4a5b52; border-radius: 14rpx; background: rgba(20,28,24,.96); box-shadow: 0 12rpx 30rpx rgba(0,0,0,.5); }
+.bot-step-bar { position: fixed; left: 20rpx; right: 20rpx; bottom: calc(20rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; align-items: center; gap: 16rpx; padding: 14rpx 16rpx 14rpx 22rpx; border: 2rpx solid #4a5b52; border-radius: 14rpx; background: rgba(20,28,24,.96); box-shadow: 0 12rpx 30rpx rgba(0,0,0,.5); }
 .bot-step-label { flex: 1; color: #cfd8d2; font-size: 24rpx; font-weight: 700; }
 .bot-step-action { flex: none; min-height: 66rpx; padding: 0 26rpx; border-radius: 10rpx; background: #2f7358; color: #eaf3ee; font-size: 25rpx; font-weight: 800; }
 .bot-step-action[disabled] { background: #33413a; color: #8a988f; }
