@@ -418,8 +418,14 @@ Page({
     const field = event.currentTarget.dataset.field
     const raw = event.currentTarget.dataset.raw
     if (!field || !raw || String(raw).indexOf("cloud://") !== 0) return
-    if (this.remoteErrorHandled === field + raw) return
-    this.remoteErrorHandled = field + raw
+    // 读当前 src：失败的若是落地的本地文件，说明本窗口渲染层读不了 tmp
+    //（多账号调试的虚拟窗口如此），整个窗口降级为直接用签名 https
+    const current = field.split(".").reduce((obj, key) => (obj || {})[key], this.data)
+    if (/^(http:\/\/tmp\/|wxfile:\/\/)/.test(String(current || ""))) assets.markTmpBroken()
+    if (!this.remoteErrorCount) this.remoteErrorCount = {}
+    const count = (this.remoteErrorCount[field] || 0) + 1
+    this.remoteErrorCount[field] = count
+    if (count > 3) return   // 防死循环
     assets.remoteUrl(raw).then(url => {
       if (!url || url === raw) return
       const patch = {}

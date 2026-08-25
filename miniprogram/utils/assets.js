@@ -240,8 +240,17 @@ function remoteUrl(fileID) {
   })
 }
 
+// 本窗口的 tmp 文件渲染层读不了时置位（多账号调试的虚拟窗口就是这样）。
+// 置位后 localCopy 整体降级为签名 https：继续落地只会让「兜底换 https → 缓存的
+// tmp 又覆盖回来 → 二次失败被防重复挡住」这个竞态反复上演——
+// 实测 4 个虚拟窗口约一半有图一半没有，就是这个赛跑的两种结局。
+let tmpBroken = false
+
+function markTmpBroken() { tmpBroken = true }
+
 function localCopy(fileID) {
   if (!fileID || String(fileID).indexOf("cloud://") !== 0) return Promise.resolve(fileID)
+  if (tmpBroken) return remoteUrl(fileID)
   if (localFiles[fileID]) return Promise.resolve(localFiles[fileID])
   if (inflight[fileID]) return inflight[fileID]
   if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.callFunction || !wx.downloadFile) {
@@ -292,6 +301,7 @@ module.exports = {
   floorOptions,
   localCopy,
   remoteUrl,
+  markTmpBroken,
   prefetch,
   FLOOR_COLORS,
   DEFAULT_FLOOR,

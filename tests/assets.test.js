@@ -310,4 +310,33 @@ assert.doesNotThrow(() => assets.prefetch(["cloud://x.y/assets/ui/a.jpg", null])
 const roomSrc2 = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "room", "room.js"), "utf8")
 assert.match(roomSrc2, /prefetch\(\[assets\.identityBack/, "候场页要预热身份卡背")
 
+const tmpBrokenCheck = (function(){
+// 虚拟窗口降级链路：本窗口 tmp 文件渲染不了时（markTmpBroken），
+// localCopy 必须整体改走签名 https——继续吐 tmp 会让「兜底换 https、
+// 缓存 tmp 又覆盖回来」的竞态反复上演，表现为一半窗口有图一半没有。
+{
+  delete require.cache[require.resolve("../miniprogram/utils/assets")]
+  global.wx = {
+    cloud: { callFunction: ({ success }) => success({ result: { urls: [{ fileID: "x", url: "https://signed.example/a.jpg" }] } }) },
+    downloadFile: ({ success }) => success({ statusCode: 200, tempFilePath: "http://tmp/fake-a" }),
+    getStorageSync: () => "", setStorageSync: () => {}
+  }
+  const fresh = require("../miniprogram/utils/assets")
+  const FID = "cloud://env.x-y/assets/ui/a.jpg"
+  return Promise.resolve()
+    .then(() => fresh.localCopy(FID))
+    .then(first => {
+      assert.strictEqual(first, "http://tmp/fake-a", "正常时应落地为本地文件")
+      fresh.markTmpBroken()
+      return fresh.localCopy(FID)
+    })
+    .then(second => {
+      assert.strictEqual(second, "https://signed.example/a.jpg", "tmp 不可用后必须改走签名 https，且不得返回缓存的 tmp")
+      delete global.wx
+      delete require.cache[require.resolve("../miniprogram/utils/assets")]
+      console.log("  tmp 降级链路 ok")
+    })
+}
+})()
+
 console.log("asset path tests passed")
