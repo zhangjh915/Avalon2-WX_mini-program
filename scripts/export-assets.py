@@ -127,6 +127,14 @@ ICONS = {   # 轮廓不规则，必须 PNG 带 alpha
     "mission-pending.png":  (128, ".mission-orb 68rpx = 34pt"),
     "mission-current.png":  (128, "同上"),
 }
+# 首页两个入口。轮廓不规则（旗角、拱门镂空），必须 PNG 带 alpha。
+ICONS_EXTRA = {
+    # 176px 而不是 256：44pt @3x 只要 132 物理像素，256 白白多一倍多体积。
+    # 再走一遍调色板量化（金属只有一条色阶，128 色完全够），PNG 直接砍到三分之一。
+    "home-create.png": (176, ".home-entry-icon 88rpx = 44pt，立起的三角旗"),
+    "home-join.png":   (176, "同上，推开的拱门"),
+}
+
 SCENES = {  # 矩形或可用 CSS 裁形，走 JPEG
     "table-round.jpg": ((512, 512),   84, ".round-table 330rpx=165pt，CSS border-radius:50% 裁圆"),
     # 地毯四个配色，玩家可选。全部同规格，只有颜色不同。
@@ -134,7 +142,10 @@ SCENES = {  # 矩形或可用 CSS 裁形，走 JPEG
     "floor-indigo.jpg": ((1080, 1080), 78, "深靛蓝绒毯"),
     "floor-wine.jpg":   ((1080, 1080), 78, "深酒红绒毯"),
     "floor-umber.jpg":  ((1080, 1080), 78, "暗金褐绒毯"),
-    "home-bg.jpg":     ((750, 1624),  76, "首页整屏。低对比木纹，@2x 足够，@3x 白白多一倍体积"),
+    # 首页背景第三版（烛光圆桌）。前两版木纹/羊皮都被否了。
+    # 注意：这版是**深色**，而首页面板现在是浅色（#fffdf8 / #f7f2ea），
+    # 要用它就得连面板配色一起改深，否则浅卡片糊在深底上很脏。
+    "home-bg.jpg":     ((1080, 1920), 74, "首页整屏，深色烛光圆桌。安全区：顶 22%、中 30~72% 会被压住"),
 }
 # 切角渲染边长。必须 >= 桌子圆角的弧半径，否则角块自己会把弧切掉。
 # 实测这张长桌的弧半径是 76px（切片 inset=260 时），所以 84 够用；
@@ -142,12 +153,16 @@ SCENES = {  # 矩形或可用 CSS 裁形，走 JPEG
 SLICE_OUT = 84
 
 
-def export_png(src, out, side):
+def export_png(src, out, side, colors=0):
     out.parent.mkdir(parents=True, exist_ok=True)
     im = Image.open(src).convert("RGBA")
     k = side / max(im.size)
-    im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))),
-              Image.LANCZOS).save(out, optimize=True)
+    im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    if colors:
+        # 调色板量化。单色金属只有一条色阶，128 色肉眼看不出差别，体积砍到三分之一。
+        # alpha 会被量化成 1 bit，所以只对**边缘干净、没有大片半透明**的图用。
+        im = im.quantize(colors=colors, method=Image.FASTOCTREE)
+    im.save(out, optimize=True)
     return out.stat().st_size
 
 
@@ -160,6 +175,16 @@ def export_ui():
             print("  ! 缺 " + name); continue
         n = export_png(f, DST / "ui" / name, side); total += n
         rows.append(("ui/" + name, "%dpx" % side, n, why))
+    for name, (side, why) in ICONS_EXTRA.items():
+        f = src / name
+        if f.exists():
+            n = export_png(f, DST / "ui" / name, side, colors=128); total += n
+            rows.append(("ui/" + name, "%dpx" % side, n, why))
+    # 骑士头像。**不抠图**——头像自带圆底，方图直接导出，由 CSS border-radius:50%
+    # 裁圆。抠过一版，人物内部会留下小洞，而且圆底本来就该留着当底。
+    for f in sorted((src / "avatar").glob("*.jpg")):
+        n = export(f, DST / "ui/avatar" / f.name, (256, 256), q=88); total += n
+        rows.append(("ui/avatar/" + f.name, "256x256", n, "座位头像，32~42pt"))
     for name, (size, q, why) in SCENES.items():
         f = src / (name[:-4] + (".png" if name.startswith("table-round") else ".jpeg"))
         n = export(f, DST / "ui" / name, size, q=q); total += n
