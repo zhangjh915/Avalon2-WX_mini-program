@@ -204,27 +204,48 @@ function floorOptions() {
 
 // 把云端图**落到本地文件**，之后一律用本地路径渲染。
 //
-// 为什么必须这么做：<image src="cloud://"> 每次渲染微信都要重新解析 fileID，
-// 拿到的临时 URL 带每次不同的 sign/t，HTTP 缓存永远命中不了——于是每次开选人面板
-// 桌子和地毯都要重新下一遍。预加载池救不了这个（池子里的图和面板里的是两次独立请求）。
-// downloadFile 拿到的 tempFilePath 在小程序生命周期内有效，读本地零网络。
+// 两个必须这么做的理由：
+//   1. 云存储权限是「仅创建者可读写」（个人版改权限要付费）——
+//      <image src="cloud://"> 和 wx.cloud.downloadFile 走用户身份，
+//      只有上传者本人能读，其他账号（虚拟用户、朋友手机）全是裂图。
+//      所以链接由云函数以管理员身份签发（assetUrls），客户端走普通 https 下载。
+//   2. cloud:// 每次渲染都要重新解析、HTTP 缓存命中不了，每次开面板都重下。
+//      本地路径读盘零网络，src 永不变也就不闪。
+// 签名链接约 10 分钟过期，但只在下载那一刻用一次，之后与它无关。
 const localFiles = {}
+const inflight = {}
 
 function localCopy(fileID) {
-  if (!fileID || fileID.indexOf("cloud://") !== 0) return Promise.resolve(fileID)
+  if (!fileID || String(fileID).indexOf("cloud://") !== 0) return Promise.resolve(fileID)
   if (localFiles[fileID]) return Promise.resolve(localFiles[fileID])
-  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.downloadFile) return Promise.resolve(fileID)
-  return new Promise(resolve => {
-    wx.cloud.downloadFile({
-      fileID,
+  if (inflight[fileID]) return inflight[fileID]
+  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.callFunction || !wx.downloadFile) {
+    return Promise.resolve(fileID)
+  }
+  inflight[fileID] = new Promise(resolve => {
+    wx.cloud.callFunction({
+      name: "avalonGame",
+      data: { action: "assetUrls", fileIDs: [fileID] },
       success: res => {
-        if (res && res.tempFilePath) localFiles[fileID] = res.tempFilePath
-        resolve(localFiles[fileID] || fileID)
+        const item = res.result && res.result.urls && res.result.urls[0]
+        if (!item || !item.url) return resolve(fileID)
+        wx.downloadFile({
+          url: item.url,
+          success: dl => {
+            if (dl.statusCode === 200 && dl.tempFilePath) {
+              localFiles[fileID] = dl.tempFilePath
+              resolve(dl.tempFilePath)
+            } else resolve(fileID)
+          },
+          // 下不下来就退回 fileID：创建者本人还能靠 cloud:// 显示，别人裂图但不至于报错
+          fail: () => resolve(fileID)
+        })
       },
-      // 下不下来就退回 cloud://，至少还能显示
       fail: () => resolve(fileID)
     })
   })
+  inflight[fileID].then(() => { delete inflight[fileID] }, () => { delete inflight[fileID] })
+  return inflight[fileID]
 }
 
 // 任务牌在包内，返回绝对路径

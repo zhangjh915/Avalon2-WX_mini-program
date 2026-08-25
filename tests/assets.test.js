@@ -294,4 +294,13 @@ assert.ok(!/\.compact-seat-token \.seat-caption \{[^}]*color: #3d332a/.test(room
 
 // ---- 大图排除、图标进包，见上文 PACKED 那组断言 ----
 
+// 已进包的图标不许再从云端取。packedAsset 的 11 张图迁移进包后，
+// play/result 里仍有调用写着 uiAsset——创建者看不出差别（他有读权限），
+// 其他账号的仪式队徽、任务轨道全裂。锁住调用点。
+;["play/play", "result/result"].forEach(page => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", ...page.split("/")) + ".js", "utf8")
+  const bad = src.match(/uiAsset\("(crest-|mission-|crown|amulet|magic-fire|seal-base|table-emblem|table-round|home-emblem)[^"]*"\)/g)
+  assert.ok(!bad, `${page}.js 还在用云端路径取进包图标: ${bad}`)
+})
+
 console.log("asset path tests passed")

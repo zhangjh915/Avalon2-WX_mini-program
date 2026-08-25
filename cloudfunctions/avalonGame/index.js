@@ -328,6 +328,23 @@ async function botSuggest(event, openid) {
   fail("当前阶段没有需要测试骑士决定的事")
 }
 
+// 给客户端签发资产的下载链接。
+//
+// 为什么需要它：云存储权限是「仅创建者可读写」（个人版环境改权限要付费），
+// 于是 <image src="cloud://"> 和 wx.cloud.downloadFile 只有上传者本人能用，
+// 其他任何账号（多账号调试的虚拟用户、朋友的手机）全是裂图。
+// 云函数在服务端以**管理员身份**运行，不受存储权限限制——由它签链接，
+// 客户端用普通 https 下载落地，之后一律读本地文件。
+// 签名链接约 10 分钟过期，但只在下载那一刻用一次，过期无所谓。
+async function assetUrls(event) {
+  const ids = (event.fileIDs || [])
+    .filter(id => typeof id === "string" && /^cloud:\/\/[^/]+\/assets\//.test(id))
+    .slice(0, 20)   // 一次最多 20 个，够任何页面用；防止拿它当通用签名器
+  if (!ids.length) fail("没有可签发的资产")
+  const res = await cloud.getTempFileURL({ fileList: ids })
+  return { urls: (res.fileList || []).map(item => ({ fileID: item.fileID, url: item.tempFileURL || "" })) }
+}
+
 async function createRoom(event, openid) {
   const playerCount = Number(event.playerCount)
   if (playerCount < 5 || playerCount > 10) fail("当前支持5至10人局")
@@ -870,6 +887,7 @@ async function dispatch(event, openid) {
     case "traitorDecision":
     case "finalIdentify": return finaleAction(event, openid)
     case "botSuggest": return botSuggest(event, openid)
+    case "assetUrls": return assetUrls(event)
     case "getResult": return getResult(event, openid)
     default: fail("未知游戏操作")
   }

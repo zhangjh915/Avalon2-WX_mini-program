@@ -45,6 +45,7 @@ Page({
   enterRoom(roomId) {
     // 图标集与色板都是常量，进房时下发一次即可，不必跟着 1200ms 的轮询重推
     this.setData({ roomId, ui: assets.uiIcons(), ...assets.floorOptions() })
+    this.resolveFloorArts()
     this.loadRoom(true)
     this.startPolling()
   },
@@ -161,6 +162,20 @@ Page({
     assets.setFloorColor(event.currentTarget.dataset.color)
     // 台面那张图挂在 ui.floor 上，跟着一起换
     this.setData({ ...assets.floorOptions(), ui: assets.uiIcons() })
+    this.resolveFloorArts()
+  },
+
+  // 地毯与色板都在云存储，非创建者读不到 cloud://，一律经云函数签名后落本地。
+  // localCopy 有缓存与并发去重，重复调用只有第一次真的下载。
+  resolveFloorArts() {
+    assets.localCopy((this.data.ui || {}).floor).then(path => {
+      if ((this.data.ui || {}).floor !== path) this.setData({ "ui.floor": path })
+    })
+    const options = this.data.floorOptions || []
+    Promise.all(options.map(item => assets.localCopy(item.src))).then(paths => {
+      if (paths.every((path, index) => path === options[index].src)) return
+      this.setData({ floorOptions: options.map((item, index) => ({ ...item, src: paths[index] })) })
+    })
   },
 
   // 离开候场页。必须先停轮询并上锁：轮询每 1200ms 就会再发一次 redirectTo，

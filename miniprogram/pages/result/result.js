@@ -40,7 +40,7 @@ Page({
       return {
         round: mission.round,
         winner: mission.winner,
-        crest: assets.uiAsset(mission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
+        crest: assets.packedAsset(mission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
         title: `第${mission.round}次远征 · ${mission.winner === "good" ? "成功" : "失败"}`,
         detail: `队长 ${leader ? `${leader.id}号 ${leader.name}` : `${mission.leaderId}号`}，同行 ${team}，魔法 ${magic}，成功 ${mission.successCount} 票，失败 ${mission.failCount} 票${mission.protectedRound ? "，本轮为保护轮" : ""}。`
       }
@@ -48,7 +48,7 @@ Page({
     const finalLine = this.buildFinalLine(game)
     const report = `本局由${winnerName}取得最终胜利，任务比分为正义 ${game.goodWins} 比邪恶 ${game.evilWins}。${finalLine}`
     this.setData({ game, winnerName, missionLines, players, report, finalLine,
-      verdictCrest: assets.uiAsset(game.winner === "good" ? "crest-good.png" : "crest-evil.png"), hostLine: pickLine("ending", game.missions.length) })
+      verdictCrest: assets.packedAsset(game.winner === "good" ? "crest-good.png" : "crest-evil.png"), hostLine: pickLine("ending", game.missions.length) })
   },
 
   buildFinalLine(game) {

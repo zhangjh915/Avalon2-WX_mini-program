@@ -114,7 +114,11 @@ function createCloudMock() {
       DYNAMIC_CURRENT_ENV: "test",
       init() {},
       database: () => database,
-      getWXContext: () => ({ OPENID: openid })
+      getWXContext: () => ({ OPENID: openid }),
+      // 服务端签名接口：管理员身份、不受存储权限限制，这里给个可辨认的假链接
+      async getTempFileURL({ fileList }) {
+        return { fileList: (fileList || []).map(id => ({ fileID: id, tempFileURL: "https://signed.example/" + id.split("/").pop() })) }
+      }
     },
     setOpenid(value) { openid = value },
     get(name, id) { return records(name).get(String(id)) },
@@ -805,6 +809,25 @@ async function testStepModeHandoffAmulet() {
   console.log("  step mode handoff amulet ok")
 }
 
+// assetUrls：云函数以管理员身份给客户端签资产链接。
+// 存在的原因：云存储权限是「仅创建者可读写」（个人版改权限要付费），
+// 非创建者读 cloud:// 全裂——多账号调试的虚拟用户第一次暴露了这个问题。
+async function testAssetUrls() {
+  cloudMock.reset()
+  const good = await action("assetUrls", { fileIDs: [
+    "cloud://env-id.x-y/assets/ui/floor-indigo.jpg",
+    "cloud://env-id.x-y/assets/roles/painted/morgan.jpg"
+  ] })
+  assert.strictEqual(good.urls.length, 2)
+  assert.ok(good.urls.every(item => item.url.indexOf("https://") === 0), "要返回可直接下载的 https 链接")
+
+  // 白名单：只签 assets/ 目录，不能当通用签名器用
+  let denied = ""
+  try { await action("assetUrls", { fileIDs: ["cloud://env-id.x-y/secrets/dump.json"] }) } catch (error) { denied = error.message }
+  assert.ok(denied, "assets/ 之外的路径必须拒绝")
+  console.log("  asset urls ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -826,6 +849,7 @@ async function run() {
   await testHunterVoteVariant()
   await testStepModeBotSuggest()
   await testStepModeHandoffAmulet()
+  await testAssetUrls()
   console.log("cloud function integration tests passed")
 }
 

@@ -113,6 +113,26 @@ Page({
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
   },
 
+  // 云端图解析成本地路径后替换上屏。守卫：值没变不 setData（applyState 每 900ms 一轮）。
+  resolveRemoteArts(roleSkin, role, artVariant) {
+    const wants = {
+      myRoleArt: assets.roleArt(roleSkin, role, artVariant),
+      identityBackArt: assets.identityBack(roleSkin),
+      "ui.floor": assets.uiIcons().floor
+    }
+    Object.keys(wants).forEach(field => {
+      const fileID = wants[field]
+      if (!fileID) return
+      assets.localCopy(fileID).then(path => {
+        const current = field === "ui.floor" ? (this.data.ui || {}).floor : this.data[field]
+        if (current === path) return
+        const patch = {}
+        patch[field] = path
+        this.setData(patch)
+      })
+    })
+  },
+
   loadState(showError) {
     if (this.loading || this.data.syncing) return Promise.resolve()
     const generation = this.stateGeneration
@@ -263,7 +283,7 @@ Page({
       historyAmulets: history.amulets,
       myInspections: dossier.myInspections,
       waitingHint,
-      myRoleArt,
+      myRoleArt: this.data.myRoleArt || myRoleArt,
       identityUnlocked,
       myInitial,
       // 图在第一次真正显示时才开始下载，于是每换一个阶段都要白等一次。
@@ -280,7 +300,7 @@ Page({
         assets.missionCard(missionSkin, "fail"),
         assets.uiIcons().floor
       ].filter(Boolean),
-      identityBackArt: assets.identityBack(roleSkin),
+      identityBackArt: this.data.identityBackArt || assets.identityBack(roleSkin),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
       missionCardFail: assets.missionCard(missionSkin, "fail"),
@@ -288,6 +308,7 @@ Page({
       syncing: false
     })
     this.refreshLongTable()
+    this.resolveRemoteArts(roleSkin, privateView.role, privateView.artVariant)
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
@@ -312,7 +333,7 @@ Page({
       if (finalMission) events.push({
         type: finalMission.winner === "good" ? "mission-good" : "mission-evil",
         symbol: "",
-        symbolImage: assets.uiAsset(finalMission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
+        symbolImage: assets.packedAsset(finalMission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
         title: `第 ${finalMission.round} 次远征${finalMission.winner === "good" ? "成功" : "失败"}`,
         subtitle: `成功 ${finalMission.successCount} 票 · 失败 ${finalMission.failCount} 票`,
         target: null
@@ -320,7 +341,7 @@ Page({
       events.push({
         type: goodReachedThree ? "finale-good" : "finale-evil",
         symbol: "",
-        symbolImage: assets.uiAsset(goodReachedThree ? "crest-good.png" : "crest-evil.png"),
+        symbolImage: assets.packedAsset(goodReachedThree ? "crest-good.png" : "crest-evil.png"),
         title: goodReachedThree ? "圣杯三度告捷" : "黑暗三度得手",
         subtitle: "常规远征结束，最终审判开启",
         target: null
@@ -330,7 +351,7 @@ Page({
     if (previousFinalStage !== "hunterTargets" && finalStage === "hunterTargets" && game.final.hunterRevealed) {
       const hunter = players.find(player => player.revealed) || null
       events.push({
-        type: "hunter", symbol: "", symbolImage: assets.uiAsset("crest-evil.png"), title: "盲眼杀手现身",
+        type: "hunter", symbol: "", symbolImage: assets.packedAsset("crest-evil.png"), title: "盲眼杀手现身",
         subtitle: hunter ? `${hunter.id}号 ${hunter.name} 发动最后猎杀` : "圆桌禁止交谈，等待最后猎杀",
         target: hunter
       })
@@ -436,8 +457,8 @@ Page({
         state: mission ? (mission.winner === "good" ? "success" : "fail") : (round === game.round ? "current" : "future"),
         // 四态各是一张完整图标（自带圆形外观），不再靠 CSS 圆框 + 汉字
         icon: mission
-          ? (mission.winner === "good" ? assets.uiAsset("crest-good.png") : assets.uiAsset("crest-evil.png"))
-          : (round === game.round ? assets.uiAsset("mission-current.png") : assets.uiAsset("mission-pending.png")),
+          ? (mission.winner === "good" ? assets.packedAsset("crest-good.png") : assets.packedAsset("crest-evil.png"))
+          : (round === game.round ? assets.packedAsset("mission-current.png") : assets.packedAsset("mission-pending.png")),
         label: mission ? (mission.winner === "good" ? "成" : "败") : String(round),
         protected: game.missionPreset.protectedRounds.indexOf(round) >= 0
       }
