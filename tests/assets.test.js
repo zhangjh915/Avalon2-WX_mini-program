@@ -84,9 +84,14 @@ PACKED.forEach(key => {
   assert.ok(fs.existsSync(abs), `包内图标文件缺失 ${icons[key]}`)
 })
 // 大图上不了主包，只能留云存储
-;["homeBg", "floor"].forEach(key => {
+;["floor"].forEach(key => {
   assert.ok(icons[key] && icons[key].startsWith("cloud://"), `${key} 应留在云存储`)
 })
+// 首页底图已整张下线，改用 CSS 渐变：零字节、零网络、首屏即刻出现。
+// 锁住别再长回来——它是第一屏，一张走云存储的底图要先签名再下载才显示。
+assert.ok(!("homeBg" in icons), "首页底图应已下线，改用 CSS 渐变")
+const indexWxss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "index", "index.wxss"), "utf8")
+assert.match(indexWxss, /\.home-page\s*\{[^}]*gradient/, "首页底色应由 CSS 渐变提供")
 // 打包排除要跟着走：排掉大图、别把图标一起排了
 const ignoredNow = (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "project.config.json"), "utf8"))
   .packOptions.ignore || []).map(x => x.value)
@@ -207,9 +212,10 @@ assert.ok(!("resolveTempUrls" in assets), "临时链接机制应当已移除")
 const uiSrc = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "utils", "assets.js"), "utf8")
 assert.ok(!/getTempFileURL\s*\(/.test(uiSrc), "不该再调用 getTempFileURL")
 
-// 四类原本走 CSS 背景的图，现在都由 <image> 渲染（不再有临时链接那一环）。
-// 其中 tableRound / seal 已进包走绝对路径，floor / homeBg 体积大留云存储。
-;["tableRound", "homeBg", "floor", "seal"].forEach(key => {
+// 原本走 CSS 背景的图现在都由 <image> 渲染（不再有临时链接那一环）。
+// 其中 tableRound / seal 已进包走绝对路径，floor 体积大留云存储；
+// homeBg 整张下线了，首页底色改由 CSS 渐变提供。
+;["tableRound", "floor", "seal"].forEach(key => {
   assert.ok(icons[key], `${key} 缺失`)
   assert.ok(/^(\/assets\/|cloud:\/\/)/.test(icons[key]), `${key} 取图方式不对：${icons[key]}`)
 })
@@ -246,7 +252,7 @@ if (fs.existsSync(UI_DIR)) {
     const name = icons[key].slice((assets.CLOUD_PREFIX + "assets/ui/").length)
     assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
   })
-  ;["table-round.jpg", "home-bg.jpg", "home-emblem.png"].forEach(name => {
+  ;["table-round.jpg", "home-emblem.png"].forEach(name => {
     assert.ok(fs.existsSync(path.join(UI_DIR, name)), `缺少界面资产 ${name}`)
   })
   assets.FLOOR_COLORS.forEach(item => {

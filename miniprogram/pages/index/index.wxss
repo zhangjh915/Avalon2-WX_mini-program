@@ -1,3 +1,13 @@
+/* 首页底：不用图。
+   之前那张木纹 jpg（151KB、走云存储、首屏还要等一次签名+下载）被产品主否了，
+   原话是「还不如纯色呢」。CSS 渐变零字节、零网络、首屏即刻出现，
+   而且深浅浓淡随时能调，不用重新出图——图片版做不到这点。 */
+.home-page {
+  background:
+    radial-gradient(140% 90% at 50% -14%, #fffdf8 0%, #f7f0e4 52%, #ece1cd 100%),
+    #f4ecdd;
+}
+
 .setting-row, .toggle-row, .role-config-head, .player-count-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e5ded2; }
 .setting-block { padding: 26rpx 0 22rpx; border-bottom: 1rpx solid #e5ded2; }
 .setting-label { color: #332c25; font-size: 28rpx; font-weight: 650; }

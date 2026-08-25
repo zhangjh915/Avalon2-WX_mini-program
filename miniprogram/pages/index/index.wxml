@@ -1,4 +1,4 @@
-<view class="page"><image class="page-bg" src="{{ui.homeBg}}" mode="aspectFill" data-field="ui.homeBg" data-raw="{{homeBgRaw}}" binderror="onRemoteImageError" />
+<view class="page home-page">
   <view class="page-body">
   <view class="home-brand">
     <image class="home-emblem" src="{{homeEmblem}}" mode="aspectFit" />

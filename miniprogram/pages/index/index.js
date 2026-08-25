@@ -88,11 +88,6 @@ Page({
       }))
     })
     this.setData({ homeEmblem: assets.packedAsset("home-emblem.png"), ui: assets.uiIcons() })
-    // 首页底图在云存储，非创建者读不到 cloud://，签名后落本地再替换
-    this.setData({ homeBgRaw: assets.uiIcons().homeBg })
-    assets.localCopy(assets.uiIcons().homeBg).then(path => {
-      if ((this.data.ui || {}).homeBg !== path) this.setData({ "ui.homeBg": path })
-    })
     // CSS 背景不认 cloud://，先换成 https 临时链接
 
     this.refreshSkinSelection()

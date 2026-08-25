@@ -183,9 +183,7 @@ const STATIC_ICONS = {
   missionCurrent: packedAsset("mission-current.png"),
   seal: packedAsset("seal-base.png"),
   tableRound: packedAsset("table-round.jpg"),
-  homeEmblem: packedAsset("home-emblem.png"),
-  // 这两类体积大，只能留在云存储
-  homeBg: uiAsset("home-bg.jpg")
+  homeEmblem: packedAsset("home-emblem.png")
 }
 
 function uiIcons() {
