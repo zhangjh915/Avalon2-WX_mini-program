@@ -248,6 +248,13 @@ function localCopy(fileID) {
   return inflight[fileID]
 }
 
+// 预热：把接下来的环节要用的图提前下载进缓存（fire-and-forget）。
+// localCopy 自带缓存与并发去重，重复预热零成本。
+// 缓存是模块级的、全小程序共享——候场页热过的图，对局页直接命中。
+function prefetch(list) {
+  ;(list || []).forEach(fileID => { localCopy(fileID) })
+}
+
 // 任务牌在包内，返回绝对路径
 function missionCard(skin, face) {
   return `/assets/cards/mission/skin-${skin || "a"}/${face}.jpg`
@@ -257,6 +264,7 @@ module.exports = {
   CLOUD_PREFIX,
   floorOptions,
   localCopy,
+  prefetch,
   FLOOR_COLORS,
   DEFAULT_FLOOR,
   normalizeFloorColor,

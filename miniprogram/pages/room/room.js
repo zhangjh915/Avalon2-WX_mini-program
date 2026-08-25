@@ -130,7 +130,15 @@ Page({
     else settings.push("圆桌")
     if (room.settings && room.settings.unknownRoles) settings.push("未知角色")
     if (room.settings && room.settings.hunterVoteVariant) settings.push("猎杀投票")
+    // 预热下一个环节：身份卡背是进对局的第一屏大图，皮肤建房时就定了，
+    // 趁大家还在候场就把它下好——开局后第一眼不用等下载。
+    // （地毯、长桌本页已在下载；立绘要发牌后才知道是谁的，热不了）
+    if (!this.prefetchedBack && room.roleSkin !== undefined) {
+      this.prefetchedBack = true
+      assets.prefetch([assets.identityBack(room.roleSkin || "painted")])
+    }
     const mySeat = seats.find(seat => seat.isMine)
+
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(room.playerCount, room.seatLayout, room.tableSides))
     this.setData({
       room: { ...room, seats },

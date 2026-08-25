@@ -303,4 +303,11 @@ assert.ok(!/\.compact-seat-token \.seat-caption \{[^}]*color: #3d332a/.test(room
   assert.ok(!bad, `${page}.js 还在用云端路径取进包图标: ${bad}`)
 })
 
+// 预热链：候场页要提前热身份卡背（进对局第一屏的大图，皮肤建房时已定）。
+// 断了不会报错，只会退化成「要用时现下」，玩家看到的就是第一屏空一秒。
+assert.strictEqual(typeof assets.prefetch, "function")
+assert.doesNotThrow(() => assets.prefetch(["cloud://x.y/assets/ui/a.jpg", null]), "无 wx 环境下预热不能炸")
+const roomSrc2 = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "room", "room.js"), "utf8")
+assert.match(roomSrc2, /prefetch\(\[assets\.identityBack/, "候场页要预热身份卡背")
+
 console.log("asset path tests passed")
