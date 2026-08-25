@@ -84,17 +84,15 @@
       </view>
     </view>
 
+    <!-- 首夜由真人主持念稿，app 不再逐句推进：屏幕上只留一个「天亮」按钮，
+         认人全程玩家是闭着眼的，任何文字都没人看，还会让房主分心去读屏。 -->
     <view wx:if="{{phase === 'night'}}" class="phase-content ceremony-content">
-      <view class="ceremony-mark"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><text>夜</text></view>
-      <view class="ceremony-step">首夜仪式 · 第 {{nightStep + 1}} / {{nightCeremony.length}} 步</view>
-      <view class="ceremony-text">{{currentNightLine.text}}</view>
-      <view class="directive-progress"><view style="width: {{nightProgressPercent}}%;"></view></view>
+      <view class="night-moon"></view>
+      <view class="night-title">天黑请闭眼</view>
       <view wx:if="{{isHost}}" class="night-controls">
-        <button class="secondary-action" bindtap="prevNightStep" disabled="{{nightStep === 0}}">上一步</button>
-        <button wx:if="{{!nightLastStep}}" class="primary-action" bindtap="nextNightStep">念完了，下一步</button>
-        <button wx:else class="launch-action" bindtap="enterMission">天亮，开始远征</button>
+        <button class="launch-action" bindtap="enterMission">天亮，开始远征</button>
       </view>
-      <view wx:else class="waiting-copy">请按主持的指令行动，节奏由房主掌握。</view>
+      <view wx:else class="waiting-copy">闭眼等待，听主持人的指令行动。</view>
     </view>
 
     <view wx:if="{{phase === 'mission'}}" class="phase-content">

@@ -18,8 +18,6 @@ Page({
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
     roleVisible: false, identityMode: "prepare", identityCountdown: 3, identitySecondsLeft: 40,
     identityReady: false, identityRemembered: false, identityReadyCount: 0, identityRememberedCount: 0,
-    nightCeremony: [], currentNightLine: {}, nightStep: 0, nightLastStep: false, nightProgressPercent: 0,
-    nightDirective: { title: "天黑请闭眼", subtitle: "请听指令" },
     leader: null, isLeader: false, missionSize: 0, protectedText: "", missionTrack: [],
     canControlLeader: false,
     tableOrientation: "horizontal",
@@ -210,8 +208,6 @@ Page({
     const retainedTraitorSide = finalStageChanged ? "" : this.data.traitorSide
     const finalSelectionMode = this.resolveFinalSelectionMode(finalStage, privateView, retainedTraitorSide)
     const lastMission = game.missions.length ? game.missions[game.missions.length - 1] : null
-    const nightCeremony = ttsData.buildNightCeremonyFromSettings(room.settings || {})
-    const nightStep = Math.min(this.data.nightStep, Math.max(nightCeremony.length - 1, 0))
     const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
     // dossier 必须先建：圆桌纪录要用它的 myVotes 标出自己那一轮打的牌。
@@ -240,11 +236,6 @@ Page({
       identityReadyCount: identity.readyIds.length, identityRememberedCount: identity.rememberedIds.length,
       canClaimGood: (privateView.inspectionOptions || []).indexOf("good") >= 0,
       canClaimEvil: (privateView.inspectionOptions || []).indexOf("evil") >= 0,
-      nightCeremony, nightStep, currentNightLine: nightCeremony[nightStep] || {},
-      // 轮询每次都会重算 nightStep（保留房主已推进到的位置），派生字段要跟着一起更新
-      nightLastStep: nightStep >= nightCeremony.length - 1,
-      nightProgressPercent: nightCeremony.length ? Math.round((nightStep + 1) / nightCeremony.length * 100) : 0,
-      nightDirective: ttsData.pickNightDisplay(Number(game.firstLeaderId || 0) + Number(game.playerCount || 0)),
       leader, isLeader: privateView.id === game.leaderId,
       devMode,
       stepMode: !!room.stepMode,
@@ -310,7 +301,6 @@ Page({
       this.identityFlippedAt = 0
       this.setData({ cardFlipped: false })
     }
-    if (phaseChanged && room.phase === "night") this.startNightDirectives()
     if (phaseChanged && room.phase === "missionResult") this.vibrate(lastMission && lastMission.winner === "evil" ? "heavy" : "medium")
   },
 
@@ -654,34 +644,6 @@ Page({
   enterNight() { this.sendAction("enterNight") },
 
   // 首夜由房主逐条念、逐条推进。
-  // 早先是 5 秒定时自动跳过，主持根本跟不上，也没法回看上一条指令；
-  // 主持体验是这个产品的核心价值，节奏必须握在人手里。
-  startNightDirectives() {
-    this.applyNightStep(0)
-  },
-
-  applyNightStep(step) {
-    const ceremony = this.data.nightCeremony || []
-    const total = Math.max(ceremony.length, 1)
-    const nightStep = Math.min(Math.max(step, 0), total - 1)
-    this.setData({
-      nightStep,
-      currentNightLine: ceremony[nightStep] || {},
-      nightLastStep: nightStep >= total - 1,
-      nightProgressPercent: Math.round((nightStep + 1) / total * 100)
-    })
-  },
-
-  nextNightStep() {
-    if (this.data.nightLastStep) return
-    this.applyNightStep(this.data.nightStep + 1)
-    this.vibrate("light")
-  },
-
-  prevNightStep() {
-    if (this.data.nightStep <= 0) return
-    this.applyNightStep(this.data.nightStep - 1)
-  },
   enterMission() { this.sendAction("enterMission") },
 
   // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，

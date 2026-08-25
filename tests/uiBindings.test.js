@@ -157,3 +157,19 @@ assert.match(playSrc5, /identityMode === "remember"[\s\S]{0,200}dossierVisible: 
 
 delete global.Page
 console.log("UI binding tests passed")
+// 首夜屏：真人主持念稿，app 只提供一个「天亮」按钮。
+// 逐句推进的仪式脚本已整套下线——玩家认人时全程闭眼，屏上文字没人看，
+// 还逼房主一边主持一边读屏。锁住：不许把脚本推进重新长回来。
+const nightBlock = (playWxml.match(/<view wx:if="\{\{phase === 'night'\}\}"[\s\S]*?\n    <\/view>/) || [""])[0]
+assert.ok(nightBlock, "找不到首夜屏区块")
+;["nightStep", "currentNightLine", "nightProgressPercent", "nextNightStep", "prevNightStep"].forEach(gone => {
+  assert.ok(nightBlock.indexOf(gone) < 0, `首夜屏不该再有仪式脚本推进: ${gone}`)
+})
+const nightButtons = nightBlock.match(/<button[^>]*bindtap="([^"]+)"/g) || []
+assert.strictEqual(nightButtons.length, 1, `首夜屏房主只该有一个按钮，实际 ${nightButtons.length} 个`)
+assert.match(nightButtons[0], /bindtap="enterMission"/, "那一个按钮必须是「天亮」")
+const playSrcNight = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+;["applyNightStep", "startNightDirectives", "nightCeremony", "nightDirective"].forEach(gone => {
+  assert.ok(playSrcNight.indexOf(gone) < 0, `play.js 残留已下线的夜间仪式代码: ${gone}`)
+})
+

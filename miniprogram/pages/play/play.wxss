@@ -1881,3 +1881,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 
 /* 双败保护标签：这条规则直接改变出牌判定，要一眼看到，不能混在小字里 */
 .protect-tag { flex: none; margin-left: 10rpx; padding: 3rpx 12rpx; border: 2rpx solid #d0b36f; border-radius: 999rpx; color: #ead38c; font-size: 19rpx; font-weight: 800; }
+
+/* 首夜屏：真人主持念稿，屏幕上只留月亮 + 一句话 + 房主的「天亮」按钮。
+   玩家全程闭着眼，多写一个字都是给房主添乱。 */
+.night-title { margin-bottom: 6rpx; color: #e8ebe6; font-size: 36rpx; font-weight: 900; letter-spacing: 4rpx; text-align: center; }
