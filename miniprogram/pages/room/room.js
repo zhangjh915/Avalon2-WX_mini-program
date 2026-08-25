@@ -13,7 +13,9 @@ Page({
     ui: {}, floorColor: "", floorOptions: [],
     mySeatNo: 0,
     seatedCount: 0,
-    tableType: "round",
+    // 初始留空：数据没到就什么桌子都不画。写 "round" 的话，别的玩家进长桌房
+    // 会先看到圆桌闪一下再消失。
+    tableType: "",
     tableOrientation: "horizontal",
     longTable: null, stageW: 0, stageH: 0,
     tableWidth: 44,
