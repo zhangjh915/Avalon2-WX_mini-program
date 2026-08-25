@@ -87,11 +87,13 @@ PACKED.forEach(key => {
 ;["floor"].forEach(key => {
   assert.ok(icons[key] && icons[key].startsWith("cloud://"), `${key} 应留在云存储`)
 })
-// 首页底图已整张下线，改用 CSS 渐变：零字节、零网络、首屏即刻出现。
-// 锁住别再长回来——它是第一屏，一张走云存储的底图要先签名再下载才显示。
-assert.ok(!("homeBg" in icons), "首页底图应已下线，改用 CSS 渐变")
-const indexWxss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "index", "index.wxss"), "utf8")
-assert.match(indexWxss, /\.home-page\s*\{[^}]*gradient/, "首页底色应由 CSS 渐变提供")
+// 首页底图必须**进包**。它是第一屏：走云存储要先调云函数签名、再下载才显示，
+// 是全 app 最不该等的地方。62KB 进包完全放得下，别为了省包体把它挪回云端。
+assert.ok(icons.homeBg && icons.homeBg.startsWith("/assets/ui/"), `首页底图必须进包，实际 ${icons.homeBg}`)
+assert.ok(fs.existsSync(path.join(__dirname, "..", "miniprogram", icons.homeBg.replace(/^\//, ""))), "首页底图文件缺失")
+const ignoreNames = (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "project.config.json"), "utf8"))
+  .packOptions.ignore || []).map(x => x.value)
+assert.ok(!ignoreNames.includes("assets/ui/home-bg.jpg"), "首页底图不该被排出主包")
 // 打包排除要跟着走：排掉大图、别把图标一起排了
 const ignoredNow = (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "project.config.json"), "utf8"))
   .packOptions.ignore || []).map(x => x.value)

@@ -330,3 +330,12 @@ button:active,
    单写 .deliver-token 只有 (0,1,0) 会被它压成 z-index:1，
    而道具在 DOM 里排在座位之前，于是飞过去就被头像盖住了。 */
 .table-stage > .deliver-token { z-index: 6; }
+
+/* 座位头像图：填满圆形容器。头像自带圆底，外面不加环——
+   加了环反而把本来就只有 32~42pt 的可视面积再吃掉一圈。 */
+.seat-avatar-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}

@@ -26,7 +26,7 @@
       <image wx:elif="{{tableType === 'round'}}" class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
       <image class="table-emblem" style="{{tableType === 'long' ? longTable.emblemStyle : ''}}" src="{{ui.tableEmblem}}" mode="aspectFit" />
       <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="chooseSeat" data-seat="{{item.seatNo}}">
-        <view class="seat-avatar">{{item.name ? item.initial : ''}}</view>
+        <view class="seat-avatar"><image wx:if="{{item.avatar}}" class="seat-avatar-art" src="{{item.avatar}}" mode="scaleToFill" /><text wx:else>{{item.name ? item.initial : ''}}</text></view>
         <view class="seat-caption"><text>{{item.seatNo}}号</text><text wx:if="{{item.name}}"> {{item.name}}</text></view>
         <view wx:if="{{item.isMine}}" class="mine-dot"></view>
       </view>

@@ -1,11 +1,20 @@
-/* 首页底：不用图。
-   之前那张木纹 jpg（151KB、走云存储、首屏还要等一次签名+下载）被产品主否了，
-   原话是「还不如纯色呢」。CSS 渐变零字节、零网络、首屏即刻出现，
-   而且深浅浓淡随时能调，不用重新出图——图片版做不到这点。 */
-.home-page {
-  background:
-    radial-gradient(140% 90% at 50% -14%, #fffdf8 0%, #f7f0e4 52%, #ece1cd 100%),
-    #f4ecdd;
+/* 首页底：烛光下的圆桌，62KB 进包（不走云存储，首屏不用等下载）。
+   图是**深色**的，所以首页的基础层必须跟着改深——深底上贴浅色卡片会很脏。
+   只改基础层：弹层（创建/加入/皮肤三张卡）留在浅色，它们有自己的遮罩背景，
+   深底上浮一张浅卡片是正常的层次关系，不用动。 */
+.home-page { background: #0d1210; }
+
+/* 深底上的基础层。色值取自底图本身的暗部，保证前景像长在图里而不是贴上去的 */
+.home-page .title { color: #f0ece2; }
+.home-page .section-title { color: #b9c0b8; }
+.home-page .panel {
+  background: rgba(23, 31, 27, 0.72);
+  border-color: rgba(150, 162, 150, 0.28);
+}
+.home-page .input {
+  border-color: rgba(150, 162, 150, 0.3);
+  background: rgba(12, 17, 15, 0.6);
+  color: #eef0ea;
 }
 
 .setting-row, .toggle-row, .role-config-head, .player-count-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 24rpx 0; border-bottom: 1rpx solid #e5ded2; }
@@ -127,11 +136,35 @@
 .home-emblem { display: block; width: 94rpx; height: 94rpx; }
 .identity-panel { margin-bottom: 18rpx; }
 .home-actions { display: grid; gap: 14rpx; }
-.home-command { display: flex; min-height: 118rpx; padding: 20rpx; align-items: center; border: 2rpx solid #d5c6b2; border-radius: 8rpx; background: #fffaf1; box-sizing: border-box; }
-.command-symbol { display: flex; width: 64rpx; height: 64rpx; margin-right: 18rpx; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: #6f4728; color: #fff7e9; font-size: 30rpx; font-weight: 900; }
-.join-command .command-symbol { background: #315d4c; font-size: 22rpx; }
-.command-title { color: #2b251f; font-size: 29rpx; font-weight: 850; }
-.command-arrow { margin-left: auto; color: #8b7d6e; font-size: 46rpx; line-height: 1; }
+.home-command {
+  display: flex;
+  min-height: 118rpx;
+  padding: 20rpx;
+  align-items: center;
+  border: 2rpx solid rgba(158, 170, 156, 0.3);
+  border-radius: 8rpx;
+  background: rgba(23, 31, 27, 0.72);
+}
+.command-symbol {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  margin-right: 18rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 图标是透明底的独立金属造型，自带轮廓，不要再垫棕色圆底——
+   垫了等于给它套一层跟画面无关的色块。尺寸按 44pt 出的图，就用 44pt。 */
+.command-symbol-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.command-title { color: #f0ece2; font-size: 29rpx; font-weight: 850; }
+.command-arrow { margin-left: auto; color: #8b968a; font-size: 46rpx; line-height: 1; }
 .join-command-body { min-width: 0; flex: 1; }
 .join-overlay { position: fixed; z-index: 1100; inset: 0; display: flex; align-items: flex-end; background: rgba(24,20,17,.62); animation: overlay-fade-in 160ms ease-out; }
 .join-sheet { width: 100%; padding: 16rpx 28rpx calc(28rpx + env(safe-area-inset-bottom)); border-radius: 14rpx 14rpx 0 0; background: #f8f3ea; box-sizing: border-box; animation: sheet-rise-in 220ms cubic-bezier(.2,.8,.2,1); }

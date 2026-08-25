@@ -287,7 +287,10 @@ Page({
   decorateSeats(seats, count, tableType, seatLayout, tableSides) {
     return seats.map((seat, index) => {
       const pos = tableLayout.seatPosition(index, count, tableType, seatLayout, tableSides)
-      return { ...seat, x: pos.x, y: pos.y, initial: seat.name ? seat.name.slice(0, 1) : String(seat.seatNo) }
+      return { ...seat, x: pos.x, y: pos.y,
+        initial: seat.name ? seat.name.slice(0, 1) : String(seat.seatNo),
+        // 空座位不给头像，留白格提示「这里还没人」
+        avatar: seat.name ? assets.avatarArt(this.data.roomId, seat.seatNo) : "" }
     })
   },
 

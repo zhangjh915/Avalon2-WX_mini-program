@@ -1,4 +1,4 @@
-<view class="page home-page">
+<view class="page home-page"><image class="page-bg" src="{{ui.homeBg}}" mode="aspectFill" />
   <view class="page-body">
   <view class="home-brand">
     <image class="home-emblem" src="{{homeEmblem}}" mode="aspectFit" />
@@ -12,13 +12,13 @@
 
   <view class="home-actions">
     <view class="home-command create-command" bindtap="openCreateSetup">
-      <view class="command-symbol">+</view>
+      <view class="command-symbol"><image class="command-symbol-art" src="{{ui.homeCreate}}" mode="aspectFit" /></view>
       <view class="command-title">创建游戏</view>
       <view class="command-arrow">›</view>
     </view>
 
     <view class="home-command join-command" bindtap="openJoinPad">
-      <view class="command-symbol">入</view>
+      <view class="command-symbol"><image class="command-symbol-art" src="{{ui.homeJoin}}" mode="aspectFit" /></view>
       <view class="join-command-body">
         <view class="command-title">加入游戏</view>
       </view>

@@ -14,6 +14,7 @@ const phaseNames = {
 
 Page({
   data: {
+    seatSize: 42,
     roomId: "", room: null, game: null, privateView: null, isHost: false,
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
     roleVisible: false, identityMode: "prepare", identityCountdown: 3, identitySecondsLeft: 40,
@@ -187,6 +188,7 @@ Page({
       selected: this.data.selectedTeam.indexOf(player.id) >= 0,
       finalSelected: this.data.finalTargets.indexOf(player.id) >= 0,
       initial: player.name ? player.name.slice(0, 1) : String(player.id),
+      avatar: assets.avatarArt(this.data.roomId, player.id),
       canLead: !player.hasLed && !player.hadAmulet,
       canReceiveAmulet: !player.hasLed && !player.hadAmulet,
       canInspect: !player.hadAmulet && !player.fadedAmulet && (!game.amulet || player.id !== game.amulet.ownerId)
@@ -673,6 +675,34 @@ Page({
     }).exec()
   },
 
+  // 座位直径跟着台面实测尺寸走，不写死。
+  //
+  // 写死为什么不行：选人面板是 flex:1 撑满屏高的（10 人局实测 584pt），
+  // 终局猎杀那块只有 395pt——同一个尺寸放两处，要么选人页浪费一半空间、
+  // 要么终局 10 人局直接叠在一起（实测重叠 4.6pt）。
+  // 取所有座位两两中心距的最小值当步距，减去留白就是能放下的最大直径。
+  refreshSeatSize() {
+    const players = this.data.decoratedPlayers || []
+    const w = this.data.stageW
+    const h = this.data.stageH
+    if (players.length < 2 || !w || !h) return
+    let pitch = Infinity
+    for (let i = 0; i < players.length; i += 1) {
+      for (let j = i + 1; j < players.length; j += 1) {
+        const dx = (players[i].x - players[j].x) / 100 * w
+        const dy = (players[i].y - players[j].y) / 100 * h
+        const gap = Math.sqrt(dx * dx + dy * dy)
+        if (gap < pitch) pitch = gap
+      }
+    }
+    // 减掉的 16pt 不是留白，是**名字条**：它排在头像圆下面（65x14pt），
+    // 只按圆算间距的话，名字会压在下一个人的脸上——10 人局实测压 7.6pt。
+    // 上限 47pt：头像资产按 42pt 画的，再大就开始糊。
+    // 下限 32pt：低于这个认不出谁是谁，宁可名字挨着也不缩。
+    const size = Math.round(Math.max(32, Math.min(47, pitch - 16)))
+    if (size !== this.data.seatSize) this.setData({ seatSize: size })
+  },
+
   refreshLongTable() {
     const data = this.data
     // 选人面板和终局选人区是**两个尺寸不同的台面**，却共用一份 stageW/stageH。
@@ -690,6 +720,9 @@ Page({
       if (data.tableVisible) this.measureStage()
       return
     }
+    // 座位尺寸只依赖台面实测值和座位坐标，和长桌挑档无关——
+    // 放在挑档之后会被「桌子没变就 return」挡掉，圆桌局更是压根走不到那儿。
+    this.refreshSeatSize()
     const longTable = assets.pickLongTable(data.tableWidth, data.tableHeight, data.stageW, data.stageH)
     if (!longTable) return
     const previous = data.longTable || {}

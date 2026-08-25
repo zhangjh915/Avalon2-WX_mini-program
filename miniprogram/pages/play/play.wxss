@@ -1566,9 +1566,11 @@ button::after {
 .final-selection-status { display: flex; margin-bottom: 12rpx; align-items: center; justify-content: space-between; color: #d8ddd9; font-size: 23rpx; font-weight: 900; }
 /* 终局选人区要放得下满编座位：10 人局左右各 5 个，590rpx（295pt）高摆不开、
    座位会挤成一串。抬到 760rpx，桌子也才展示得全。 */
-/* 特异性必须压过 .compact-stage：两者同为单类时按顺序算，.compact-stage 定义在后，
+/* 870rpx 用掉的是实测出来的余量：终局屏视口 753pt、台面下方原本空着 87pt。
+   加高是为了 10 人局——那是唯一放不下的情形，5~9 人局本来就宽裕。
+   特异性必须压过 .compact-stage：两者同为单类时按顺序算，.compact-stage 定义在后，
    单写 .final-inline-stage 的高度会被它的 590rpx 覆盖——终局台面被截断就是这么来的。 */
-.compact-stage.final-inline-stage { height: 760rpx; min-height: 760rpx; border-color: #4c5752; background: #241d18; }
+.compact-stage.final-inline-stage { height: 870rpx; min-height: 870rpx; border-color: #4c5752; background: #241d18; }
 .final-selection-actions { min-height: 108rpx; padding-top: 4rpx; }
 .final-selection-hint { padding: 28rpx 0 16rpx; color: #8f9a94; font-size: 22rpx; text-align: center; }
 .text-command { margin-top: 18rpx; border: 0; background: transparent; color: #9da69f; font-size: 23rpx; text-decoration: underline; }
@@ -1589,8 +1591,11 @@ button::after {
 .sheet-actions button[disabled] { background: #b9ad90; color: #f3eee4; opacity: 1; }
 /* 底色跟着地毯转深，垫底图没加载出来时才不会闪一下浅灰 */
 .compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #4a4038; border-radius: 8rpx; background: #241d18; box-sizing: border-box; }
-.game-seat-token { width: 72rpx; min-height: 72rpx; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
-.game-seat-token .seat-avatar { width: 64rpx; height: 64rpx; margin: 0; border: 3rpx solid #8f9993; background: #405049; font-size: 22rpx; box-sizing: border-box; }
+/* 座位与头像放大到头像资产的设计尺寸（42pt）。
+   不是靠加高舞台换来的——选人页舞台是 flex:1，10 人局实测 584pt 高、
+   相邻座位净间距 25.8pt，一直有富余，是座位自己太小。 */
+.game-seat-token { width: 92rpx; min-height: 92rpx; padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
+.game-seat-token .seat-avatar { width: 84rpx; height: 84rpx; margin: 0; border: 3rpx solid #8f9993; background: #405049; font-size: 22rpx; box-sizing: border-box; }
 .game-seat-token .seat-caption { position: absolute; top: 70rpx; left: 50%; width: 126rpx; overflow: hidden; color: #e6e2d8; font-size: 18rpx; font-weight: 800; line-height: 27rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; transform: translateX(-50%); }
 .game-seat-token.mine .seat-avatar { border-color: #3b8b6c; box-shadow: 0 0 0 5rpx rgba(59,139,108,.14); }
 .game-seat-token.selected .seat-avatar,.game-seat-token.danger-selected .seat-avatar { border-color: #a74742; box-shadow: 0 0 0 7rpx rgba(167,71,66,.15); }

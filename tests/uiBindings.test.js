@@ -93,6 +93,8 @@ assert.match(playSrc2, /tableVisible:\s*phaseChanged \?/, "applyState 仍会自�
 assert.match(playSrc2, /refreshLongTable\(\) \{[\s\S]{0,400}?measureStage\(\)/,
   "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则自动打开的面板挑不出档")
 
+// homeBg 特意不在这张清单里：它已进包、走 /assets/ 绝对路径，
+// 不经云存储也就没有签名/下载失败这回事，不需要 binderror 兜底。
 // 远程图链路：预加载池已退役（localCopy 落地缓存取代了它——池子里的 cloud://
 // 在非创建者窗口只会刷一串加载失败）。取而代之的守卫：
 // 1) 每张远程 image 必须挂 binderror 兜底——落地的 tmp 文件在多账号调试的
@@ -101,7 +103,7 @@ const playSrc3 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
 assert.ok(!/preload-pool|preloadList/.test(playSrc3 + playWxml), "预加载池已退役，不该再出现")
 ;[["play", playWxml], ["room", fs.readFileSync(path.join(root, "room", "room.wxml"), "utf8")],
   ["index", fs.readFileSync(path.join(root, "index", "index.wxml"), "utf8")]].forEach(([name, wxml]) => {
-  const remoteImages = wxml.match(/<image [^>]*src="\{\{(ui\.floor|ui\.homeBg|longTable\.src|myRoleArt|identityBackArt)[^>]*>/g) || []
+  const remoteImages = wxml.match(/<image [^>]*src="\{\{(ui\.floor|longTable\.src|myRoleArt|identityBackArt)[^>]*>/g) || []
   remoteImages.forEach(tag => {
     assert.ok(/binderror="onRemoteImageError"/.test(tag), `${name} 的远程图缺 binderror 兜底: ${tag.slice(0, 70)}`)
     assert.ok(/data-raw=/.test(tag), `${name} 的远程图缺 data-raw（兜底重签要用原始 fileID）: ${tag.slice(0, 70)}`)
@@ -172,4 +174,25 @@ const playSrcNight = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
 ;["applyNightStep", "startNightDirectives", "nightCeremony", "nightDirective"].forEach(gone => {
   assert.ok(playSrcNight.indexOf(gone) < 0, `play.js 残留已下线的夜间仪式代码: ${gone}`)
 })
+
+// 座位尺寸必须跟着台面实测值算，不能写死。
+// 两块台面差很多：选人面板是 flex:1 撑满屏高（10 人局实测 584pt），
+// 终局猎杀那块只有 452pt。写死一个尺寸必然一边浪费一边压脸。
+const playSrcSeat = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
+assert.match(playSrcSeat, /refreshSeatSize\(\)\s*\{/, "缺少座位尺寸自适应")
+const seatFn = playSrcSeat.slice(playSrcSeat.indexOf("refreshSeatSize() {"))
+const seatBody = seatFn.slice(0, seatFn.indexOf("\n  },"))
+assert.match(seatBody, /pitch - 16/, "座位尺寸要减掉名字条的高度，否则名字压在下一个人脸上")
+assert.match(seatBody, /Math\.max\(32/, "座位尺寸要有下限，太小认不出人")
+assert.match(seatBody, /Math\.min\(47/, "座位尺寸要有上限，头像资产按 42pt 画的")
+// 调用点必须在挑档**之前**：挑档有「桌子没变就 return」的早退，
+// 排在它后面的话切台面时算不到，圆桌局更是压根走不到那儿。
+const refresh = playSrcSeat.slice(playSrcSeat.indexOf("\n  refreshLongTable() {"))
+const seatCall = refresh.indexOf("this.refreshSeatSize()")
+const tierPick = refresh.indexOf("assets.pickLongTable(")
+assert.ok(seatCall > 0 && seatCall < tierPick, "refreshSeatSize 必须排在长桌挑档之前")
+// 两块台面的座位都要吃这个尺寸
+const seatTokens = playWxml.match(/<view[^>]*class="seat-token game-seat-token[^>]*>/g) || []
+assert.strictEqual(seatTokens.length, 2, `应有两处座位，实际 ${seatTokens.length}`)
+seatTokens.forEach(tag => assert.match(tag, /width: \{\{seatSize\}\}px/, "座位没吃自适应尺寸"))
 

@@ -183,7 +183,11 @@ const STATIC_ICONS = {
   missionCurrent: packedAsset("mission-current.png"),
   seal: packedAsset("seal-base.png"),
   tableRound: packedAsset("table-round.jpg"),
-  homeEmblem: packedAsset("home-emblem.png")
+  homeEmblem: packedAsset("home-emblem.png"),
+  homeCreate: packedAsset("home-create.png"),
+  homeJoin: packedAsset("home-join.png"),
+  // 62KB，进包。首屏底图走云存储要先签名再下载，是全 app 最不该等的地方
+  homeBg: packedAsset("home-bg.jpg")
 }
 
 function uiIcons() {
@@ -302,6 +306,26 @@ function prefetch(list) {
   ;(list || []).forEach(fileID => { localCopy(fileID) })
 }
 
+// 座位头像：12 张骑士头肩像，方图不带 alpha，靠 border-radius:50% 裁圆
+// （抠图会在人物内部留小洞，圆底本来就该留着当底）。
+//
+// 分配规则必须同时满足三件事：
+//   1. **与身份完全无关** —— 头像若能反推阵营，游戏就毁了
+//   2. 所有客户端算出同一个结果 —— 只用房间号和座号，不碰任何私有数据
+//   3. 一局之内不重样 —— 12 张 > 10 人上限，按座号顺序取即可保证
+// 房间号参与偏移，是为了不同场次的同一座号也能换张脸。
+const AVATAR_COUNT = 12
+
+function avatarArt(roomId, seatNo) {
+  const seat = Number(seatNo)
+  if (!seat) return ""
+  let offset = 0
+  const code = String(roomId || "")
+  for (let i = 0; i < code.length; i += 1) offset = (offset * 31 + code.charCodeAt(i)) % AVATAR_COUNT
+  const index = ((seat - 1 + offset) % AVATAR_COUNT) + 1
+  return packedAsset("avatar/knight-" + (index < 10 ? "0" : "") + index + ".jpg")
+}
+
 // 任务牌在包内，返回绝对路径
 function missionCard(skin, face) {
   return `/assets/cards/mission/skin-${skin || "a"}/${face}.jpg`
@@ -322,6 +346,8 @@ module.exports = {
   setFloorColor,
   uiAsset,
   packedAsset,
+  avatarArt,
+  AVATAR_COUNT,
   uiIcons,
   LONG_TABLES,
   pickLongTable,
