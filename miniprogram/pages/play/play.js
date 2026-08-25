@@ -700,7 +700,13 @@ Page({
         return
       }
       this.measuring = false
-      if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
+      if (rect.width === this.data.stageW && rect.height === this.data.stageH) {
+        // 尺寸没变也要把挑档补完——owner 切换分支靠「重测」带动 refresh，
+        // 这里静默 return 的话 refresh 主体就永远没人执行，longTable 卡在 null，
+        // 桌子只剩 image 默认的 320x240 空框（实测注入终局时就是这么死的）。
+        this.refreshLongTable()
+        return
+      }
       this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
     }).exec()
   },
@@ -743,7 +749,9 @@ Page({
     const mode = event.currentTarget.dataset.mode || "status"
     const titles = { team: "选择同行骑士", magic: "交付魔法指示物", leader: "移交皇冠", amuletOwner: "交付护身符", inspect: "选择查验对象", final: "选择两位玩家", status: "圆桌座位" }
     const hints = {
-      team: `选择${this.data.missionSize}名同行骑士`, magic: "只能选择本轮同行骑士",
+      // 面板全屏盖住主界面，人数与保护轮必须在这里再说一遍
+      team: `本轮 ${this.data.missionSize} 人任务，选满为止${this.data.protectedText ? "；双败保护：需 2 张失败票才失败" : ""}`,
+      magic: "只能选择本轮同行骑士",
       leader: "已担任队长或曾持护身符者不可接任", amuletOwner: "不可与新队长为同一人",
       inspect: "不可查验持符者、曾持符者或已被查验者", final: "每位玩家私密选择两人"
     }

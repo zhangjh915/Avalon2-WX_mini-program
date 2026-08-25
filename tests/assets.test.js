@@ -310,33 +310,44 @@ assert.doesNotThrow(() => assets.prefetch(["cloud://x.y/assets/ui/a.jpg", null])
 const roomSrc2 = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "room", "room.js"), "utf8")
 assert.match(roomSrc2, /prefetch\(\[assets\.identityBack/, "候场页要预热身份卡背")
 
-const tmpBrokenCheck = (function(){
-// 虚拟窗口降级链路：本窗口 tmp 文件渲染不了时（markTmpBroken），
-// localCopy 必须整体改走签名 https——继续吐 tmp 会让「兜底换 https、
-// 缓存 tmp 又覆盖回来」的竞态反复上演，表现为一半窗口有图一半没有。
-{
+
+
+// 两段异步链路测试**必须串行**：它们都要独占 global.wx 并重载 assets 模块，
+// 并行会互相把对方的 wx 换掉（真踩过：第二块先跑，第一块的落地断言就红）。
+const asyncChecks = (async () => {
+  // 1) 真机链路：正常落地；tmp 标记损坏后改走签名 https
   delete require.cache[require.resolve("../miniprogram/utils/assets")]
   global.wx = {
     cloud: { callFunction: ({ success }) => success({ result: { urls: [{ fileID: "x", url: "https://signed.example/a.jpg" }] } }) },
     downloadFile: ({ success }) => success({ statusCode: 200, tempFilePath: "http://tmp/fake-a" }),
-    getStorageSync: () => "", setStorageSync: () => {}
+    getStorageSync: () => "", setStorageSync: () => {},
+    getSystemInfoSync: () => ({ platform: "ios" })
   }
   const fresh = require("../miniprogram/utils/assets")
   const FID = "cloud://env.x-y/assets/ui/a.jpg"
-  return Promise.resolve()
-    .then(() => fresh.localCopy(FID))
-    .then(first => {
-      assert.strictEqual(first, "http://tmp/fake-a", "正常时应落地为本地文件")
-      fresh.markTmpBroken()
-      return fresh.localCopy(FID)
-    })
-    .then(second => {
-      assert.strictEqual(second, "https://signed.example/a.jpg", "tmp 不可用后必须改走签名 https，且不得返回缓存的 tmp")
-      delete global.wx
-      delete require.cache[require.resolve("../miniprogram/utils/assets")]
-      console.log("  tmp 降级链路 ok")
-    })
-}
+  const first = await fresh.localCopy(FID)
+  assert.strictEqual(first, "http://tmp/fake-a", "正常时应落地为本地文件")
+  fresh.markTmpBroken()
+  const second = await fresh.localCopy(FID)
+  assert.strictEqual(second, "https://signed.example/a.jpg", "tmp 不可用后必须改走签名 https，且不得返回缓存的 tmp")
+  console.log("  tmp 降级链路 ok")
+
+  // 2) 开发者工具（含全部虚拟窗口）：直连 https，绝不落地——
+  //    虚拟窗口渲染层读 tmp 时好时坏，binderror 兜底又依赖 error 事件可靠派发
+  delete require.cache[require.resolve("../miniprogram/utils/assets")]
+  global.wx = {
+    cloud: { callFunction: ({ success }) => success({ result: { urls: [{ fileID: "x", url: "https://signed.example/dev.jpg" }] } }) },
+    downloadFile: () => { throw new Error("devtools 下不该走 downloadFile") },
+    getStorageSync: () => "", setStorageSync: () => {},
+    getSystemInfoSync: () => ({ platform: "devtools" })
+  }
+  const devAssets = require("../miniprogram/utils/assets")
+  const out = await devAssets.localCopy("cloud://env.x-y/assets/ui/b.jpg")
+  assert.strictEqual(out, "https://signed.example/dev.jpg", "devtools 下必须直接用签名 https")
+  console.log("  devtools 直连 ok")
+
+  delete global.wx
+  delete require.cache[require.resolve("../miniprogram/utils/assets")]
 })()
 
 console.log("asset path tests passed")

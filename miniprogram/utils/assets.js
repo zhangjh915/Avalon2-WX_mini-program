@@ -248,8 +248,21 @@ let tmpBroken = false
 
 function markTmpBroken() { tmpBroken = true }
 
+// 开发者工具（含多账号调试的所有虚拟窗口）一律直接用签名 https、不落地。
+// 虚拟窗口的渲染层读 tmp 文件时好时坏且无法自动化驱动验证，靠 binderror
+// 兜底又依赖它可靠地派发 error 事件——与其在不可诊断的环境里赛跑，
+// 不如整个绕开。真机（玩家实际使用）tmp 正常，仍走落地最优路径。
+let platformCache = null
+function onDevtools() {
+  if (platformCache === null) {
+    try { platformCache = (wx.getSystemInfoSync() || {}).platform || "" } catch (e) { platformCache = "" }
+  }
+  return platformCache === "devtools"
+}
+
 function localCopy(fileID) {
   if (!fileID || String(fileID).indexOf("cloud://") !== 0) return Promise.resolve(fileID)
+  if (typeof wx !== "undefined" && wx.getSystemInfoSync && onDevtools()) return remoteUrl(fileID)
   if (tmpBroken) return remoteUrl(fileID)
   if (localFiles[fileID]) return Promise.resolve(localFiles[fileID])
   if (inflight[fileID]) return inflight[fileID]

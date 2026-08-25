@@ -21,7 +21,7 @@
     </view>
     <view wx:if="{{leader && phase !== 'reveal' && phase !== 'night' && phase !== 'finale'}}" class="leader-line">
       <view class="leader-crown"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><text>{{leader.id}}号 {{leader.name}}</text>
-      <text class="leader-rule">{{missionSize}}人任务 {{protectedText}}</text>
+      <text class="leader-rule">{{missionSize}}人任务</text><text wx:if="{{protectedText}}" class="protect-tag">双败保护</text>
     </view>
   </view>
 
@@ -171,7 +171,7 @@
     </view>
 
     <view wx:if="{{phase === 'finale'}}" class="phase-content finale-content">
-      <view class="finale-banner">最终审判</view>
+      <view wx:if="{{!finalSelectionMode}}" class="finale-banner">最终审判</view>
       <view wx:if="{{finalStage === 'discussion'}}">
         <view class="final-timer">{{finalClock}}</view>
         <view class="waiting-title">全员自由讨论</view><view class="waiting-copy">时间归零后立即停止交谈。</view>
@@ -188,7 +188,7 @@
         <view wx:else class="submitted-state"><view class="submitted-seal spectator seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">等待盲眼杀手表态</view></view>
       </view>
       <view wx:if="{{finalStage === 'hunterTargets'}}">
-        <view wx:if="{{canOperateHunter}}"><view wx:if="{{privateView.role !== 'hunter'}}" class="role-reveal-small">代测试盲眼杀手选择</view><view class="waiting-copy">其他人禁止交谈。选择两位正义玩家；有教士时必须包含教士。</view></view>
+        <view wx:if="{{canOperateHunter}}" class="waiting-copy">其他人禁止交谈。选两位正义玩家；有教士时必须包含教士。{{privateView.role !== 'hunter' ? '（代测试盲眼杀手）' : ''}}</view>
         <view wx:else class="submitted-state"><view class="submitted-seal danger-seal seal-danger"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">盲眼杀手已经现身</view><view class="waiting-copy">保持沉默，等待猎杀结果。</view></view>
       </view>
       <view wx:if="{{finalStage === 'identify'}}">

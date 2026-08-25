@@ -216,7 +216,13 @@ Page({
         if ((attempt || 0) < 5) setTimeout(() => this.measureStage((attempt || 0) + 1), 120)
         return
       }
-      if (rect.width === this.data.stageW && rect.height === this.data.stageH) return
+      if (rect.width === this.data.stageW && rect.height === this.data.stageH) {
+        // 尺寸没变也要把挑档补完——owner 切换分支靠「重测」带动 refresh，
+        // 这里静默 return 的话 refresh 主体就永远没人执行，longTable 卡在 null，
+        // 桌子只剩 image 默认的 320x240 空框（实测注入终局时就是这么死的）。
+        this.refreshLongTable()
+        return
+      }
       this.setData({ stageW: rect.width, stageH: rect.height }, () => this.refreshLongTable())
     }).exec()
   },
