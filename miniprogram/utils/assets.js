@@ -214,6 +214,31 @@ function floorOptions() {
 // 签名链接约 10 分钟过期，但只在下载那一刻用一次，之后与它无关。
 const localFiles = {}
 const inflight = {}
+// 签名链接缓存（约 10 分钟过期，留 4 分钟安全期）。
+// 用途：多账号调试的虚拟窗口渲染层读不了 downloadFile 落地的 tmp 文件（500），
+// image 的 binderror 兜底时用它现取一条 https 直连链接顶上。
+const signedUrls = {}
+const signedAt = {}
+const SIGNED_TTL = 4 * 60 * 1000
+
+function remoteUrl(fileID) {
+  if (!fileID || String(fileID).indexOf("cloud://") !== 0) return Promise.resolve(fileID)
+  const now = Date.now()
+  if (signedUrls[fileID] && now - signedAt[fileID] < SIGNED_TTL) return Promise.resolve(signedUrls[fileID])
+  if (typeof wx === "undefined" || !wx.cloud || !wx.cloud.callFunction) return Promise.resolve(fileID)
+  return new Promise(resolve => {
+    wx.cloud.callFunction({
+      name: "avalonGame",
+      data: { action: "assetUrls", fileIDs: [fileID] },
+      success: res => {
+        const item = res.result && res.result.urls && res.result.urls[0]
+        if (item && item.url) { signedUrls[fileID] = item.url; signedAt[fileID] = Date.now() }
+        resolve(signedUrls[fileID] || fileID)
+      },
+      fail: () => resolve(fileID)
+    })
+  })
+}
 
 function localCopy(fileID) {
   if (!fileID || String(fileID).indexOf("cloud://") !== 0) return Promise.resolve(fileID)
@@ -229,6 +254,8 @@ function localCopy(fileID) {
       success: res => {
         const item = res.result && res.result.urls && res.result.urls[0]
         if (!item || !item.url) return resolve(fileID)
+        signedUrls[fileID] = item.url
+        signedAt[fileID] = Date.now()
         wx.downloadFile({
           url: item.url,
           success: dl => {
@@ -264,6 +291,7 @@ module.exports = {
   CLOUD_PREFIX,
   floorOptions,
   localCopy,
+  remoteUrl,
   prefetch,
   FLOOR_COLORS,
   DEFAULT_FLOOR,

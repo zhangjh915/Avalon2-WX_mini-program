@@ -93,28 +93,25 @@ assert.match(playSrc2, /tableVisible:\s*phaseChanged \?/, "applyState 仍会自�
 assert.match(playSrc2, /refreshLongTable\(\) \{[\s\S]{0,400}?measureStage\(\)/,
   "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则自动打开的面板挑不出档")
 
-// 预加载池要覆盖「本局会现用的图」。漏一张，玩的时候那张就要现拉：
-// 换火球要等一会儿才出现、任务牌翻面动画跑完了图还没到、每次发车桌子重新加载。
+// 远程图链路：预加载池已退役（localCopy 落地缓存取代了它——池子里的 cloud://
+// 在非创建者窗口只会刷一串加载失败）。取而代之的守卫：
+// 1) 每张远程 image 必须挂 binderror 兜底——落地的 tmp 文件在多账号调试的
+//    虚拟窗口渲染层读不了（500），报错时现签 https 顶上，否则那个窗口整图全裂。
 const playSrc3 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
-;[["identityBack", "身份卡背"], ["myRoleArt", "自己的立绘"], ["missionCard", "任务牌"],
-  ["uiIcons\\(\\).floor", "地毯"]].forEach(([token, label]) => {
-  // 锚在 applyState 里那个多行数组上，别匹配到 data 里的 preloadList: []
-  assert.match(playSrc3, new RegExp(`preloadList: \\[\\s*\\n[\\s\\S]{0,500}?${token}`), `预加载池要包含${label}`)
+assert.ok(!/preload-pool|preloadList/.test(playSrc3 + playWxml), "预加载池已退役，不该再出现")
+;[["play", playWxml], ["room", fs.readFileSync(path.join(root, "room", "room.wxml"), "utf8")],
+  ["index", fs.readFileSync(path.join(root, "index", "index.wxml"), "utf8")]].forEach(([name, wxml]) => {
+  const remoteImages = wxml.match(/<image [^>]*src="\{\{(ui\.floor|ui\.homeBg|longTable\.src|myRoleArt|identityBackArt)[^>]*>/g) || []
+  remoteImages.forEach(tag => {
+    assert.ok(/binderror="onRemoteImageError"/.test(tag), `${name} 的远程图缺 binderror 兜底: ${tag.slice(0, 70)}`)
+    assert.ok(/data-raw=/.test(tag), `${name} 的远程图缺 data-raw（兜底重签要用原始 fileID）: ${tag.slice(0, 70)}`)
+  })
 })
-// 长桌图改走「落本地再渲染」，比预加载池更彻底（见下面的 localCopy 断言）
-const rlStart = playSrc3.indexOf("\n  refreshLongTable() {")
-assert.ok(rlStart > 0, "找不到 refreshLongTable 方法定义")
-const rlBody = playSrc3.slice(rlStart, playSrc3.indexOf("\n  },", rlStart + 5))
-assert.ok(/localCopy/.test(rlBody), "长桌图要落到本地再上屏，否则每次开面板都重下")
-const playWxssPre = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
+// 2) 长桌落地：room 页也必须走 localCopy（此前只接了 play，虚拟窗口候场桌子全裂）
+const roomSrc3 = fs.readFileSync(path.join(root, "room", "room.js"), "utf8")
+const rlRoom = roomSrc3.slice(roomSrc3.indexOf("\n  refreshLongTable() {"))
+assert.ok(/localCopy/.test(rlRoom.slice(0, rlRoom.indexOf("\n  },"))), "room 页长桌也要落地")
 
-// 预加载池必须是「屏幕外的正常可见元素」。display:none 的 <image> 微信不会请求，
-// 0 尺寸 + opacity:0 也可能被跳过——那样预加载等于没做，玩的时候还是要现等图。
-const poolCss = /\.preload-pool \{[^}]*\}/.exec(playWxssPre)
-assert.ok(poolCss, "找不到预加载池样式")
-assert.ok(!/display: none/.test(poolCss[0]), "display:none 的 image 不会被请求")
-assert.ok(!/opacity: 0/.test(poolCss[0]), "opacity:0 可能让请求被跳过")
-assert.match(poolCss[0], /left: -\d+rpx/, "预加载池应当挪到屏幕外")
 
 // 全场只能有一枚金冠，且它戴在「即将掌权的人」头上：
 //   还没选接任者时是现任队长；一旦选定，金冠归接任者、现任转灰（他马上卸任了）。

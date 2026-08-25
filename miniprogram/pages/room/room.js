@@ -176,7 +176,9 @@ Page({
   // 地毯与色板都在云存储，非创建者读不到 cloud://，一律经云函数签名后落本地。
   // localCopy 有缓存与并发去重，重复调用只有第一次真的下载。
   resolveFloorArts() {
-    assets.localCopy((this.data.ui || {}).floor).then(path => {
+    const raw = assets.uiIcons().floor
+    if (this.data.floorRaw !== raw) this.setData({ floorRaw: raw })
+    assets.localCopy(raw).then(path => {
       if ((this.data.ui || {}).floor !== path) this.setData({ "ui.floor": path })
     })
     const options = this.data.floorOptions || []
@@ -227,8 +229,30 @@ Page({
     const previous = data.longTable || {}
     // 只在真的变了才 setData。applyState 由轮询驱动，每次都推一遍会让渲染层
     // 反复重设图片源——上一版长桌背景就是这么把加载拖慢的。
-    if (longTable.src === previous.src && longTable.style === previous.style) return
-    this.setData({ longTable })
+    if (longTable.tier === previous.tier && longTable.style === previous.style) return
+    // 长桌也要落地：cloud:// 只有创建者读得到，虚拟账号/朋友手机全裂。
+    // raw 保留原 fileID，供 binderror 兜底时重新签名。
+    assets.localCopy(longTable.src).then(local => {
+      const current = this.data.longTable || {}
+      if (current.tier === longTable.tier && current.src === local) return
+      this.setData({ longTable: { ...longTable, src: local, raw: longTable.src } })
+    })
+  },
+
+  // 落地的 tmp 文件在多账号调试的虚拟窗口里渲染层读不了（500）。
+  // image 报错时现签一条 https 直连链接顶上——https 不经 tmp 文件，任何窗口都能显示。
+  onRemoteImageError(event) {
+    const field = event.currentTarget.dataset.field
+    const raw = event.currentTarget.dataset.raw
+    if (!field || !raw || String(raw).indexOf("cloud://") !== 0) return
+    if (this.remoteErrorHandled === field + raw) return   // 防死循环：同一张只兜一次
+    this.remoteErrorHandled = field + raw
+    assets.remoteUrl(raw).then(url => {
+      if (!url || url === raw) return
+      const patch = {}
+      patch[field] = url
+      this.setData(patch)
+    })
   },
 
   openRoleViewer() { this.setData({ roleViewerVisible: true }) },

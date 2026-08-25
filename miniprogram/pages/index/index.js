@@ -89,6 +89,7 @@ Page({
     })
     this.setData({ homeEmblem: assets.packedAsset("home-emblem.png"), ui: assets.uiIcons() })
     // 首页底图在云存储，非创建者读不到 cloud://，签名后落本地再替换
+    this.setData({ homeBgRaw: assets.uiIcons().homeBg })
     assets.localCopy(assets.uiIcons().homeBg).then(path => {
       if ((this.data.ui || {}).homeBg !== path) this.setData({ "ui.homeBg": path })
     })
@@ -410,6 +411,21 @@ Page({
   chooseHostRole(event) {
     const hostRole = event.currentTarget.dataset.role || ""
     this.setData({ hostRole })
+  },
+
+  // 落地 tmp 文件在虚拟窗口渲染层读不了（500），报错时现签 https 顶上
+  onRemoteImageError(event) {
+    const field = event.currentTarget.dataset.field
+    const raw = event.currentTarget.dataset.raw
+    if (!field || !raw || String(raw).indexOf("cloud://") !== 0) return
+    if (this.remoteErrorHandled === field + raw) return
+    this.remoteErrorHandled = field + raw
+    assets.remoteUrl(raw).then(url => {
+      if (!url || url === raw) return
+      const patch = {}
+      patch[field] = url
+      this.setData(patch)
+    })
   },
 
   createRoom() {

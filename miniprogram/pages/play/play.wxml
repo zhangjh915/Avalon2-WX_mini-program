@@ -28,7 +28,7 @@
   <view class="phase-shell">
     <view wx:if="{{phase === 'reveal'}}" class="phase-content identity-content">
       <view wx:if="{{identityMode === 'prepare'}}" class="identity-waiting">
-        <image class="identity-card-back" src="{{identityBackArt}}" mode="aspectFill" />
+        <image class="identity-card-back" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
         <view class="waiting-title">准备查看身份</view>
         <view class="waiting-copy">将手机转向自己。全员准备后，身份与私密信息会同时揭示。</view>
         <button wx:if="{{!identityReady}}" class="primary-action" bindtap="confirmIdentity">我已准备</button>
@@ -41,9 +41,9 @@
       <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
         <!-- 点击牌背翻牌；两段 scaleX，不用 3D 变换 -->
         <view class="identity-stage {{cardFlipped ? 'flipped' : ''}}" bindtap="flipIdentityCard">
-          <image class="card-face card-back-face" src="{{identityBackArt}}" mode="aspectFill" />
+          <image class="card-face card-back-face" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
           <view class="card-face card-front-face">
-            <image class="card-art" src="{{myRoleArt}}" mode="aspectFill" />
+            <image class="card-art" src="{{myRoleArt}}" mode="aspectFill" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
             <!-- 文字浮在牌面下半部，省出竖向空间，避免整页滚动 -->
             <view class="card-overlay">
               <view class="overlay-faction {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.factionName}}</view>
@@ -70,7 +70,7 @@
       </view>
 
       <view wx:if="{{identityMode === 'remember'}}" class="identity-waiting">
-        <image class="identity-card-back sealed" src="{{identityBackArt}}" mode="aspectFill" />
+        <image class="identity-card-back sealed" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
         <view class="waiting-title">身份已隐藏</view>
         <view class="waiting-copy">确认你已记住角色、额外信息和本局思路。</view>
         <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-reminder">
@@ -206,8 +206,8 @@
           <text>{{finalSelectionMode === 'hunter' ? '猎杀目标' : (finalSelectionMode === 'traitor' ? '正义目标' : '指认目标')}}</text>
           <text>{{finalTargets.length}} / 2</text>
         </view>
-        <view class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" />
-          <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
+        <view class="table-stage compact-stage final-inline-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" data-field="ui.floor" data-raw="{{artRaw.floor}}" binderror="onRemoteImageError" />
+          <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" data-field="longTable.src" data-raw="{{longTable.raw}}" binderror="onRemoteImageError" /></view></block>
         <image wx:else class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
         <image class="table-emblem" style="{{room.tableType === 'long' ? longTable.emblemStyle : ''}}" src="{{ui.tableEmblem}}" mode="aspectFit" />
         <view wx:for="{{decoratedPlayers}}" wx:key="id" class="seat-token game-seat-token {{item.id === privateView.id ? 'mine' : ''}} {{item.finalSelected ? 'selected danger-selected' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" data-id="{{item.id}}" data-mode="final" bindtap="tapSeat">
@@ -233,8 +233,8 @@
   <view wx:if="{{tableVisible}}" class="table-overlay selector-overlay">
     <view class="table-sheet selector-page">
       <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view wx:if="{{tableMode === 'team'}}" class="team-counter {{selectedTeam.length === missionSize ? 'ready' : ''}}">{{selectedTeam.length}} / {{missionSize}}</view><view class="selector-tools"><view class="table-icon-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="history-glyph"><view></view><view></view><view></view></view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>
-      <view class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" />
-        <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" /></view></block>
+      <view class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" data-field="ui.floor" data-raw="{{artRaw.floor}}" binderror="onRemoteImageError" />
+        <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" data-field="longTable.src" data-raw="{{longTable.raw}}" binderror="onRemoteImageError" /></view></block>
         <image wx:else class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
         <image class="table-emblem" style="{{room.tableType === 'long' ? longTable.emblemStyle : ''}}" src="{{ui.tableEmblem}}" mode="aspectFit" />
         <view wx:if="{{deliverIcon}}" class="deliver-token {{deliverFlying ? 'flying' : ''}}" style="{{deliverFlying ? 'left:' + deliverX + '%;top:' + deliverY + '%;' : ''}}">
@@ -279,7 +279,7 @@
       <view class="sheet-head history-head"><view><view class="sheet-title">我的密录</view><view class="sheet-hint">只有你能看到，可随时回看</view></view><view wx:if="{{readingHint && phase === 'reveal'}}" class="dossier-clock {{readingUrgent ? 'urgent' : ''}}">{{readingHint}}</view><view class="modal-close" bindtap="closeDossier" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
       <scroll-view class="history-scroll" scroll-y>
         <view class="dossier-card">
-          <image class="dossier-art" src="{{myRoleArt}}" mode="aspectFill" />
+          <image class="dossier-art" src="{{myRoleArt}}" mode="aspectFill" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
           <view class="dossier-identity {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}">
             <view class="dossier-faction">{{privateView.factionName}}</view>
             <view class="dossier-name">{{privateView.roleName}}</view>
@@ -310,10 +310,6 @@
       </scroll-view>
     </view>
   </view>
-
-  <!-- 预加载池：0 尺寸不可见，只为让本局用得到的图提前下完，
-       免得每换一个阶段都白等一次首次加载 -->
-  <view class="preload-pool"><image wx:for="{{preloadList}}" wx:key="*this" src="{{item}}" /></view>
 
   <view wx:if="{{bannerVisible}}" class="event-banner banner-{{bannerType}}">
     <text class="banner-symbol">{{bannerSymbol}}</text>

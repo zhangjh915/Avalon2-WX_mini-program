@@ -1865,12 +1865,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
   50% { transform: rotate(7deg) translateY(-12rpx); }
 }
 
-/* 预加载池：把图**挪到屏幕外**，而不是压成 0 尺寸或 display:none。
-   display:none 的 <image> 微信根本不会去请求；0 尺寸 + opacity:0 也可能被跳过。
-   移出视口的元素仍是正常可见元素，图会照常下载并进缓存，
-   之后面板里新建的 <image> 用同一个 src 就直接命中，不用重等。 */
-.preload-pool { position: fixed; left: -9999rpx; top: 0; width: 200rpx; height: 200rpx; overflow: hidden; pointer-events: none; }
-.preload-pool image { display: block; width: 200rpx; height: 200rpx; }
 
 /* 选人时随时看得到还差几个人——原先只有选满后才冒出「队伍已选齐」的按钮，
    过程中完全没有反馈 */

@@ -45,7 +45,7 @@ Page({
     stepMode: false, botPending: "",
     nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
-    preloadList: [],
+    artRaw: {},
     myRoleArt: "", identityBackArt: "", cardFlipped: false, identityUnlocked: false, myInitial: "", readingHint: "", readingUrgent: false,
     ui: {},
     bannerVisible: false, bannerType: "", bannerSymbol: "", bannerText: "",
@@ -119,6 +119,10 @@ Page({
       myRoleArt: assets.roleArt(roleSkin, role, artVariant),
       identityBackArt: assets.identityBack(roleSkin),
       "ui.floor": assets.uiIcons().floor
+    }
+    // 原始 fileID 留给 binderror 兜底重签用
+    if (this.data.artRaw.myRoleArt !== wants.myRoleArt) {
+      this.setData({ artRaw: { myRoleArt: wants.myRoleArt, identityBackArt: wants.identityBackArt, floor: wants["ui.floor"] } })
     }
     Object.keys(wants).forEach(field => {
       const fileID = wants[field]
@@ -289,17 +293,6 @@ Page({
       // 图在第一次真正显示时才开始下载，于是每换一个阶段都要白等一次。
       // 这里把本局用得到的图挂进一个 0 尺寸的隐藏容器，进对局页就先下完，
       // 轮到显示时直接命中缓存。只放本局真的会用到的，不整批预热。
-      // 预加载池：进对局页就把本局用得到的图全部拉到内存。
-      // 选人面板是 wx:if 出来的，关掉再开元素会重建、图会重新请求——所以长桌和地毯
-      // 也要挂在这里常驻，否则每次发车都要重等一次桌子。
-      preloadList: [
-        assets.identityBack(roleSkin),
-        myRoleArt,
-        assets.missionCard(missionSkin, "back"),
-        assets.missionCard(missionSkin, "success"),
-        assets.missionCard(missionSkin, "fail"),
-        assets.uiIcons().floor
-      ].filter(Boolean),
       identityBackArt: this.data.identityBackArt || assets.identityBack(roleSkin),
       missionCardBack: assets.missionCard(missionSkin, "back"),
       missionCardSuccess: assets.missionCard(missionSkin, "success"),
@@ -742,7 +735,7 @@ Page({
     assets.localCopy(longTable.src).then(local => {
       const current = this.data.longTable || {}
       if (current.tier === longTable.tier && current.src === (local || longTable.src)) return
-      this.setData({ longTable: { ...longTable, src: local || longTable.src } })
+      this.setData({ longTable: { ...longTable, src: local || longTable.src, raw: longTable.src } })
     })
   },
 
@@ -825,6 +818,22 @@ Page({
         this.startTimers()
         console.error("[play] 跳转失败", url, error && error.errMsg)
       }
+    })
+  },
+
+  // 同 room 页：落地 tmp 文件在虚拟窗口渲染层读不了（500），报错时现签 https 顶上
+  onRemoteImageError(event) {
+    const field = event.currentTarget.dataset.field
+    const raw = event.currentTarget.dataset.raw
+    if (!field || !raw || String(raw).indexOf("cloud://") !== 0) return
+    if (!this.remoteErrorHandled) this.remoteErrorHandled = {}
+    if (this.remoteErrorHandled[field + raw]) return
+    this.remoteErrorHandled[field + raw] = true
+    assets.remoteUrl(raw).then(url => {
+      if (!url || url === raw) return
+      const patch = {}
+      patch[field] = url
+      this.setData(patch)
     })
   },
 
