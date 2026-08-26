@@ -61,4 +61,16 @@ const deployScript = fs.readFileSync(path.join(__dirname, "..", "scripts", "depl
 assert.match(deployScript, /functions deploy[^\n]*\s-r(\s|$)/, "部署脚本必须带 -r，否则云端缺依赖")
 assert.ok(fs.existsSync(path.join(__dirname, "..", "cloudfunctions", "avalonGame", "package.json")), "云函数要有 package.json 供云端装依赖")
 
+// 体验版（trial）是发给同事一起玩的，测试模式默认必须**关**——
+// 默认开会补满 bot 并允许房主代打，一局就毁了。
+// 开发版（develop，模拟器）默认开：在那儿本来就是为了调试。
+// 两边都保留开关，只是默认值不同。
+{
+  const src = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "index", "index.js"), "utf8")
+  assert.match(src, /const defaultOn = env\.envVersion\(\) === "develop"/,
+    "测试模式的默认值应当只在开发版为开")
+  assert.ok(!/testMode: canUseTestMode && \(stored === "" \? true/.test(src),
+    "测试模式不该无条件默认开启——体验版会因此补满 bot")
+}
+
 console.log("env tests passed")

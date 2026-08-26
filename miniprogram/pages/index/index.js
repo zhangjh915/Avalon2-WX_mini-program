@@ -65,13 +65,20 @@ Page({
     // 开发期在开发版和体验版都需要补测试玩家，正式版一律不允许。
     const canUseTestMode = env.canUseTestMode()
     const stored = wx.getStorageSync("testMode")
+    // 默认值分环境：
+    //   开发版（模拟器）默认开——在这儿本来就是为了调试，每次手动打开很烦。
+    //   体验版默认关——体验版就是发给同事一起玩的，默认补满 bot 会直接毁掉一局。
+    // 两边都还留着开关，体验版想一个人先摸一遍也能手动打开。
+    const defaultOn = env.envVersion() === "develop"
+    const readFlag = (key, fallback) => {
+      const value = wx.getStorageSync(key)
+      return value === "" ? fallback : !!value    // "" = 从没设置过，取默认
+    }
     this.setData({
       playerName: wx.getStorageSync("playerName") || "",
       canUseTestMode,
-      // 默认开启：逐步执行本来就是用户要的测试方式，不该藏在默认关闭的开关后面。
-      // 和 testMode 一样，"" 表示从没设置过 → 取默认 true
-      stepMode: canUseTestMode && (wx.getStorageSync("stepMode") === "" ? true : !!wx.getStorageSync("stepMode")),
-      testMode: canUseTestMode && (stored === "" ? true : !!stored)
+      stepMode: canUseTestMode && readFlag("stepMode", defaultOn),
+      testMode: canUseTestMode && (stored === "" ? defaultOn : !!stored)
     })
     this.setData({
       // 用真实卡背做预览，比抽象的 A/B/C/D 直观
