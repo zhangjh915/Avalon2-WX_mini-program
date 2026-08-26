@@ -2,7 +2,7 @@
   <view class="page-body">
   <view class="home-brand">
     <image class="home-emblem" src="{{homeEmblem}}" mode="aspectFit" />
-    <view class="title">圆桌秘闻</view>
+    <view class="title">阿瓦隆2</view>
   </view>
 
   <view class="panel identity-panel">
