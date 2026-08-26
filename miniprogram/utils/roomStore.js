@@ -38,23 +38,48 @@ const TIMEOUT_PATTERN = /-504003|timed out|timeout/i
 // 而重试期间页面的 loading 闸门一直关着，等于把「拿不到新状态」的时间翻倍。
 const READ_ONLY = ["getState", "getResult", "findRoom"]
 
+// 数据库事务冲突。多人**同时**点同一个动作时，事务会有人抢不到而失败，
+// 服务端把它脱敏成「服务器开小差了」。线下玩这不是边角情况而是常态：
+// 一句「都准备好了吗」之后所有人同时点，实测 8 个并发有 3 个吃这个错。
+// 冲突是瞬时的，重试就好——和超时一样，服务端对这些写操作都有幂等保护。
+const CONFLICT_PATTERN = /服务器开小差|AVALON_INTERNAL_ERROR/
+
 function isTimeout(error) {
   // errCode 是结构化的，优先用它；正则只兜住拿不到 errCode 的情况
   if (error && error.errCode === TIMEOUT_CODE) return true
   return TIMEOUT_PATTERN.test(String(error && (error.errMsg || error.message) || ""))
 }
 
+function isConflict(error) {
+  return CONFLICT_PATTERN.test(String(error && (error.errMsg || error.message) || ""))
+}
+
+// 退避带抖动：几个人同时被拒，如果都在同一时刻重试就会再撞一次。
+function backoff(attempt) {
+  const base = 120 * attempt
+  return new Promise(resolve => setTimeout(resolve, base + Math.floor(Math.random() * 120)))
+}
+
 function invoke(action, payload) {
   return wx.cloud.callFunction({ name: functionName, data: { action, ...(payload || {}) } })
 }
 
+// 写操作最多重试 2 次：单次重试压不住——8 个并发里失败的那 3 个
+// 如果同时重试，还会再撞。两次加抖动退避实测能收敛。
+const MAX_RETRY = 2
+
+function invokeWithRetry(action, payload, attempt) {
+  return invoke(action, payload).catch(error => {
+    const retryable = isTimeout(error) || isConflict(error)
+    if (READ_ONLY.indexOf(action) >= 0 || !retryable || attempt >= MAX_RETRY) throw error
+    console.warn(`[avalonGame] ${isTimeout(error) ? "冷启动超时" : "事务冲突"}，第 ${attempt + 1} 次重试`, action)
+    return backoff(attempt + 1).then(() => invokeWithRetry(action, payload, attempt + 1))
+  })
+}
+
 function call(action, payload) {
   if (!wx.cloud) return Promise.reject(new Error("请先开启微信云开发"))
-  return invoke(action, payload).catch(error => {
-    if (READ_ONLY.indexOf(action) >= 0 || !isTimeout(error)) throw error
-    console.warn("[avalonGame] 冷启动超时，重试一次", action)
-    return invoke(action, payload)
-  }).then(response => {
+  return invokeWithRetry(action, payload, 0).then(response => {
     const result = response.result
     if (!result) throw new Error("云函数未返回数据")
     return result

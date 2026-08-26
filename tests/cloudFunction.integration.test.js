@@ -828,6 +828,192 @@ async function testAssetUrls() {
   console.log("  asset urls ok")
 }
 
+
+// ===== 多端一致性 =====
+// 这一组模拟「每个人一台手机」：每个动作都以对应玩家的 openid 发出，
+// 每个玩家单独拉自己的 getState。手点多账号调试窗口只能抽查看到的那几屏，
+// 这里是把**每个玩家在每个阶段拿到的整份 payload** 都翻一遍。
+
+// 把整份 payload 拍平成「路径 -> 值」，用来找藏在任意层级里的泄底字段
+function flatten(value, prefix, out) {
+  out = out || []
+  if (value === null || value === undefined) return out
+  if (Array.isArray(value)) {
+    value.forEach((item, i) => flatten(item, `${prefix}[${i}]`, out))
+  } else if (typeof value === "object") {
+    Object.keys(value).forEach(key => flatten(value[key], prefix ? `${prefix}.${key}` : key, out))
+  } else {
+    out.push([prefix, value])
+  }
+  return out
+}
+
+// 开一局到「已发身份」，返回每人的 openid 与真实身份
+async function dealtGame(playerCount) {
+  const roomId = await createHumanRoom(playerCount)
+  const players = secret(roomId).players
+  const who = id => (id === 1 ? "host" : `user-${id}`)
+  for (const player of players) await action("identityReady", { roomId }, who(player.id))
+  await action("startIdentity", { roomId }, "host")
+  return { roomId, players, who }
+}
+
+// 一号大坑：别人的身份不能出现在我的 payload 里的**任何**角落。
+// 社交推理游戏泄了底就没得玩，而这种漏只有多端才看得见——
+// 单机跑永远是房主视角，房主本来就该知道自己的身份，看不出问题。
+async function testNoRoleLeakAcrossClients() {
+  cloudMock.reset()
+  const { roomId, players, who } = await dealtGame(8)
+  const leaks = []
+  for (const me of players) {
+    const view = await action("getState", { roomId }, who(me.id))
+    const flat = flatten(view, "")
+    const mine = view.private || {}
+    assert.strictEqual(mine.id, me.id, `${who(me.id)} 拿到的私有视图不是自己的`)
+    assert.strictEqual(mine.role, me.role, `${who(me.id)} 的身份对不上`)
+    for (const other of players) {
+      if (other.id === me.id) continue
+      flat.forEach(([keyPath, value]) => {
+        // 只看字符串值；privateView 里是我自己的东西，跳过
+        if (typeof value !== "string" || keyPath.indexOf("private") === 0) return
+        if (value === other.role || value === other.roleName) {
+          leaks.push(`${who(me.id)}(${me.role}) 能看到 ${other.id}号 的 ${value} @ ${keyPath}`)
+        }
+      })
+    }
+  }
+  assert.deepStrictEqual(leaks, [], `身份泄露:\n  ${leaks.join("\n  ")}`)
+  console.log("  多端身份隔离 ok")
+}
+
+// 二号大坑：任何人都不能替别人操作。
+// 单机测不出来——房主在测试模式下**本来就**被允许代 bot 行动，
+// 那条豁免不能扩散到真人身上。
+// 检查的是**真正被写入的那个集合**（identity.rememberedIds）：
+// 一开始我比对的是玩家对象，那东西这个动作压根不碰，测了个寂寞。
+async function testNoActingForOthers() {
+  cloudMock.reset()
+  const { roomId, players, who } = await dealtGame(6)
+  const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
+  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  room(roomId).game.identity.closeAt = Date.now() - 1
+
+  const me = players[0]
+  const victim = players[1]
+  // 带着别人的 playerId 去点「记住了」，服务端必须只认调用者自己
+  await action("identityRemembered", { roomId, playerId: victim.id }, who(me.id))
+  const remembered = room(roomId).game.identity.rememberedIds
+  assert.ok(remembered.indexOf(me.id) >= 0, "调用者自己应被记为已读")
+  assert.ok(remembered.indexOf(victim.id) < 0,
+    `${who(me.id)} 用 playerId 参数替 ${victim.id}号 点了「记住了」`)
+
+  // 队长动作同理：非队长带着队长的 id 也不能开投票
+  for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
+  await action("enterNight", { roomId }, "host")
+  await action("enterMission", { roomId }, "host")
+  const leader = players.find(p => p.id === room(roomId).game.leaderId)
+  const notLeader = players.find(p => p.id !== leader.id)
+  const team = [players[0].id, players[1].id]
+  await expectFailure(
+    action("startVote", { roomId, team, magicTargetId: team[1], playerId: leader.id }, who(notLeader.id)),
+    /只有当前队长/)
+  console.log("  越权代打拦截 ok")
+}
+
+// 三号大坑：投票在开票前不能被别人看到。
+// 这个在单机上永远看不出——一台机器上只有一个人在投。
+async function testVoteSecrecyBeforeReveal() {
+  cloudMock.reset()
+  const { roomId, players, who } = await dealtGame(6)
+  const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
+  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
+  await action("enterNight", { roomId }, "host")
+  await action("enterMission", { roomId }, "host")
+  const leader = players.find(p => p.id === room(roomId).game.leaderId)
+  const team = [players[0].id, players[1].id]
+  await action("startVote", { roomId, team, magicTargetId: team[1] }, who(leader.id))
+
+  const voter = players.find(p => p.id === team[0])
+  const value = core.automaticVote(room(roomId).game, voter)
+  await action("submitVote", { roomId, value }, who(voter.id))
+
+  // 另一个队员还没投，此时任何人都不该看得到已投的那张牌
+  const peeks = []
+  for (const me of players) {
+    const view = await action("getState", { roomId }, who(me.id))
+    flatten(view, "").forEach(([keyPath, v]) => {
+      if (keyPath.indexOf("private") === 0) return
+      if (v === value && /vote|card|ballot/i.test(keyPath)) {
+        peeks.push(`${who(me.id)} 在开票前看到了 ${voter.id}号 的票 @ ${keyPath}`)
+      }
+    })
+  }
+  assert.deepStrictEqual(peeks, [], `投票提前泄露:\n  ${peeks.join("\n  ")}`)
+  console.log("  开票前投票保密 ok")
+}
+
+// 四号大坑：并发与改票。线下玩最容易撞——大家围着一张桌子，
+// 两个人同时伸手点，或者有人看完别人的反应想把自己那张换掉。
+//
+// 注意别像我第一版那样写空断言：投票是按 player.id 存的，重复提交只会覆盖
+// 同一个 key，「票数不超过队伍人数」永远成立，把去重拦截整个删掉都照样绿。
+// 要断言的是**第二次必须被拒、且存下来的还是第一张**。
+async function testConcurrentSubmissionsCountOnce() {
+  cloudMock.reset()
+  const { roomId, players, who } = await dealtGame(6)
+  const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
+  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
+  await action("enterNight", { roomId }, "host")
+  await action("enterMission", { roomId }, "host")
+  const leader = players.find(p => p.id === room(roomId).game.leaderId)
+  const team = [players[0].id, players[1].id]
+  await action("startVote", { roomId, team, magicTargetId: team[1] }, who(leader.id))
+
+  const voter = players.find(p => p.id === team[0])
+  const options = core.legalVoteOptions(room(roomId).game, voter)
+  const firstVote = options[0]
+  await action("submitVote", { roomId, value: firstVote }, who(voter.id))
+  const round = String(room(roomId).game.round)
+  const stored = secret(roomId).votes[round][String(voter.id)]
+
+  // 想改成另一张（有得选才测得出来；只有一个合法选项时退化为「重复提交同一张」）
+  const changeTo = options.find(v => v !== firstVote) || firstVote
+  await expectFailure(action("submitVote", { roomId, value: changeTo }, who(voter.id)), /已经投过/)
+  assert.strictEqual(secret(roomId).votes[round][String(voter.id)], stored,
+    `${who(voter.id)} 投完之后把票改掉了`)
+
+  // 队长连点两次「开始投票」，不能把已投的票清空
+  const before = Object.keys(secret(roomId).votes[round] || {}).length
+  try { await action("startVote", { roomId, team, magicTargetId: team[1] }, who(leader.id)) } catch (e) { /* 拒绝是对的 */ }
+  const after = Object.keys(secret(roomId).votes[String(room(roomId).game.round)] || {}).length
+  assert.ok(after >= before, `重复开始投票把 ${before} 张已投的票清成了 ${after} 张`)
+  console.log("  并发/改票拦截 ok")
+}
+
+// 五号大坑：所有人看到的公共状态必须一致（阶段、轮次、队长、比分）。
+// 分叉了就会出现「我这边还在投票，他那边已经进下一轮」。
+async function testPublicStateAgreesAcrossClients() {
+  cloudMock.reset()
+  const { roomId, players, who } = await dealtGame(7)
+  const views = []
+  for (const me of players) views.push(await action("getState", { roomId }, who(me.id)))
+  const key = v => JSON.stringify({
+    phase: v.room && v.room.phase,
+    round: v.room && v.room.game && v.room.game.round,
+    leaderId: v.room && v.room.game && v.room.game.leaderId,
+    missions: v.room && v.room.game && (v.room.game.missions || []).map(m => m.winner),
+    seats: (v.room && v.room.seats || []).map(s => s.name)
+  })
+  const distinct = new Set(views.map(key))
+  assert.strictEqual(distinct.size, 1,
+    `${distinct.size} 种不同的公共状态:\n  ${[...distinct].join("\n  ")}`)
+  console.log("  公共状态多端一致 ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -850,6 +1036,11 @@ async function run() {
   await testStepModeBotSuggest()
   await testStepModeHandoffAmulet()
   await testAssetUrls()
+  await testNoRoleLeakAcrossClients()
+  await testNoActingForOthers()
+  await testVoteSecrecyBeforeReveal()
+  await testConcurrentSubmissionsCountOnce()
+  await testPublicStateAgreesAcrossClients()
   console.log("cloud function integration tests passed")
 }
 

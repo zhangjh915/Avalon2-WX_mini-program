@@ -37,6 +37,7 @@ TESTS=(
   assets
   identityTiming
   applyState
+  roomStoreRetry
 )
 
 failed=0
