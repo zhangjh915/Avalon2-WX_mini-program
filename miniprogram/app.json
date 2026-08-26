@@ -7,9 +7,9 @@
   ],
   "window": {
     "navigationBarTitleText": "圆桌秘闻",
-    "navigationBarBackgroundColor": "#2a2018",
+    "navigationBarBackgroundColor": "#0b110f",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f6efe2"
+    "backgroundColor": "#0b110f"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

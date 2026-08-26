@@ -132,7 +132,7 @@ button::after {
   border: 2rpx solid #121816;
   border-radius: 50%;
   background: #d9bb78;
-  color: #202824;
+  color: #dfe3e1;
   font-size: 18rpx;
   font-weight: 900;
 }
@@ -183,7 +183,7 @@ button::after {
   margin-right: 12rpx;
   border-radius: 50%;
   background: #d4b36b;
-  color: #20261f;
+  color: #e0e4e2;
   font-size: 20rpx;
   font-weight: 900;
 }
@@ -228,7 +228,7 @@ button::after {
   right: 16rpx;
   bottom: 16rpx;
   left: 16rpx;
-  border: 2rpx solid rgba(215, 195, 149, 0.34);
+  border: 2rpx solid rgba(69, 61, 44, 0.34);
 }
 
 .identity-card::after {
@@ -236,8 +236,8 @@ button::after {
   right: 0;
   width: 128rpx;
   height: 128rpx;
-  border-left: 2rpx solid rgba(215, 195, 149, 0.18);
-  border-bottom: 2rpx solid rgba(215, 195, 149, 0.18);
+  border-left: 2rpx solid rgba(69, 61, 44, 0.18);
+  border-bottom: 2rpx solid rgba(69, 61, 44, 0.18);
   transform: translate(42rpx, -42rpx) rotate(45deg);
 }
 
@@ -260,7 +260,7 @@ button::after {
   width: 150rpx;
   height: 188rpx;
   margin-right: 34rpx;
-  border: 4rpx solid #d7c395;
+  border: 4rpx solid #453d2c;
   border-radius: 75rpx 75rpx 28rpx 28rpx;
   background: #1a2b26;
   box-sizing: border-box;
@@ -272,7 +272,7 @@ button::after {
   justify-content: center;
   width: 84rpx;
   height: 84rpx;
-  border: 2rpx solid #d7c395;
+  border: 2rpx solid #453d2c;
   border-radius: 50%;
   color: #e5d09e;
   font-size: 44rpx;
@@ -358,7 +358,7 @@ button::after {
 .secret-intel {
   padding-top: 18rpx;
   margin-top: 20rpx;
-  border-top: 2rpx solid rgba(255, 255, 255, 0.24);
+  border-top: 2rpx solid rgba(19, 22, 20, 0.24);
 }
 
 .secret-label {
@@ -375,7 +375,7 @@ button::after {
 .guide-section {
   padding-top: 18rpx;
   margin-top: 18rpx;
-  border-top: 2rpx solid rgba(255, 255, 255, 0.2);
+  border-top: 2rpx solid rgba(19, 22, 20, 0.2);
 }
 
 .guide-label,
@@ -408,7 +408,7 @@ button::after {
   min-width: 32rpx;
   margin-top: 2rpx;
   margin-right: 12rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.48);
+  border: 2rpx solid rgba(19, 22, 20, 0.48);
   border-radius: 50%;
   font-size: 17rpx;
   font-weight: 900;
@@ -419,27 +419,27 @@ button::after {
 .guide-warning {
   padding: 16rpx;
   margin-top: 20rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.25);
+  border: 2rpx solid rgba(19, 22, 20, 0.25);
   border-radius: 6rpx;
   background: rgba(20, 22, 20, 0.16);
 }
 
 .reading-timer {
   padding-top: 14rpx;
-  border-top: 2rpx solid rgba(255, 255, 255, 0.24);
+  border-top: 2rpx solid rgba(19, 22, 20, 0.24);
 }
 
 .reading-progress {
   height: 8rpx;
   overflow: hidden;
   border-radius: 4rpx;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(19, 22, 20, 0.2);
 }
 
 .reading-progress-fill {
   height: 100%;
   border-radius: 4rpx;
-  background: #f2d993;
+  background: #3e3828;
   transition: width 0.2s linear;
 }
 
@@ -474,7 +474,7 @@ button::after {
   justify-content: center;
   width: 138rpx;
   height: 138rpx;
-  border: 4rpx solid #d7c395;
+  border: 4rpx solid #453d2c;
   border-radius: 50%;
   color: #f8e8bd;
   font-size: 68rpx;
@@ -491,15 +491,15 @@ button::after {
 .action-card {
   padding: 28rpx;
   border-radius: 8rpx;
-  background: #f3f0e9;
-  color: #202622;
+  background: #191e1c;
+  color: #e0e3e2;
   box-sizing: border-box;
 }
 
 .action-heading {
   position: relative;
   padding-bottom: 22rpx;
-  border-bottom: 2rpx solid #d9d6ce;
+  border-bottom: 2rpx solid #232a27;
 }
 
 .phase-index {
@@ -530,7 +530,7 @@ button::after {
   padding: 7rpx 12rpx;
   border: 2rpx solid #c9ab69;
   border-radius: 6rpx;
-  color: #6a5321;
+  color: #e2d6bc;
   font-size: 19rpx;
   font-weight: 800;
 }
@@ -543,7 +543,7 @@ button::after {
 .waiting-copy,
 .script-text,
 .notice-line {
-  color: #676963;
+  color: #b9c1bd;
   font-size: 24rpx;
   line-height: 1.6;
 }
@@ -554,8 +554,8 @@ button::after {
   padding: 18rpx;
   margin-top: 20rpx;
   border-radius: 6rpx;
-  background: #e5e9e5;
-  color: #4e5b55;
+  background: #1c211e;
+  color: #c3cac6;
   font-size: 23rpx;
 }
 
@@ -598,18 +598,18 @@ button::after {
 }
 
 .secondary-action {
-  border: 2rpx solid #aeb6b1;
+  border: 2rpx solid #303935;
   background: transparent;
-  color: #2d3934;
+  color: #d6dbd9;
 }
 
 .launch-action {
   background: #c4a258;
-  color: #1f261f;
+  color: #e0e4e2;
 }
 
 .primary-action[disabled] {
-  background: #c8cbc7;
+  background: #272f2b;
   color: #8b8d89;
 }
 
@@ -620,7 +620,7 @@ button::after {
 .script-step {
   display: flex;
   padding: 18rpx 0;
-  border-bottom: 2rpx solid #dedbd4;
+  border-bottom: 2rpx solid #212824;
   animation: script-enter 0.38s ease-out both;
 }
 
@@ -643,9 +643,9 @@ button::after {
   justify-content: center;
   width: 48rpx;
   height: 48rpx;
-  border: 2rpx solid #bec3bf;
+  border: 2rpx solid #2a332f;
   border-radius: 50%;
-  background: #dfe2df;
+  background: #1e2421;
   color: #8a8e8a;
   font-size: 18rpx;
   font-weight: 900;
@@ -666,7 +666,7 @@ button::after {
 }
 
 .ready-count {
-  color: #777a76;
+  color: #aeb7b3;
   font-size: 21rpx;
   text-align: center;
 }
@@ -697,7 +697,7 @@ button::after {
   width: 92rpx;
   height: 92rpx;
   border-radius: 50%;
-  background: #f3f0e9;
+  background: #191e1c;
   content: "";
 }
 
@@ -729,7 +729,7 @@ button::after {
   padding: 18rpx;
   margin-bottom: 20rpx;
   border-left: 6rpx solid #bd9346;
-  background: #eee6d5;
+  background: #1e2421;
 }
 
 .notice-line + .notice-line {
@@ -742,7 +742,7 @@ button::after {
 
 .selection-count {
   min-width: 86rpx;
-  color: #233a33;
+  color: #d9dddb;
   font-size: 38rpx;
   font-weight: 900;
 }
@@ -753,7 +753,7 @@ button::after {
 
 .selection-title,
 .waiting-title {
-  color: #222824;
+  color: #dfe2e0;
   font-size: 27rpx;
   font-weight: 900;
 }
@@ -767,15 +767,15 @@ button::after {
 .selection-state {
   padding: 7rpx 11rpx;
   border-radius: 6rpx;
-  background: #dedfda;
-  color: #757873;
+  background: #202623;
+  color: #b0b9b4;
   font-size: 19rpx;
   font-weight: 800;
 }
 
 .selection-state.ready {
-  background: #d4e9df;
-  color: #24614c;
+  background: #1f2522;
+  color: #c0e0d5;
 }
 
 .selected-riders,
@@ -804,8 +804,8 @@ button::after {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #dfe4e0;
-  color: #263d36;
+  background: #1e2421;
+  color: #d7dcda;
   font-weight: 900;
 }
 
@@ -818,12 +818,12 @@ button::after {
 
 .magic-rider .rider-avatar {
   border-color: #b38a3e;
-  background: #efe3c3;
+  background: #212824;
 }
 
 .rider-no {
   margin-top: 7rpx;
-  color: #666a65;
+  color: #b8c0bc;
   font-size: 20rpx;
 }
 
@@ -879,14 +879,14 @@ button::after {
   gap: 8rpx;
   padding: 8rpx 12rpx 8rpx 8rpx;
   border-radius: 30rpx;
-  background: #e1e5e1;
-  color: #4b514d;
+  background: #1d2320;
+  color: #c7cdca;
   font-size: 20rpx;
 }
 
 .team-inline-item.has-magic {
   border: 2rpx solid #b38a3e;
-  background: #f0e8d2;
+  background: #1e2421;
 }
 
 .team-inline-avatar {
@@ -927,7 +927,7 @@ button::after {
   width: 72rpx;
   height: 72rpx;
   margin-bottom: 12rpx;
-  border: 3rpx solid rgba(255, 255, 255, 0.7);
+  border: 3rpx solid rgba(19, 22, 20, 0.7);
   border-radius: 50%;
   font-size: 27rpx;
   font-weight: 900;
@@ -956,7 +956,7 @@ button::after {
   margin-top: 28rpx;
   overflow: hidden;
   border-radius: 5rpx;
-  background: #d5d9d5;
+  background: #222925;
 }
 
 .vote-progress-fill {
@@ -979,13 +979,13 @@ button::after {
 }
 
 .result-good {
-  background: #d8eae2;
-  color: #215d49;
+  background: #1e2421;
+  color: #c2e2d7;
 }
 
 .result-evil {
-  background: #efdadd;
-  color: #813139;
+  background: #1d2220;
+  color: #d8b0b4;
 }
 
 .result-seal {
@@ -1019,7 +1019,7 @@ button::after {
   width: 100%;
   min-height: 104rpx;
   padding: 14rpx 6rpx;
-  border-bottom: 2rpx solid #dedbd4;
+  border-bottom: 2rpx solid #212824;
   border-radius: 0;
   background: transparent;
   text-align: left;
@@ -1038,13 +1038,13 @@ button::after {
 }
 
 .crown-choice {
-  background: #eadfbe;
-  color: #755c24;
+  background: #232a26;
+  color: #dfd3b6;
 }
 
 .amulet-choice {
-  background: #d9e6e1;
-  color: #285d4c;
+  background: #1f2522;
+  color: #cdd3d0;
 }
 
 .choice-copy {
@@ -1052,7 +1052,7 @@ button::after {
 }
 
 .choice-label {
-  color: #292f2b;
+  color: #dbdfdd;
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -1070,14 +1070,14 @@ button::after {
 
 .amulet-emblem {
   border: 3rpx solid #b28d43;
-  background: #f0e6c9;
-  color: #6e5724;
+  background: #202623;
+  color: #e0d4ba;
 }
 
 .muted-emblem {
   border: 0;
-  background: #dfe2df;
-  color: #68706c;
+  background: #1e2421;
+  color: #b5beb9;
 }
 
 .inspection-result {
@@ -1087,13 +1087,13 @@ button::after {
 }
 
 .inspection-result.faction-good {
-  background: #d8eae2;
-  color: #215d49;
+  background: #1e2421;
+  color: #c2e2d7;
 }
 
 .inspection-result.faction-evil {
-  background: #efdadd;
-  color: #813139;
+  background: #1d2220;
+  color: #d8b0b4;
 }
 
 .inspection-no,
@@ -1111,7 +1111,7 @@ button::after {
   padding: 18rpx;
   margin-bottom: 20rpx;
   border: 2rpx solid #a77a7f;
-  color: #83363e;
+  color: #d5afb3;
   font-size: 30rpx;
   font-weight: 900;
   text-align: center;
@@ -1184,9 +1184,9 @@ button::after {
   padding: 12rpx 24rpx 30rpx;
   overflow-y: auto;
   border-radius: 8rpx 8rpx 0 0;
-  background: #ece9e2;
+  background: #1c211e;
   box-sizing: border-box;
-  color: #222824;
+  color: #dfe2e0;
   animation: sheet-up 0.32s cubic-bezier(0.2, 0.82, 0.25, 1);
 }
 
@@ -1195,7 +1195,7 @@ button::after {
   height: 8rpx;
   margin: 0 auto 14rpx;
   border-radius: 4rpx;
-  background: #b8bab5;
+  background: #2e3732;
 }
 
 .sheet-header {
@@ -1212,7 +1212,7 @@ button::after {
 .sheet-hint {
   max-width: 570rpx;
   margin-top: 4rpx;
-  color: #787b76;
+  color: #aeb7b3;
   font-size: 21rpx;
   line-height: 1.4;
 }
@@ -1253,9 +1253,9 @@ button::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 4rpx solid #b9b6ad;
+  border: 4rpx solid #303934;
   border-radius: 50%;
-  background: #f8f6f0;
+  background: #171b19;
   box-sizing: border-box;
   box-shadow: 0 7rpx 15rpx rgba(45, 38, 29, 0.18);
   text-align: center;
@@ -1269,24 +1269,24 @@ button::after {
 
 .seat-token.selected {
   border-color: #298064;
-  background: #d9ebe3;
+  background: #1e2421;
   box-shadow: 0 0 0 7rpx rgba(41, 128, 100, 0.13);
 }
 
 .seat-token.danger-selected {
   border-color: #a9454c;
-  background: #f0dadd;
+  background: #1d221f;
   box-shadow: 0 0 0 7rpx rgba(169, 69, 76, 0.12);
 }
 
 .seat-token.leader-selected {
   border-color: #b58c3d;
-  background: #f0e6c9;
+  background: #202623;
 }
 
 .seat-token.amulet-selected {
   border-color: #3b8170;
-  background: #d7e9e3;
+  background: #1e2421;
 }
 
 .seat-token.leader {
@@ -1312,7 +1312,7 @@ button::after {
 }
 
 .seat-no {
-  color: #5e5549;
+  color: #c4cac7;
   font-size: 18rpx;
   font-weight: 900;
 }
@@ -1320,7 +1320,7 @@ button::after {
 .seat-name {
   max-width: 92rpx;
   overflow: hidden;
-  color: #2d302d;
+  color: #d9dddb;
   font-size: 18rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1333,7 +1333,7 @@ button::after {
   justify-content: center;
   width: 28rpx;
   height: 28rpx;
-  border: 2rpx solid #ece9e2;
+  border: 2rpx solid #1c211e;
   border-radius: 50%;
   color: #ffffff;
   font-size: 14rpx;
@@ -1492,7 +1492,7 @@ button::after {
 .primary-action,.secondary-action,.launch-action { width: 100%; min-height: 84rpx; margin-top: 14rpx; border-radius: 7rpx; font-size: 26rpx; font-weight: 900; }
 .primary-action { background: #2f7358; color: #fff; }
 .secondary-action { border: 2rpx solid #657169; background: #202b27; color: #e9ece9; }
-.launch-action { background: #d0b36f; color: #18211d; }
+.launch-action { background: #d0b36f; color: #e4e7e5; }
 .identity-countdown { display: flex; min-height: 590rpx; flex-direction: column; align-items: center; justify-content: center; }
 .countdown-number { color: #e4d195; font-size: 176rpx; font-weight: 900; animation: countdown-pulse 1s ease-in-out infinite; }
 .selected-riders { display: flex; width: 100%; min-height: 128rpx; margin: 12rpx 0 22rpx; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16rpx; }
@@ -1534,18 +1534,18 @@ button::after {
    已经提供了入场效果，这层旋转既多余又有害。 */
 .role-reveal-wrap { width: 100%; animation: reveal-fade 320ms ease both; }
 @keyframes reveal-fade { from { opacity: 0; } to { opacity: 1; } }
-.secret-intel { margin-top: 26rpx; padding: 20rpx; border-left: 7rpx solid #9a763c; background: #e8e1d2; }
-.intel-title, .guide-title { margin-bottom: 8rpx; color: #443724; font-size: 23rpx; font-weight: 900; }
-.intel-line { color: #554a39; font-size: 24rpx; line-height: 1.55; }
-.role-guide { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid #c8cac4; }
-.guide-goal { margin-bottom: 10rpx; color: #343a36; font-size: 24rpx; line-height: 1.55; }
-.guide-tip { margin-top: 7rpx; color: #646a65; font-size: 22rpx; line-height: 1.5; }
-.reading-clock { margin-top: 18rpx; color: #767c77; font-size: 22rpx; text-align: center; }
-.loyalty-preview { width: 100%; margin: 28rpx 0 20rpx; padding: 20rpx; border: 1rpx solid #c9cac6; background: #e7e6e1; box-sizing: border-box; }
+.secret-intel { margin-top: 26rpx; padding: 20rpx; border-left: 7rpx solid #9a763c; background: #202623; }
+.intel-title, .guide-title { margin-bottom: 8rpx; color: #d6dbd8; font-size: 23rpx; font-weight: 900; }
+.intel-line { color: #cbd1ce; font-size: 24rpx; line-height: 1.55; }
+.role-guide { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid #28302c; }
+.guide-goal { margin-bottom: 10rpx; color: #d4d9d7; font-size: 24rpx; line-height: 1.55; }
+.guide-tip { margin-top: 7rpx; color: #b8c0bc; font-size: 22rpx; line-height: 1.5; }
+.reading-clock { margin-top: 18rpx; color: #aeb7b2; font-size: 22rpx; text-align: center; }
+.loyalty-preview { width: 100%; margin: 28rpx 0 20rpx; padding: 20rpx; border: 1rpx solid #282f2b; background: #1d2320; box-sizing: border-box; }
 .loyalty-row { display: grid; width: 100%; margin: 22rpx 0; grid-template-columns: 1fr 1fr; gap: 14rpx; }
-.loyalty-button { min-height: 86rpx; margin: 0; border: 2rpx solid #39785e; border-radius: 6rpx; background: #e1eee7; color: #286348; font-size: 27rpx; font-weight: 900; }
-.loyalty-button.evil-choice { border-color: #a84a45; background: #f2dfdd; color: #933c37; }
-.loyalty-button[disabled] { border-color: #c7c8c4; background: #e5e5e2; color: #a0a39e; opacity: 1; }
+.loyalty-button { min-height: 86rpx; margin: 0; border: 2rpx solid #39785e; border-radius: 6rpx; background: #1c211e; color: #bfded0; font-size: 27rpx; font-weight: 900; }
+.loyalty-button.evil-choice { border-color: #a84a45; background: #1c211e; color: #d4a9a7; }
+.loyalty-button[disabled] { border-color: #28302c; background: #1d2320; color: #a0a39e; opacity: 1; }
 .loyalty-button.selected-loyalty { box-shadow: 0 0 0 7rpx rgba(47, 115, 88, 0.16); transform: translateY(-2rpx); }
 .ceremony-content { min-height: 650rpx; justify-content: center; }
 .ceremony-mark { position: relative; overflow: hidden; display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
@@ -1559,8 +1559,8 @@ button::after {
 .result-title { margin-bottom: 10rpx; color: #ecf0ed; font-size: 38rpx; font-weight: 900; text-align: center; }
 .handoff-actions { width: 100%; margin-top: 28rpx; }
 .inspection-result { margin: 26rpx auto; padding: 24rpx 40rpx; border: 2rpx solid; border-radius: 6rpx; font-size: 38rpx; font-weight: 900; text-align: center; }
-.good-result { border-color: #4f9274; background: #dcece4; color: #2f7358; }
-.evil-result { border-color: #b75b55; background: #f1dddb; color: #a4453f; }
+.good-result { border-color: #4f9274; background: #1d2320; color: #b7d9cc; }
+.evil-result { border-color: #b75b55; background: #1c221f; color: #cfa19e; }
 .final-timer { margin: 34rpx 0 20rpx; color: #ecdfb8; font-size: 92rpx; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
 .inline-final-selector { width: 100%; margin-top: 18rpx; }
 .final-selection-status { display: flex; margin-bottom: 12rpx; align-items: center; justify-content: space-between; color: #d8ddd9; font-size: 23rpx; font-weight: 900; }
@@ -1579,16 +1579,16 @@ button::after {
 .table-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-end; background: rgba(5, 10, 8, 0.76); animation: overlay-in 160ms ease both; }
 .table-sheet { width: 100%; max-height: 92vh; padding: 24rpx; overflow-y: auto; border-radius: 8rpx 8rpx 0 0; background: #141c18; box-sizing: border-box; animation: sheet-up 220ms ease both; }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; padding-bottom: 14rpx; }
-.sheet-handle { width: 72rpx; height: 7rpx; margin: -6rpx auto 18rpx; border-radius: 4rpx; background: #b8bab5; }
+.sheet-handle { width: 72rpx; height: 7rpx; margin: -6rpx auto 18rpx; border-radius: 4rpx; background: #2e3732; }
 .modal-close { display: flex; width: 72rpx; height: 72rpx; margin: -8rpx -8rpx -8rpx 0; flex: none; align-items: center; justify-content: center; background: transparent; box-sizing: border-box; }
 .modal-close-glyph { position: relative; width: 30rpx; height: 30rpx; }
 .modal-close-glyph::before,.modal-close-glyph::after { position: absolute; top: 14rpx; left: 2rpx; width: 27rpx; height: 3rpx; border-radius: 2rpx; background: #4b514d; content: ""; }
 .modal-close-glyph::before { transform: rotate(45deg); }
 .modal-close-glyph::after { transform: rotate(-45deg); }
 .modal-close:active { opacity: .5; transform: scale(.94); }
-.sheet-actions { position: sticky; bottom: -24rpx; z-index: 5; padding: 16rpx 0 calc(24rpx + env(safe-area-inset-bottom)); background: #eceae4; }
+.sheet-actions { position: sticky; bottom: -24rpx; z-index: 5; padding: 16rpx 0 calc(24rpx + env(safe-area-inset-bottom)); background: #1b211e; }
 .sheet-actions-syncing { pointer-events: none; }
-.sheet-actions button[disabled] { background: #b9ad90; color: #f3eee4; opacity: 1; }
+.sheet-actions button[disabled] { background: #35403a; color: #f3eee4; opacity: 1; }
 /* 底色跟着地毯转深，垫底图没加载出来时才不会闪一下浅灰 */
 .compact-stage { position: relative; width: 100%; height: 590rpx; min-height: 590rpx; overflow: hidden; border: 2rpx solid #4a4038; border-radius: 8rpx; background: #241d18; box-sizing: border-box; }
 /* 座位与头像放大到头像资产的设计尺寸（42pt）。
@@ -1602,8 +1602,8 @@ button::after {
 .game-seat-token.seat-disabled { opacity: .34; }
 .game-seat-token .seat-badge { width: 34rpx; height: 34rpx; overflow: visible; border: 0; background: transparent; font-size: 26rpx; line-height: 1; }
 .game-seat-token.seat-boarding .seat-avatar { animation: seat-board 520ms cubic-bezier(.18,.78,.22,1) both; }
-.leader-claim-box { margin-top: 22rpx; padding: 20rpx; border-left: 6rpx solid #9a763c; background: #e8e1d2; }
-.claim-submitted { margin-top: 12rpx; color: #4d684e; font-size: 23rpx; font-weight: 800; text-align: center; }
+.leader-claim-box { margin-top: 22rpx; padding: 20rpx; border-left: 6rpx solid #9a763c; background: #202623; }
+.claim-submitted { margin-top: 12rpx; color: #bfc7c3; font-size: 23rpx; font-weight: 800; text-align: center; }
 .leader-claim-reminder { width: 100%; }
 .directive-kicker { margin-bottom: 12rpx; color: #cdb270; font-size: 20rpx; font-weight: 900; }
 .directive-progress { width: 70%; height: 7rpx; margin-top: 14rpx; overflow: hidden; border-radius: 4rpx; background: #34413b; }
@@ -1616,7 +1616,7 @@ button::after {
 button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity: 0.86; }
 
 /* Full-screen game actions */
-.selector-overlay { z-index: 80; align-items: stretch; background: #eceae4; animation: none; }
+.selector-overlay { z-index: 80; align-items: stretch; background: #1b211e; animation: none; }
 .selector-page { display: flex; width: 100%; height: 100%; max-height: none; padding: 22rpx 24rpx calc(22rpx + env(safe-area-inset-bottom)); flex-direction: column; overflow: hidden; border-radius: 0; animation: selector-page-in 160ms ease-out both; }
 .selector-page .sheet-head { flex: none; align-items: center; }
 /* 底部留出按钮浮层的位置：不留的话最下排座位会被「确认交接」压住 */
@@ -1642,7 +1642,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .history-head { flex: none; align-items: center; border-bottom: 2rpx solid #34413b; }
 .history-head .sheet-title { color: #f0ede6; }
 .history-head .sheet-hint { color: #8e9993; }
-.history-head .modal-close-glyph::before,.history-head .modal-close-glyph::after { background: #d9dfda; }
+.history-head .modal-close-glyph::before,.history-head .modal-close-glyph::after { background: #202623; }
 .history-scroll { min-height: 0; flex: 1; padding-top: 12rpx; box-sizing: border-box; }
 .history-empty { padding: 180rpx 20rpx; color: #8e9993; font-size: 24rpx; text-align: center; }
 .history-round { padding: 22rpx 0; border-bottom: 2rpx solid #303c37; }
@@ -1670,9 +1670,9 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .handoff-preview-label { color: #8f9a94; font-size: 18rpx; }
 .handoff-preview-name { margin-top: 2rpx; color: #eee9df; font-size: 23rpx; font-weight: 900; }
 
-.seat-token.leader-selected { border-color: #b58c3d; background: #f0e6c9; animation: crown-seat-lock 420ms ease-out both; }
-.seat-token.amulet-selected { border-color: #3b8170; background: #d7e9e3; animation: amulet-seat-lock 480ms ease-out both; }
-.seat-token.magic-selected { border-color: #a94c42; background: #f0d8d3; box-shadow: 0 0 0 9rpx rgba(169, 76, 66, 0.15); animation: magic-seat-token-lock 520ms ease-out both; }
+.seat-token.leader-selected { border-color: #b58c3d; background: #202623; animation: crown-seat-lock 420ms ease-out both; }
+.seat-token.amulet-selected { border-color: #3b8170; background: #1e2421; animation: amulet-seat-lock 480ms ease-out both; }
+.seat-token.magic-selected { border-color: #a94c42; background: #1e2421; box-shadow: 0 0 0 9rpx rgba(169, 76, 66, 0.15); animation: magic-seat-token-lock 520ms ease-out both; }
 .seat-token.magic-selected .seat-avatar { background: #8d3f38; }
 .magic-rider .rider-avatar { animation: magic-seat-lock 520ms ease-out both; }
 
@@ -1696,7 +1696,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .ceremony-finale-good .ceremony-title,.ceremony-round .ceremony-title,.ceremony-mission-good .ceremony-title { color: #9dd2bc; }
 .ceremony-finale-evil .ceremony-title,.ceremony-hunter .ceremony-title,.ceremony-mission-evil .ceremony-title { color: #e49a9d; }
 .ceremony-target { display: flex; margin-top: 34rpx; flex-direction: column; align-items: center; animation: ceremony-target-in 430ms 430ms ease-out both; }
-.ceremony-avatar { display: flex; width: 84rpx; height: 84rpx; align-items: center; justify-content: center; border: 3rpx solid #9aa69f; border-radius: 50%; background: #26342e; color: #f3eee4; font-size: 30rpx; font-weight: 900; }
+.ceremony-avatar { display: flex; width: 84rpx; height: 84rpx; align-items: center; justify-content: center; border: 3rpx solid #37423c; border-radius: 50%; background: #26342e; color: #f3eee4; font-size: 30rpx; font-weight: 900; }
 .ceremony-crown .ceremony-avatar { border-color: #d0b36f; }
 .ceremony-amulet .ceremony-avatar { border-color: #69a991; }
 .ceremony-magic .ceremony-avatar { border-color: #c45c4f; }

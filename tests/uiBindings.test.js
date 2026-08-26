@@ -196,3 +196,47 @@ const seatTokens = playWxml.match(/<view[^>]*class="seat-token game-seat-token[^
 assert.strictEqual(seatTokens.length, 2, `应有两处座位，实际 ${seatTokens.length}`)
 seatTokens.forEach(tag => assert.match(tag, /width: \{\{seatSize\}\}px/, "座位没吃自适应尺寸"))
 
+// 深色主题：全 app 的底面必须是深的。
+// 289 处色值是一次性翻过来的，以后随手补一条 background: #fff 就破功了，
+// 而这种问题在开发者工具里未必一眼看得出（浅底浅字反而"看着还行"）。
+// 只查底面和边框；文字/金饰在深底上本来就该是浅的，不查。
+{
+  const lum = hex => {
+    const v = hex.length === 4
+      ? [hex[1] + hex[1], hex[2] + hex[2], hex[3] + hex[3]]
+      : [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)]
+    const [r, g, b] = v.map(x => parseInt(x, 16))
+    return { L: (r * 299 + g * 587 + b * 114) / 1000, C: Math.max(r, g, b) - Math.min(r, g, b) }
+  }
+  const SURFACE = ["background", "background-color", "border", "border-color", "border-top",
+    "border-bottom", "border-left", "border-right", "border-top-color", "border-bottom-color"]
+  const sheets = ["app.wxss", "pages/index/index.wxss", "pages/room/room.wxss",
+    "pages/play/play.wxss", "pages/result/result.wxss"]
+  const offenders = []
+  sheets.forEach(rel => {
+    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
+    const decls = css.match(/[a-z-]+\s*:\s*[^;{}]+/g) || []
+    decls.forEach(decl => {
+      const prop = decl.slice(0, decl.indexOf(":")).trim()
+      if (SURFACE.indexOf(prop) < 0) return
+      const hexes = decl.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g) || []
+      hexes.forEach(hex => {
+        const { L, C } = lum(hex.toLowerCase())
+        // L 是 0~255 的亮度。150 这个阈值卡在「深色阶最亮的一档」和「羊皮纸」之间：
+        //   深色面 #202623=37、#323b36=56、强调棕 #795436=92  —— 都放行
+        //   羊皮纸 #e5ded2=223、#fffaf1=250              —— 要拦住
+        // 高色度的是金/绿/红强调色，深底上本来就该亮，另外放行。
+        // 60 这个色度界：羊皮纸系全在 20 以下，而最淡的强调色（护身符火花
+        // #70b099）色度 64——卡 70 会把它误当浅底面。
+        if (L > 150 && C < 60) offenders.push(`${rel}: ${decl.trim().slice(0, 60)}`)
+      })
+    })
+  })
+  assert.strictEqual(offenders.length, 0, `深色主题里混进了浅底面:\n  ${offenders.join("\n  ")}`)
+}
+// 导航栏要贴合首页底图顶部，不能是原来那个棕色
+const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.json"), "utf8"))
+assert.strictEqual(appJson.window.navigationBarBackgroundColor.toLowerCase(), "#0b110f",
+  "导航栏底色应贴合首页底图顶部 6% 的中位色")
+assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航栏上要用白字")
+

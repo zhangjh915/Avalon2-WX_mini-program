@@ -1,7 +1,7 @@
 page {
   min-height: 100%;
-  background: #f6efe2;
-  color: #271f18;
+  background: #1a1f1c;
+  color: #e2e5e3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 28rpx;
 }
@@ -23,8 +23,8 @@ button:active,
 }
 
 .panel {
-  background: #fffaf1;
-  border: 2rpx solid #ddcfba;
+  background: #151917;
+  border: 2rpx solid #262e2a;
   border-radius: 14rpx;
   padding: 24rpx;
   box-sizing: border-box;
@@ -39,7 +39,7 @@ button:active,
 }
 
 .subtitle {
-  color: #786a59;
+  color: #b7bfbb;
   line-height: 1.5;
 }
 
@@ -50,7 +50,7 @@ button:active,
 }
 
 .muted {
-  color: #786a59;
+  color: #b7bfbb;
   font-size: 24rpx;
 }
 
@@ -74,8 +74,8 @@ button:active,
 }
 
 .btn.secondary {
-  background: #e8ddce;
-  color: #34271c;
+  background: #202724;
+  color: #dde1df;
 }
 
 .btn.danger {
@@ -83,9 +83,9 @@ button:active,
 }
 
 .btn.ghost {
-  border: 2rpx solid #d6c6ae;
-  background: #fffaf1;
-  color: #34271c;
+  border: 2rpx solid #2a322e;
+  background: #151917;
+  color: #dde1df;
 }
 
 .tag {
@@ -94,20 +94,20 @@ button:active,
   min-height: 44rpx;
   padding: 0 16rpx;
   border-radius: 8rpx;
-  background: #eee3d3;
-  color: #4b3826;
+  background: #1e2421;
+  color: #d3d8d6;
   font-size: 23rpx;
   box-sizing: border-box;
 }
 
 .tag.good {
-  background: #dcebdd;
-  color: #245b37;
+  background: #1d2320;
+  color: #c3e1cd;
 }
 
 .tag.evil {
-  background: #efd9d6;
-  color: #803126;
+  background: #1d2320;
+  color: #deb6b0;
 }
 
 .tag.dark {
@@ -122,16 +122,16 @@ button:active,
 }
 
 .player-card {
-  border: 2rpx solid #ddcfba;
+  border: 2rpx solid #262e2a;
   border-radius: 12rpx;
-  background: #fffdf8;
+  background: #141816;
   padding: 18rpx;
   box-sizing: border-box;
 }
 
 .player-card.active {
   border-color: #8c5a2e;
-  background: #fff2d8;
+  background: #1a1f1d;
 }
 
 .player-name {
@@ -144,9 +144,9 @@ button:active,
   width: 100%;
   min-height: 72rpx;
   padding: 0 18rpx;
-  border: 2rpx solid #d6c6ae;
+  border: 2rpx solid #2a322e;
   border-radius: 10rpx;
-  background: #fffdf8;
+  background: #141816;
   box-sizing: border-box;
 }
 
@@ -158,9 +158,9 @@ button:active,
   position: relative;
   width: 100%;
   min-height: 620rpx;
-  border: 2rpx solid #ddcfba;
+  border: 2rpx solid #262e2a;
   border-radius: 14rpx;
-  background: radial-gradient(circle at center, #f5e4c8 0%, #ead4b2 46%, #d9bd92 100%);
+  background: radial-gradient(circle at center, #1f2522 0%, #383024 46%, #453b2c 100%);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -209,7 +209,7 @@ button:active,
   width: 130rpx;
   height: 130rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(244, 210, 132, 0.72);
+  border: 4rpx solid rgba(65, 58, 42, 0.72);
   color: #f4d284;
   display: flex;
   align-items: center;
@@ -223,8 +223,8 @@ button:active,
   width: 122rpx;
   min-height: 122rpx;
   border-radius: 50%;
-  background: #fffaf1;
-  border: 4rpx solid #d6c6ae;
+  background: #151917;
+  border: 4rpx solid #2a322e;
   box-shadow: 0 8rpx 18rpx rgba(64, 42, 25, 0.18);
   transform: translate(-50%, -50%);
   display: flex;
@@ -238,30 +238,30 @@ button:active,
 
 .seat-token.mine {
   border-color: #2f8f63;
-  background: #edf7ec;
+  background: #181c1a;
 }
 
 .seat-token.selected {
   border-color: #9b3d35;
-  background: #fff0ec;
+  background: #161b18;
 }
 
 .seat-token.leader {
   border-color: #b8872f;
-  background: #fff3cf;
+  background: #1c211e;
 }
 
 .seat-no {
   font-size: 22rpx;
   font-weight: 900;
-  color: #6f4728;
+  color: #dec9b9;
 }
 
 .seat-avatar {
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: linear-gradient(145deg, #d8c1a1, #8d6744);
+  background: linear-gradient(145deg, #40372a, #8d6744);
   margin: 4rpx 0;
   display: flex;
   align-items: center;
@@ -274,14 +274,14 @@ button:active,
 .seat-name {
   max-width: 100rpx;
   font-size: 20rpx;
-  color: #34271c;
+  color: #dde1df;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .seat-empty {
-  color: #8c7a65;
+  color: #aeb7b3;
 }
 
 .mini-status {
