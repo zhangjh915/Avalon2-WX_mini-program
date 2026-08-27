@@ -1890,3 +1890,22 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 /* 首夜屏：真人主持念稿，屏幕上只留月亮 + 一句话 + 房主的「天亮」按钮。
    玩家全程闭着眼，多写一个字都是给房主添乱。 */
 .night-title { margin-bottom: 6rpx; color: #e8ebe6; font-size: 36rpx; font-weight: 900; letter-spacing: 4rpx; text-align: center; }
+
+/* 私密选择的左右打乱。
+   用 row-reverse 翻转视觉顺序，DOM 顺序和 data-value 都不动——
+   这样翻转不可能把「点了成功却提交失败」这种错误引进来。
+   .loyalty-row 是 grid，grid 也认 row-reverse 之外的写法，所以单独给它 direction。 */
+.swap-order { flex-direction: row-reverse; }
+.loyalty-row.swap-order { direction: rtl; }
+.loyalty-row.swap-order > button { direction: ltr; }
+
+.choice-row { display: flex; gap: 16rpx; }
+.choice-row > button { flex: 1; margin: 0; }
+
+/* 说明小字：告诉玩家位置是乱的，别照着别人点；也等于告诉旁观者看落点没用 */
+.shuffle-note {
+  margin: 8rpx 0 2rpx;
+  color: #8b968a;
+  font-size: 20rpx;
+  text-align: center;
+}

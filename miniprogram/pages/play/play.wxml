@@ -112,7 +112,8 @@
     <view wx:if="{{phase === 'vote'}}" class="phase-content">
       <view wx:if="{{myInTeam && !privateView.hasVoted && !myVotePending}}">
         <view class="action-copy">选择一张任务牌。提交后不可更改，其他人只会看到最终票数。</view>
-        <view class="vote-cards {{voteChoice ? 'voted' : ''}}">
+        <view class="shuffle-note">两张牌的左右位置每人每轮都不同，别照别人的位置点</view>
+        <view class="vote-cards {{voteSwap ? 'swap-order' : ''}} {{voteChoice ? 'voted' : ''}}">
           <view class="vote-card {{voteChoice === 'success' ? 'card-cast' : ''}} {{voteChoice === 'fail' ? 'card-shatter' : ''}} {{canVoteSuccess ? '' : 'card-locked'}}"
                 data-value="success" bindtap="submitVote">
             <image class="vote-card-art" src="{{missionCardSuccess}}" mode="aspectFill" />
@@ -162,7 +163,8 @@
       <view wx:if="{{amulet.status === 'select' && isAmuletOwner}}"><view class="waiting-title">护身符在你手中</view><button class="primary-action" data-mode="inspect" bindtap="openTable">选择查验对象</button></view>
       <view wx:if="{{amulet.status === 'claim' && isInspectionTarget}}">
         <view class="waiting-title">你正在被护身符查验</view><view class="waiting-copy">选择本次对外展示的阵营。不合法的选项已置灰。</view>
-        <view class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="inspectionClaim" disabled="{{!canClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="inspectionClaim" disabled="{{!canClaimEvil}}">邪恶</button></view>
+        <view class="shuffle-note">左右位置每人每轮都不同，别照别人的位置点</view>
+        <view class="loyalty-row {{claimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="inspectionClaim" disabled="{{!canClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="inspectionClaim" disabled="{{!canClaimEvil}}">邪恶</button></view>
       </view>
       <view wx:if="{{amulet.status === 'result' && inspectionResultName}}"><view class="waiting-title">护身符显示为</view><view class="inspection-result {{privateView.inspectionResult === 'good' ? 'good-result' : 'evil-result'}}">{{inspectionResultName}}</view><button wx:if="{{isAmuletOwner}}" class="launch-action" bindtap="completeAmulet">收起护身符，开始讨论</button></view>
       <view wx:if="{{!(amulet.status === 'select' && isAmuletOwner) && !(amulet.status === 'claim' && isInspectionTarget) && !(amulet.status === 'result' && inspectionResultName)}}" class="submitted-state"><view class="submitted-seal spectator seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">护身符正在传递信息</view></view>
@@ -178,7 +180,8 @@
       </view>
       <view wx:if="{{finalStage === 'hunterVote'}}">
         <view class="waiting-title">是否强制发动猎杀</view><view class="waiting-copy">正义方必须投成功，邪恶方可自由选择。</view>
-        <view wx:if="{{!privateView.hunterVoteSubmitted}}" class="vote-actions"><button class="mission-vote success-vote" data-value="success" bindtap="hunterVote">成功</button><button class="mission-vote fail-vote" data-value="fail" bindtap="hunterVote" disabled="{{privateView.faction === 'good'}}">失败</button></view>
+        <view wx:if="{{!privateView.hunterVoteSubmitted}}" class="shuffle-note">左右位置每人不同，别照别人的位置点</view>
+        <view wx:if="{{!privateView.hunterVoteSubmitted}}" class="vote-actions {{hunterSwap ? 'swap-order' : ''}}"><button class="mission-vote success-vote" data-value="success" bindtap="hunterVote">成功</button><button class="mission-vote fail-vote" data-value="fail" bindtap="hunterVote" disabled="{{privateView.faction === 'good'}}">失败</button></view>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-sealed"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">猎杀票已提交</view></view>
       </view>
       <view wx:if="{{finalStage === 'hunterDecision'}}">
@@ -190,7 +193,7 @@
         <view wx:else class="submitted-state"><view class="submitted-seal danger-seal seal-danger"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">盲眼杀手已经现身</view><view class="waiting-copy">保持沉默，等待猎杀结果。</view></view>
       </view>
       <view wx:if="{{finalStage === 'identify'}}">
-        <view wx:if="{{privateView.role === 'traitor' && !privateView.traitorDecision && !traitorSide}}"><view class="waiting-title">选择叛徒的归宿</view><button class="secondary-action" data-side="evil" bindtap="chooseTraitorSide">保持邪恶</button><button class="primary-action" data-side="good" bindtap="chooseTraitorSide">投向正义</button></view>
+        <view wx:if="{{privateView.role === 'traitor' && !privateView.traitorDecision && !traitorSide}}"><view class="waiting-title">选择叛徒的归宿</view><view class="shuffle-note">左右位置每人不同，别照别人的位置点</view><view class="choice-row {{traitorSwap ? 'swap-order' : ''}}"><button class="secondary-action" data-side="evil" bindtap="chooseTraitorSide">保持邪恶</button><button class="primary-action" data-side="good" bindtap="chooseTraitorSide">投向正义</button></view></view>
         <view wx:if="{{traitorSide === 'good' && !privateView.traitorDecision}}"><view class="waiting-title">完成阵营转换</view><view class="waiting-copy">指向两位正义玩家才能投向正义。</view></view>
         <view wx:if="{{privateView.role !== 'traitor' || privateView.traitorDecision}}">
           <view wx:if="{{!finalSubmitted}}"><view class="waiting-title">私密指认两位邪恶玩家</view><view class="waiting-copy">全员都要提交；服务端只使用正义方的结果判定。</view></view>

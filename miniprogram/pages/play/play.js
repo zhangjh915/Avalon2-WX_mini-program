@@ -14,6 +14,7 @@ const phaseNames = {
 
 Page({
   data: {
+    voteSwap: false, claimSwap: false, hunterSwap: false, traitorSwap: false,
     seatSize: 42,
     roomId: "", room: null, game: null, privateView: null, isHost: false,
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
@@ -292,6 +293,14 @@ Page({
       missionCardFail: assets.missionCard(missionSkin, "fail"),
       myVotes: dossier.myVotes,
       syncing: false
+    })
+    const myId = privateView.id || 0
+    const round = (game && game.round) || 0
+    this.setData({
+      voteSwap: gameUtil.choiceSwapped(room.roomId, "vote", round, myId),
+      claimSwap: gameUtil.choiceSwapped(room.roomId, "claim", round, myId),
+      hunterSwap: gameUtil.choiceSwapped(room.roomId, "hunter", myId),
+      traitorSwap: gameUtil.choiceSwapped(room.roomId, "traitor", myId)
     })
     this.refreshLongTable()
     this.resolveRemoteArts(roleSkin, privateView.role, privateView.artVariant)

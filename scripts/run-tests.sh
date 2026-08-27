@@ -38,6 +38,7 @@ TESTS=(
   identityTiming
   applyState
   roomStoreRetry
+  choiceShuffle
 )
 
 failed=0

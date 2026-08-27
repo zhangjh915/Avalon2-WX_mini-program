@@ -236,7 +236,24 @@ function packLabel(pack) {
   return pack === "promo" ? "扩展角色" : "基础角色"
 }
 
+// 私密选择的左右顺序按人、按轮打乱。
+//
+// 为什么要打乱：线下玩的时候，「成功/失败」「正义/邪恶」固定在左右两边，
+// 旁边的人不用看屏幕，光看你手指往哪边落就知道你选了什么——实战中被抓到过。
+//
+// 为什么必须**稳定**而不是每次渲染真随机：这一屏由 900ms 的轮询驱动重绘，
+// 真随机会让按钮在手指落下的一瞬间对调，而在这个游戏里点错一张任务牌就是一局。
+// 所以从「房间号 + 用途 + 轮次 + 座号」派生：同一个人在同一次决策里方向永远不变，
+// 换个人、换一轮、换个用途就变。
+function choiceSwapped(...parts) {
+  const key = parts.join("|")
+  let hash = 0
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) % 1000003
+  return hash % 2 === 1
+}
+
 module.exports = {
+  choiceSwapped,
   roleInfo,
   officialRolePresets,
   missionPresets,
