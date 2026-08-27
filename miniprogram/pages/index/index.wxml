@@ -113,7 +113,7 @@
       <switch checked="{{hunterVoteVariant}}" color="#2f7358" bindchange="toggleHunterVote" />
     </view>
     <view wx:if="{{canUseTestMode}}" class="toggle-row">
-      <view><view class="setting-label">测试模式</view><view class="muted">可补满测试玩家并代其投票；正式和同事玩时请关闭</view></view>
+      <view><view class="setting-label">测试模式</view><view class="muted">可补满测试骑士并代其行动。体验版默认关闭，一个人试玩时再打开</view></view>
       <switch checked="{{testMode}}" color="#8b6f3f" bindchange="toggleTestMode" />
     </view>
     <view wx:if="{{canUseTestMode && testMode}}" class="toggle-row">

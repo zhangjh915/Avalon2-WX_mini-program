@@ -3,12 +3,16 @@ const functionName = "avalonGame"
 const FALLBACK_MESSAGE = "操作失败，请重试"
 
 // 网络/环境类错误的关键字 → 玩家能看懂的说法。
+//
+// 原则：文案只说**玩家能做的下一步**。「云函数未部署」「云环境异常」这类
+// 是给我排查用的，玩家既看不懂也无从下手——真实原因留在 console.error 里，
+// 弹窗里只给出路。
 const NETWORK_HINTS = [
   [/timeout|超时/i, "网络超时，请检查网络后重试"],
   [/fail to fetch|request:fail|网络|ERR_INTERNET|ERR_NETWORK/i, "网络连接失败，请检查网络"],
-  [/function not found|FunctionName parameter/i, "云函数未部署，请先部署 avalonGame"],
+  [/function not found|FunctionName parameter/i, "服务暂时不可用，请稍后再试"],
   [/permission|denied|无权限/i, "没有操作权限，请重新进入房间"],
-  [/env|environment/i, "云环境异常，请重新进入小程序"]
+  [/env|environment/i, "连接不上服务器，请退出小程序重进"]
 ]
 
 // 云函数抛出的规则错误文案本身就是给玩家看的，需要原样透出；
@@ -78,10 +82,10 @@ function invokeWithRetry(action, payload, attempt) {
 }
 
 function call(action, payload) {
-  if (!wx.cloud) return Promise.reject(new Error("请先开启微信云开发"))
+  if (!wx.cloud) return Promise.reject(new Error("连接不上服务器，请退出小程序重进"))
   return invokeWithRetry(action, payload, 0).then(response => {
     const result = response.result
-    if (!result) throw new Error("云函数未返回数据")
+    if (!result) throw new Error("服务器没有响应，请重试")
     return result
   }).catch(error => {
     // 完整错误留在开发者工具控制台，便于排查；弹窗只给简短文案。

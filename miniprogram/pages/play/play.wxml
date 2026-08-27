@@ -21,7 +21,7 @@
     </view>
     <view wx:if="{{leader && phase !== 'reveal' && phase !== 'night' && phase !== 'finale'}}" class="leader-line">
       <view class="leader-crown"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><text>{{leader.id}}号 {{leader.name}}</text>
-      <text class="leader-rule">{{missionSize}}人任务</text><text wx:if="{{protectedText}}" class="protect-tag">双败保护</text>
+      <text class="leader-rule">{{missionSize}}人任务</text><text wx:if="{{protectedText}}" class="protect-tag">双败保护轮</text>
     </view>
   </view>
 
@@ -128,7 +128,7 @@
       <view class="vote-progress"><view class="vote-progress-fill" style="width: {{votePercent}}%;"></view></view>
       <view class="identity-progress">{{voteCount}} / {{game.current.team.length}}</view>
       <view wx:if="{{isHost && hasBots}}" class="bot-vote-list">
-        <button class="secondary-action" bindtap="submitBotVotes">测试玩家自动投票</button>
+        <button class="secondary-action" bindtap="submitBotVotes">测试骑士自动投票</button>
       </view>
     </view>
 
@@ -196,7 +196,7 @@
         <view wx:if="{{privateView.role === 'traitor' && !privateView.traitorDecision && !traitorSide}}"><view class="waiting-title">选择叛徒的归宿</view><view class="shuffle-note">左右位置随机</view><view class="choice-row {{traitorSwap ? 'swap-order' : ''}}"><button class="secondary-action" data-side="evil" bindtap="chooseTraitorSide">保持邪恶</button><button class="primary-action" data-side="good" bindtap="chooseTraitorSide">投向正义</button></view></view>
         <view wx:if="{{traitorSide === 'good' && !privateView.traitorDecision}}"><view class="waiting-title">完成阵营转换</view><view class="waiting-copy">指向两位正义玩家才能投向正义。</view></view>
         <view wx:if="{{privateView.role !== 'traitor' || privateView.traitorDecision}}">
-          <view wx:if="{{!finalSubmitted}}"><view class="waiting-title">私密指认两位邪恶玩家</view><view class="waiting-copy">全员都要提交；服务端只使用正义方的结果判定。</view></view>
+          <view wx:if="{{!finalSubmitted}}"><view class="waiting-title">私密指认两位邪恶玩家</view><view class="waiting-copy">全员都要提交。</view></view>
           <view wx:else class="submitted-state"><view class="submitted-seal seal-sealed"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">最终指认已封存</view></view>
           <view class="identity-progress">{{game.final.submittedCount || 0}} / {{game.playerCount}}</view>
         </view>
@@ -258,7 +258,7 @@
 
   <view wx:if="{{historyVisible}}" class="history-overlay">
     <view class="history-page">
-      <view class="sheet-head history-head"><view><view class="sheet-title">圆桌纪录</view><view class="sheet-hint">仅展示公开信息</view></view><view class="modal-close" bindtap="closeHistory" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
+      <view class="sheet-head history-head"><view><view class="sheet-title">远征记录</view><view class="sheet-hint">仅展示公开信息</view></view><view class="modal-close" bindtap="closeHistory" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view>
       <scroll-view class="history-scroll" scroll-y>
         <view wx:if="{{!historyMissions.length && !historyAmulets.length}}" class="history-empty">尚无已完成的远征记录</view>
         <view wx:for="{{historyMissions}}" wx:key="round" class="history-round">

@@ -42,7 +42,7 @@ Page({
         winner: mission.winner,
         crest: assets.packedAsset(mission.winner === "good" ? "crest-good.png" : "crest-evil.png"),
         title: `第${mission.round}次远征 · ${mission.winner === "good" ? "成功" : "失败"}`,
-        detail: `队长 ${leader ? `${leader.id}号 ${leader.name}` : `${mission.leaderId}号`}，同行 ${team}，魔法 ${magic}，成功 ${mission.successCount} 票，失败 ${mission.failCount} 票${mission.protectedRound ? "，本轮为保护轮" : ""}。`
+        detail: `队长 ${leader ? `${leader.id}号 ${leader.name}` : `${mission.leaderId}号`}，同行 ${team}，魔法 ${magic}，成功 ${mission.successCount} 票，失败 ${mission.failCount} 票${mission.protectedRound ? "，本轮为双败保护轮" : ""}。`
       }
     })
     const finalLine = this.buildFinalLine(game)

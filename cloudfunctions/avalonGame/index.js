@@ -56,9 +56,9 @@ function pickSkin(value, allowed) {
   return allowed.indexOf(String(value)) >= 0 ? String(value) : allowed[0]
 }
 
-// 测试玩家相关能力只在开发版房间开放，避免正式对局被误触破坏。
+// 测试骑士相关能力只在开发版房间开放，避免正式对局被误触破坏。
 function requireDevRoom(room) {
-  if (!room || !room.devMode) fail("测试玩家功能仅在开发版可用")
+  if (!room || !room.devMode) fail("测试骑士功能仅在开发版可用")
 }
 
 const tableRegions = ["top", "right", "bottom", "left"]
@@ -573,7 +573,7 @@ async function submitVote(event, openid, botPlayerId) {
     let player = null
     if (botPlayerId) {
       player = core.getPlayer(state.secret, botPlayerId)
-      if (!player || !player.bot) fail("该座位不是测试玩家")
+      if (!player || !player.bot) fail("该座位不是测试骑士")
     } else player = requirePlayer(state.secret, openid)
     if (game.current.team.indexOf(player.id) < 0) fail("你不在本轮任务队伍中")
     const options = core.legalVoteOptions(game, player)
@@ -615,7 +615,7 @@ async function submitBotVotes(event, openid) {
     const bots = game.current.team
       .map(id => core.getPlayer(state.secret, id))
       .filter(player => player && player.bot && !Object.prototype.hasOwnProperty.call(roundVotes, String(player.id)))
-    if (!bots.length) fail("本轮没有待投票的测试玩家")
+    if (!bots.length) fail("本轮没有待投票的测试骑士")
     bots.forEach(player => {
       roundVotes[String(player.id)] = core.automaticVote(game, player)
     })

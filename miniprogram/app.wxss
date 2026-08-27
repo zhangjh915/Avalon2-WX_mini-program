@@ -339,3 +339,22 @@ button:active,
   height: 100%;
   border-radius: 50%;
 }
+
+/* 按钮文字垂直居中。
+   小程序的 <button> 自带一个行高，一旦用 min-height 把盒子撑高、
+   又没同步设行高，文字就贴在顶上（「让测试骑士行动」那颗被抓到过）。
+   用 flex 居中而不是写死 line-height：按钮换行时行高会失效，flex 不会。
+   放在 app.wxss 是因为这是所有按钮的通病，逐个补迟早再漏一个。 */
+button,
+.btn,
+.primary-action,
+.secondary-action,
+.launch-action,
+.choice-action,
+.loyalty-button,
+.bot-step-action,
+.join-room-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -62,7 +62,7 @@ Page({
 
   onLoad() {
     // 测试模式由房主显式开关，不再从运行环境推断：
-    // 开发期在开发版和体验版都需要补测试玩家，正式版一律不允许。
+    // 开发期在开发版和体验版都需要补测试骑士，正式版一律不允许。
     const canUseTestMode = env.canUseTestMode()
     const stored = wx.getStorageSync("testMode")
     // 默认值分环境：
@@ -397,7 +397,7 @@ Page({
 
   ensureName() {
     if (!this.data.playerName.trim()) {
-      wx.showToast({ title: "先填昵称", icon: "none" })
+      wx.showToast({ title: "请填写昵称", icon: "none" })
       return false
     }
     return true
@@ -483,6 +483,6 @@ Page({
 
   showError(title, error) {
     wx.hideLoading()
-    wx.showModal({ title, content: error.message || "请确认已部署 avalonGame 云函数。", showCancel: false })
+    wx.showModal({ title, content: error.message || "连接不上服务器，请稍后再试。", showCancel: false })
   }
 })

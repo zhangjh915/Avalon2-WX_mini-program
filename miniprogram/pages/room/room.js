@@ -298,7 +298,7 @@ Page({
     if (this.data.writing) return Promise.resolve()
     if (!this.data.room || this.data.room.status !== "lobby") return Promise.resolve()
     if (!this.data.playerName.trim()) {
-      wx.showToast({ title: "先填写昵称", icon: "none" })
+      wx.showToast({ title: "请填写昵称", icon: "none" })
       return Promise.resolve()
     }
     const seatNo = Number(event.currentTarget.dataset.seat)
@@ -350,6 +350,6 @@ Page({
   },
 
   showWriteError(error) {
-    wx.showModal({ title: "房间同步失败", content: error.message || "请检查 avalonGame 云函数。", showCancel: false })
+    wx.showModal({ title: "房间同步失败", content: error.message || "连接不上服务器，请退出房间重进。", showCancel: false })
   }
 })

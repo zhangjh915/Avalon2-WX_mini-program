@@ -1434,7 +1434,7 @@ button::after {
 .leader-line { display: flex; min-height: 72rpx; padding: 10rpx 14rpx; align-items: center; border: 2rpx solid #404d47; border-radius: 7rpx; background: #1a2420; box-sizing: border-box; color: #ece7dc; font-size: 23rpx; }
 .leader-crown { display: flex; width: 46rpx; height: 46rpx; margin-right: 12rpx; flex: 0 0 auto; align-items: center; justify-content: center; }
 /* 换成 <image> 后必须显式给尺寸：图片按自然尺寸渲染（96~224px），
-   原来的 font-size 规则对图片无效，圆桌纪录里的图标就是这么撑爆排版的。 */
+   原来的 font-size 规则对图片无效，远征记录里的图标就是这么撑爆排版的。 */
 .symbol-icon { display: block; width: 32rpx; height: 32rpx; flex: none; }
 .crown-icon { width: 34rpx; height: 34rpx; }
 .amulet-icon,.fire-icon { width: 32rpx; height: 32rpx; }
@@ -1853,7 +1853,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 /* 未选中：原地碎裂消散 */
 .vote-card.card-shatter { transform: scale(.86) rotate(-6deg); opacity: 0; filter: blur(6rpx) saturate(.4); }
 
-/* 圆桌纪录里标出自己那一轮打的牌 */
+/* 远征记录里标出自己那一轮打的牌 */
 .history-mine .mine-vote { padding: 2rpx 14rpx; border: 2rpx solid; border-radius: 4rpx; font-size: 22rpx; font-weight: 700; }
 .history-mine .vote-success { border-color: #4f9a80; color: #8ecdb3; }
 .history-mine .vote-fail { border-color: #c1656b; color: #e09b9e; }

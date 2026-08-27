@@ -213,7 +213,7 @@ Page({
     const lastMission = game.missions.length ? game.missions[game.missions.length - 1] : null
     const ceremonies = this.buildStateCeremonies(previousGame, previousPhase, game, room.phase, decoratedPlayers)
     const tableGeometry = tableLayout.tableGeometry(tableLayout.normalizeLayout(game.players.length, room.seatLayout, room.tableSides))
-    // dossier 必须先建：圆桌纪录要用它的 myVotes 标出自己那一轮打的牌。
+    // dossier 必须先建：远征记录要用它的 myVotes 标出自己那一轮打的牌。
     // 顺序写反的话 applyState 会在这里抛 TypeError，而 game 还没 setData，
     // 于是外层 wx:if="{{game}}" 永远不成立——整个对局页白屏。
     const dossier = this.buildDossier(privateView, decoratedPlayers)

@@ -240,3 +240,41 @@ assert.strictEqual(appJson.window.navigationBarBackgroundColor.toLowerCase(), "#
   "导航栏底色应贴合首页底图顶部 6% 的中位色")
 assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航栏上要用白字")
 
+// 按钮文字必须垂直居中。
+// 小程序的 <button> 自带行高，一旦用 min-height 把盒子撑高又不同步设行高，
+// 文字就贴在顶上——「让测试骑士行动」那颗是这么被发现的，同类共 7 处。
+// 现在由 app.wxss 一条通用规则兜底；这里锁住两件事：规则还在，
+// 以及**每个自己设了高度的按钮类**都被那条规则覆盖到。
+{
+  const appCss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
+  const centerRule = /([^{}]*?)\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*justify-content:\s*center[^}]*\}/g
+  let covered = null
+  let m
+  while ((m = centerRule.exec(appCss))) {
+    if (m[1].indexOf("button") >= 0) { covered = m[1].split(",").map(x => x.trim()); break }
+  }
+  assert.ok(covered, "app.wxss 缺少按钮垂直居中的通用规则")
+
+  const sheets = ["app.wxss", "pages/index/index.wxss", "pages/room/room.wxss", "pages/play/play.wxss"]
+  const uncovered = []
+  sheets.forEach(rel => {
+    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
+    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
+    rules.forEach(rule => {
+      const sel = rule.slice(0, rule.indexOf("{")).trim()
+      const body = rule.slice(rule.indexOf("{"))
+      if (!/-action\b|\.btn\b|loyalty-button|dial-key/.test(sel)) return
+      if (/\[disabled\]|:active|::after/.test(sel)) return
+      if (!/(?:^|;|\{)\s*(?:min-)?height:\s*\d+rpx/.test(body)) return
+      if (/line-height:/.test(body)) return
+      if (/display:\s*flex/.test(body) && /align-items:\s*center/.test(body)) return
+      // 落到通用规则上才算安全
+      const cls = (sel.match(/\.[a-z-]+/g) || []).map(x => x.trim())
+      const hit = cls.some(c => covered.indexOf(c) >= 0)
+      if (!hit) uncovered.push(`${rel}: ${sel.slice(0, 50)}`)
+    })
+  })
+  assert.deepStrictEqual(uncovered, [],
+    `这些按钮设了高度但没被居中规则覆盖，文字会贴顶:\n  ${uncovered.join("\n  ")}`)
+}
+
