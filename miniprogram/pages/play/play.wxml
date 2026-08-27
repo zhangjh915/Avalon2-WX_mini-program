@@ -30,7 +30,7 @@
       <view wx:if="{{identityMode === 'prepare'}}" class="identity-waiting">
         <image class="identity-card-back" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
         <view class="waiting-title">准备查看身份</view>
-        <view class="waiting-copy">将手机转向自己。全员准备后，身份与私密信息会同时揭示。</view>
+        <view class="waiting-copy">将手机转向自己。全员准备后，先由首任队长选择对外展示的阵营，然后身份同时揭示。</view>
         <button wx:if="{{!identityReady}}" class="primary-action" bindtap="confirmIdentity">我已准备</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">等待全员准备</view></view>
         <view class="identity-progress">{{identityReadyCount}} / {{game.playerCount}}</view>
@@ -43,11 +43,16 @@
       <view wx:if="{{identityMode === 'leaderClaim'}}" class="phase-content">
         <view class="waiting-title">你是首任队长</view>
         <view class="waiting-copy">先选择对外展示的阵营，选完全员一起翻牌。</view>
-        <view class="leader-claim-card">
-          <image class="claim-role-art" src="{{myRoleArt}}" mode="aspectFill" bindtap="openRoleArt" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
-          <view class="claim-role-name {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.roleName}} · {{privateView.factionName}}</view>
+        <!-- 立绘是 3:4，容器也必须是 3:4，否则 aspectFill 会把人裁掉。
+             沿用揭示页那张牌的 39vh/52vh，同一比例、同一套观感。 -->
+        <view class="claim-card">
+          <image class="claim-card-art" src="{{myRoleArt}}" mode="aspectFill" bindtap="openRoleArt" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
+          <view class="claim-card-label">
+            <text class="claim-card-faction {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.factionName}}</text>
+            <text class="claim-card-name">{{privateView.roleName}}</text>
+          </view>
         </view>
-        <view class="shuffle-note">不合法的选项已置灰，左右位置随机</view>
+        <view class="shuffle-note">不能选的已置灰，左右位置随机</view>
         <view class="loyalty-row {{leadClaimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimEvil}}">邪恶</button></view>
       </view>
 
@@ -76,12 +81,8 @@
           <view wx:if="{{!cardFlipped}}" class="flip-hint">轻触翻开身份牌</view>
         </view>
 
-        <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-box">
-          <view class="intel-title">你是首任队长 · 选择对外展示的阵营</view>
-          <view class="shuffle-note">不合法的选项已置灰，左右位置随机</view>
-          <view class="loyalty-row {{leadClaimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimEvil}}">邪恶</button></view>
-        </view>
-        <view wx:elif="{{privateView.needsLeaderClaim}}" class="claim-submitted">已展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
+        <!-- 展示阵营在揭示之前就选完了，这里只回显结果 -->
+        <view wx:if="{{privateView.needsLeaderClaim}}" class="claim-submitted">你已对外展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
 
         <view class="reading-actions">
           <button wx:if="{{identityUnlocked}}" class="ghost-action" bindtap="openDossier">查看本局思路</button>
@@ -93,12 +94,7 @@
         <image class="identity-card-back sealed" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
         <view class="waiting-title">身份已隐藏</view>
         <view class="waiting-copy">确认你已记住角色、额外信息和本局思路。</view>
-        <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-reminder">
-          <view class="waiting-copy">你是首任队长，请先选择对外展示的阵营。</view>
-          <view class="shuffle-note">不合法的选项已置灰，左右位置随机</view>
-          <view class="loyalty-row {{leadClaimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimEvil}}">邪恶</button></view>
-        </view>
-        <button wx:if="{{!identityRemembered && (!privateView.needsLeaderClaim || privateView.leaderClaimSubmitted)}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
+        <button wx:if="{{!identityRemembered}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-sealed"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">已完成确认</view></view>
         <view class="identity-progress">{{identityRememberedCount}} / {{game.playerCount}}</view>
         <button wx:if="{{isHost && identityRememberedCount === game.playerCount}}" class="launch-action" bindtap="enterNight">进入天黑请闭眼</button>
@@ -340,12 +336,7 @@
         <!-- 阅读时间在浮层开着的时候走完了：就地把这一步收尾，
              不要把人踢回一个身份牌已经收起、再也翻不开的界面。 -->
         <view wx:if="{{phase === 'reveal' && identityMode === 'remember' && !identityRemembered}}" class="dossier-finish">
-          <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-box">
-            <view class="intel-title">你是首任队长 · 选择对外展示的阵营</view>
-            <view class="shuffle-note">不合法的选项已置灰，左右位置随机</view>
-            <view class="loyalty-row {{leadClaimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimEvil}}">邪恶</button></view>
-          </view>
-          <button wx:if="{{!privateView.needsLeaderClaim || privateView.leaderClaimSubmitted}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
+          <button class="primary-action" bindtap="rememberIdentity">我已记住</button>
         </view>
       </scroll-view>
     </view>

@@ -1540,9 +1540,6 @@ button::after {
 .reading-clock { margin-top: 18rpx; color: #aeb7b2; font-size: 22rpx; text-align: center; }
 .loyalty-preview { width: 100%; margin: 28rpx 0 20rpx; padding: 20rpx; border: 1rpx solid #282f2b; background: #1d2320; box-sizing: border-box; }
 .loyalty-row { display: grid; width: 100%; margin: 22rpx 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14rpx; }
-.loyalty-button { min-height: 86rpx; margin: 0; border: 2rpx solid #39785e; border-radius: 6rpx; background: #1c211e; color: #bfded0; font-size: 27rpx; font-weight: 900; }
-.loyalty-button.evil-choice { border-color: #a84a45; background: #1c211e; color: #d4a9a7; }
-.loyalty-button[disabled] { border-color: #28302c; background: #1d2320; color: #a0a39e; opacity: 1; }
 .loyalty-button.selected-loyalty { box-shadow: 0 0 0 7rpx rgba(47, 115, 88, 0.16); transform: translateY(-2rpx); }
 .ceremony-content { min-height: 650rpx; justify-content: center; }
 .ceremony-mark { position: relative; overflow: hidden; display: flex; width: 126rpx; height: 126rpx; margin: 0 auto 20rpx; align-items: center; justify-content: center; border: 2rpx solid #7c8880; border-radius: 50%; color: #d9ded9; font-size: 50rpx; font-weight: 900; }
@@ -1599,9 +1596,7 @@ button::after {
 .game-seat-token.seat-disabled { opacity: .34; }
 .game-seat-token .seat-badge { width: 34rpx; height: 34rpx; overflow: visible; border: 0; background: transparent; font-size: 26rpx; line-height: 1; }
 .game-seat-token.seat-boarding .seat-avatar { animation: seat-board 520ms cubic-bezier(.18,.78,.22,1) both; }
-.leader-claim-box { margin-top: 22rpx; padding: 20rpx; border-left: 6rpx solid #9a763c; background: #202623; }
 .claim-submitted { margin-top: 12rpx; color: #bfc7c3; font-size: 23rpx; font-weight: 800; text-align: center; }
-.leader-claim-reminder { width: 100%; }
 .directive-kicker { margin-bottom: 12rpx; color: #cdb270; font-size: 20rpx; font-weight: 900; }
 .directive-progress { width: 70%; height: 7rpx; margin-top: 14rpx; overflow: hidden; border-radius: 4rpx; background: #34413b; }
 .directive-progress view { height: 100%; border-radius: 4rpx; background: #cdb270; transition: width 1s linear; }
@@ -1967,23 +1962,59 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 
 /* 微信原生的 button[disabled] 会刷一层近白底（实测 rgb(250,250,250)），
    在深色主题上就是一块刺眼的白。单类选择器压不过它，这里用父级提高特异性。 */
+
+
+/* 队长选择那一屏的立绘。立绘是 3:4，容器同比例，aspectFill 才不会裁人。
+   尺寸沿用揭示页那张牌，两处观感一致。 */
+.claim-card {
+  position: relative;
+  width: 39vh;
+  height: 52vh;
+  margin: 22rpx auto 6rpx;
+  overflow: hidden;
+  border: 2rpx solid #3d4a44;
+  border-radius: 24rpx;
+  background: #1b2420;
+}
+.claim-card-art { display: block; width: 100%; height: 100%; }
+/* 名字压在牌面下缘，不额外占竖向空间 */
+.claim-card-label {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 46rpx 22rpx 18rpx;
+  background: linear-gradient(180deg, rgba(12, 17, 15, 0) 0%, rgba(12, 17, 15, 0.86) 58%);
+}
+.claim-card-faction { display: block; font-size: 21rpx; font-weight: 800; letter-spacing: 3rpx; }
+.claim-card-name { display: block; margin-top: 2rpx; color: #f2efe7; font-size: 36rpx; font-weight: 900; }
+
+/* 阵营按钮：原来是细边框 + 中性深底，像个表单控件。
+   改成带阵营色的实心牌面——正义/邪恶一眼分得出，不用读字。 */
+.loyalty-button {
+  min-height: 100rpx;
+  margin: 0;
+  border: 2rpx solid #3f8a68;
+  border-radius: 10rpx;
+  background: linear-gradient(180deg, #2c6b52 0%, #1f4d3a 100%);
+  color: #eaf6f0;
+  font-size: 30rpx;
+  font-weight: 900;
+  letter-spacing: 6rpx;
+  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.08), 0 6rpx 14rpx rgba(0, 0, 0, 0.32);
+}
+.loyalty-button.evil-choice {
+  border-color: #b1544e;
+  background: linear-gradient(180deg, #8a3b35 0%, #5f2723 100%);
+  color: #fbeae8;
+}
+/* 微信原生 button[disabled] 会刷一层近白底，单类选择器压不过它，
+   用父级提高特异性。禁用的要明确沉下去，但仍看得出是哪一方。 */
 .loyalty-row > .loyalty-button[disabled],
 .loyalty-row > .loyalty-button[disabled].evil-choice {
-  border-color: #2a332e;
-  background: #1a1f1c;
-  color: #6f7a73;
+  border-color: #2c3531;
+  background: #191e1c;
+  color: #5d6963;
+  box-shadow: none;
   opacity: 1;
 }
-
-/* 队长先选那一屏：给他看清自己的牌再做选择，其余人只看到等待 */
-.leader-claim-card { margin: 22rpx 0 8rpx; text-align: center; }
-.claim-role-art {
-  display: block;
-  width: 100%;
-  max-width: 420rpx;
-  height: 460rpx;
-  margin: 0 auto;
-  border: 2rpx solid #3a453f;
-  border-radius: 10rpx;
-}
-.claim-role-name { margin-top: 14rpx; font-size: 30rpx; font-weight: 800; }

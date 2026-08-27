@@ -326,3 +326,24 @@ assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航
     `这些按钮设了高度但没被居中规则覆盖，文字会贴顶:\n  ${uncovered.join("\n  ")}`)
 }
 
+// 队长选展示阵营那一屏放了角色立绘。立绘是 3:4（990x1320），
+// 容器必须同比例，否则 aspectFill 会把人裁掉——第一版容器 420x460（0.913），
+// 教士的头和脚都被切了。这里锁住比例不许再跑偏。
+{
+  const wxml = fs.readFileSync(path.join(root, "play", "play.wxml"), "utf8")
+  const wxss = fs.readFileSync(path.join(root, "play", "play.wxss"), "utf8")
+  const card = /\.claim-card\s*\{([^}]*)\}/.exec(wxss)
+  assert.ok(card, "找不到队长选择屏的立绘容器")
+  const w = /width:\s*([\d.]+)vh/.exec(card[1])
+  const h = /height:\s*([\d.]+)vh/.exec(card[1])
+  assert.ok(w && h, "立绘容器应当用同一单位定宽高，才能锁住比例")
+  const ratio = Number(w[1]) / Number(h[1])
+  assert.ok(Math.abs(ratio - 0.75) < 0.02,
+    `立绘是 3:4，容器比例却是 ${ratio.toFixed(3)}，aspectFill 会裁掉人物`)
+
+  // 选择既然移到了揭示之前，揭示页里就不该再留一套选择控件
+  assert.ok(wxml.indexOf("leader-claim-box") < 0 && wxml.indexOf("leader-claim-reminder") < 0,
+    "揭示页里的展示阵营选择块应当已经移除（选择发生在揭示之前）")
+}
+
+console.log("ui binding tests passed")
