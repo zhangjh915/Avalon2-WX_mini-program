@@ -369,7 +369,7 @@ Page({
     }
     this.stateGeneration += 1
     this.setData({ writing: true })
-    wx.showLoading({ title: "命运洗牌中" })
+    wx.showLoading({ title: "身份洗牌中" })
     return roomStore.startGame(this.data.roomId, this.data.firstLeaderSeatNo).then(result => {
       wx.hideLoading()
       this.applyState(result)

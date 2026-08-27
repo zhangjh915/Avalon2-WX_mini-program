@@ -480,7 +480,9 @@ async function startGame(event, openid) {
   built.secret.hostOpenid = state.secret.hostOpenid
   built.secret.seatBindings = state.secret.seatBindings
   const firstLeader = core.getPlayer(built.secret, built.publicGame.firstLeaderId)
-  if (firstLeader.role !== "deceiver" || firstLeader.bot) built.secret.priestClaim = core.displayedFaction(firstLeader)
+  // 只有 bot 自动填。真人首任队长一律自己点一次——包括非骗徒，
+  // 否则「谁在点手机」就把骗徒身份泄出去了（见 privateView 里的说明）。
+  if (firstLeader.bot) built.secret.priestClaim = core.displayedFaction(firstLeader)
   const roomUpdate = {
     status: "playing",
     phase: "reveal",
@@ -503,9 +505,15 @@ async function identityAction(event, openid) {
     if (event.action === "identityReady" && identity.readyIds.indexOf(player.id) < 0) identity.readyIds.push(player.id)
     if (event.action === "identityClaim") {
       if (["good", "evil"].indexOf(event.claim) < 0) fail("展示阵营选择不合法")
-      if (player.id !== game.firstLeaderId || player.role !== "deceiver") fail("只有担任首任领袖的骗徒需要选择展示阵营")
+      if (player.id !== game.firstLeaderId) fail("只有首任队长需要选择展示阵营")
       if (!identity.revealAt || Date.now() < identity.revealAt) fail("身份尚未揭示")
       if (state.secret.priestClaim) fail("展示阵营已经提交")
+      // 非骗徒只能亮真实阵营。界面已经置灰了另一个，这里再挡一层——
+      // 前端置灰是提示，不是校验。
+      const claimLeader = core.getPlayer(state.secret, game.firstLeaderId)
+      if (claimLeader && claimLeader.role !== "deceiver" && event.claim !== core.displayedFaction(claimLeader)) {
+        fail("只能展示你真实的阵营")
+      }
       state.secret.priestClaim = event.claim
     }
     if (event.action === "startIdentity") {
@@ -518,7 +526,7 @@ async function identityAction(event, openid) {
     if (event.action === "identityRemembered") {
       if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份阅读时间尚未结束")
       const firstLeader = core.getPlayer(state.secret, game.firstLeaderId)
-      if (firstLeader && firstLeader.id === player.id && firstLeader.role === "deceiver" && !state.secret.priestClaim) fail("请先选择向教士展示的阵营")
+      if (firstLeader && firstLeader.id === player.id && !state.secret.priestClaim) fail("请先选择要展示的阵营")
       if (identity.rememberedIds.indexOf(player.id) < 0) identity.rememberedIds.push(player.id)
     }
     const now = Date.now()

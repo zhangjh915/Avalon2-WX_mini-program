@@ -179,6 +179,22 @@ async function createStartedRoom(playerCount, roleCounts, options) {
 // options.firstLeaderSeatNo：指定首任队长（不传 = 随机，服务端默认行为）
 // options.realRandom：不要钉住 Math.random。默认钉住是为了让绝大多数用例可复现；
 //   只有专门验「默认确实是随机的」那条才需要放开。
+// 首任队长**都**要提交一次「对外展示的阵营」，不只是骗徒——
+// 只有骗徒需要点的话，「谁在点手机」本身就泄露了骗徒身份。
+// 非骗徒只有一个合法选项，这里按服务端给的选项提交。
+async function submitLeaderClaim(roomId) {
+  const game = room(roomId).game
+  if (!game || secret(roomId).priestClaim) return
+  const leader = core.getPlayer(secret(roomId), game.firstLeaderId)
+  if (!leader || leader.bot) return
+  // 揭示有 3 秒延迟（revealAt = now + 3000），测试里直接把它推到过去，
+  // 不然刚 startIdentity 就提交会被「身份尚未揭示」挡下
+  if (game.identity && game.identity.revealAt > Date.now()) game.identity.revealAt = Date.now() - 1
+  const who = leader.id === 1 ? "host" : `user-${leader.id}`
+  const claim = leader.role === "deceiver" ? "good" : core.displayedFaction(leader)
+  await action("identityClaim", { roomId, claim }, who)
+}
+
 async function createHumanRoom(playerCount, roleCounts, options) {
   const opts = options || {}
   const created = await action("createRoom", {
@@ -203,9 +219,7 @@ async function finishIdentity(roomId) {
   const host = secret(roomId).players.find(player => player.openid === "host")
   await action("identityReady", { roomId })
   await action("startIdentity", { roomId })
-  if (host.id === room(roomId).game.firstLeaderId && host.role === "deceiver") {
-    await action("identityClaim", { roomId, claim: "good" })
-  }
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   await action("identityRemembered", { roomId })
   await action("enterNight", { roomId })
@@ -368,7 +382,7 @@ async function testFirstLeaderDeceiverClaim() {
   const other = privateState.players.find(player => player.id !== firstLeader.id)
   const otherOpenid = other.id === 1 ? "host" : `user-${other.id}`
   assert.strictEqual(core.privateView(room(roomId).game, privateState, otherOpenid).needsLeaderClaim, false)
-  await expectFailure(action("identityClaim", { roomId, claim: "good" }, otherOpenid), /只有担任首任领袖的骗徒/)
+  await expectFailure(action("identityClaim", { roomId, claim: "good" }, otherOpenid), /只有首任队长/)
   for (const player of privateState.players) await action("identityReady", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
   await action("startIdentity", { roomId }, "host")
   room(roomId).game.identity.revealAt = Date.now() - 1
@@ -472,7 +486,7 @@ async function testRealMultiplayerFlow() {
   }
   await action("startIdentity", { roomId }, "host")
   const firstLeader = players.find(player => player.id === room(roomId).game.firstLeaderId)
-  if (firstLeader.role === "deceiver") await action("identityClaim", { roomId, claim: "good" }, firstLeader.id === 1 ? "host" : `user-${firstLeader.id}`)
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const player of players) {
     await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
@@ -504,7 +518,7 @@ async function testHumanInspectionClaim() {
   }
   await action("startIdentity", { roomId }, "host")
   const firstLeader = privateState.players.find(player => player.id === room(roomId).game.firstLeaderId)
-  if (firstLeader.role === "deceiver") await action("identityClaim", { roomId, claim: "good" }, firstLeader.id === 1 ? "host" : `user-${firstLeader.id}`)
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const player of privateState.players) await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
   await action("enterNight", { roomId }, "host")
@@ -901,7 +915,7 @@ async function testNoActingForOthers() {
   cloudMock.reset()
   const { roomId, players, who } = await dealtGame(6)
   const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
-  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
 
   const me = players[0]
@@ -932,7 +946,7 @@ async function testVoteSecrecyBeforeReveal() {
   cloudMock.reset()
   const { roomId, players, who } = await dealtGame(6)
   const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
-  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
   await action("enterNight", { roomId }, "host")
@@ -970,7 +984,7 @@ async function testConcurrentSubmissionsCountOnce() {
   cloudMock.reset()
   const { roomId, players, who } = await dealtGame(6)
   const first = players.find(p => p.role === "deceiver" && p.id === room(roomId).game.firstLeaderId)
-  if (first) await action("identityClaim", { roomId, claim: "good" }, who(first.id))
+  await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
   await action("enterNight", { roomId }, "host")
@@ -1062,37 +1076,55 @@ async function testFirstLeaderChoice() {
 }
 
 
-// 首任队长必须知道自己是首任队长。
-// 骗徒有「选择向教士展示什么」那一步所以他知道；其他角色的展示由服务端自动完成，
-// 屏幕上原本一个字都没有——房主指定自己当首任队长，全程不知道教士读过自己。
-async function testFirstLeaderIsTold() {
+// 首任队长**都**要走「选择对外展示的阵营」这一步，不只是骗徒。
+//
+// 线下所有人都盯着谁在点手机：只有骗徒需要点的话，「有人在点」本身
+// 就等于宣布他是骗徒。非骗徒也点，只是他只有一个合法选项。
+// 同理这一步和场上有没有教士无关——没教士也照走，否则「这局没人点」
+// 就等于告诉所有人本局没有教士。
+async function testEveryFirstLeaderClaims() {
+  // 1) 无论什么角色，首任队长都要走这一步；别人都不用
   cloudMock.reset()
   const roomId = await createHumanRoom(7)
   const players = secret(roomId).players
   const who = id => (id === 1 ? "host" : `user-${id}`)
   const leaderId = room(roomId).game.firstLeaderId
   const leader = players.find(p => p.id === leaderId)
+  secret(roomId).priestClaim = null
 
-  const view = await action("getState", { roomId }, who(leaderId))
-  const info = (view.private.nightInfo || []).join(" ")
+  const view = core.privateView(room(roomId).game, secret(roomId), who(leaderId))
+  assert.strictEqual(view.needsLeaderClaim, true, `${leader.role} 当首任队长却不用选择展示阵营`)
+  const other = players.find(p => p.id !== leaderId)
+  assert.strictEqual(core.privateView(room(roomId).game, secret(roomId), who(other.id)).needsLeaderClaim, false,
+    "非首任队长不该出现这一步")
+
+  // 2) 骗徒两个都能选，其余人只有真实那个能选
+  const opts = view.leaderClaimOptions || []
   if (leader.role === "deceiver") {
-    assert.ok(view.private.needsLeaderClaim, "骗徒首任队长应当走选择展示阵营那一步")
+    assert.deepStrictEqual(opts.slice().sort(), ["evil", "good"], "骗徒应当两个阵营都能展示")
   } else {
-    assert.match(info, /首任队长/, `${leader.role} 当首任队长却没被告知`)
-    const shown = leader.faction === "good" ? "正义方" : "邪恶方"
-    assert.ok(info.indexOf(shown) >= 0, `没说清对外显示为${shown}`)
+    assert.deepStrictEqual(opts, [core.displayedFaction(leader)],
+      `${leader.role} 只应能展示真实阵营，实际 ${opts}`)
   }
 
-  // 不是首任队长的人不该看到这句——否则等于告诉他别人是队长兼透露阵营
-  const other = players.find(p => p.id !== leaderId)
-  const otherView = await action("getState", { roomId }, who(other.id))
-  const otherInfo = ((otherView.private || {}).nightInfo || []).join(" ")
-  assert.ok(otherInfo.indexOf("你是本局首任队长") < 0, "非队长不该收到队长告知")
+  // 3) 非骗徒提交另一个阵营要被服务端拒——界面置灰只是提示，不是校验
+  if (leader.role !== "deceiver") {
+    room(roomId).game.identity.revealAt = Date.now() - 1
+    const wrong = core.displayedFaction(leader) === "good" ? "evil" : "good"
+    await expectFailure(action("identityClaim", { roomId, claim: wrong }, who(leaderId)), /真实的阵营/)
+  }
 
-  // 措辞不能提「教士」：角色配置可以是隐藏的，提了等于确认场上有教士
-  assert.ok(info.indexOf("教士") < 0 || leader.role === "priest",
-    "首任队长的告知不该提教士——会泄露角色配置")
-  console.log("  first leader is told ok")
+  // 4) 一局里**没有教士**时这一步照样存在。
+  // 少了它，「这局没人点手机」就等于公开本局没有教士。
+  cloudMock.reset()
+  const noPriest = gameUtil.countRoles(["loyal", "loyal", "squire", "morgan", "hunter", "minion"])
+  const roomB = await createHumanRoom(6, noPriest)
+  assert.ok(!secret(roomB).players.some(p => p.role === "priest"), "这局本不该有教士")
+  secret(roomB).priestClaim = null
+  const leaderB = core.getPlayer(secret(roomB), room(roomB).game.firstLeaderId)
+  const viewB = core.privateView(room(roomB).game, secret(roomB), leaderB.id === 1 ? "host" : `user-${leaderB.id}`)
+  assert.strictEqual(viewB.needsLeaderClaim, true, "没有教士时也必须走这一步，否则等于公开没有教士")
+  console.log("  every first leader claims ok")
 }
 
 async function run() {
@@ -1118,7 +1150,7 @@ async function run() {
   await testStepModeHandoffAmulet()
   await testAssetUrls()
   await testFirstLeaderChoice()
-  await testFirstLeaderIsTold()
+  await testEveryFirstLeaderClaims()
   await testNoRoleLeakAcrossClients()
   await testNoActingForOthers()
   await testVoteSecrecyBeforeReveal()

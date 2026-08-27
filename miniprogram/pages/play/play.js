@@ -9,12 +9,13 @@ const IDENTITY_READ_MS = 40000
 
 const phaseNames = {
   reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
-  vote: "秘密投票", missionResult: "远征结算", finale: "最终审判"
+  vote: "秘密投票", missionResult: "远征结算", finale: "终局之战"
 }
 
 Page({
   data: {
-    voteSwap: false, claimSwap: false, hunterSwap: false, traitorSwap: false,
+    roleArtVisible: false,
+    voteSwap: false, claimSwap: false, hunterSwap: false, traitorSwap: false, leadClaimSwap: false,
     seatSize: 42,
     roomId: "", room: null, game: null, privateView: null, isHost: false,
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
@@ -26,7 +27,7 @@ Page({
     longTable: null, stageW: 0, stageH: 0,
     tableWidth: 44,
     tableHeight: 34,
-    tableVisible: false, tableMode: "team", tableTitle: "选择同行骑士", tableHint: "",
+    tableVisible: false, tableMode: "team", tableTitle: "选择出征成员", tableHint: "",
     historyVisible: false, historyMissions: [], historyAmulets: [],
     dossierVisible: false, myInspections: [], myVotes: [],
     waitingHint: null,
@@ -39,6 +40,7 @@ Page({
     canOperateHunter: false,
     finalClock: "5:00", lastMission: null, myInTeam: false,
     canVoteSuccess: false, canVoteFail: false, canClaimGood: false, canClaimEvil: false,
+    canLeadClaimGood: false, canLeadClaimEvil: false,
     hunterVoteValue: "", traitorSide: "", traitorTargets: [], voteChoice: "",
     deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50, deliverTargetId: 0,
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
@@ -239,6 +241,9 @@ Page({
       identityReadyCount: identity.readyIds.length, identityRememberedCount: identity.rememberedIds.length,
       canClaimGood: (privateView.inspectionOptions || []).indexOf("good") >= 0,
       canClaimEvil: (privateView.inspectionOptions || []).indexOf("evil") >= 0,
+      // 首任队长的展示选项：骗徒两个都能点，其余人只有真实那个能点
+      canLeadClaimGood: (privateView.leaderClaimOptions || []).indexOf("good") >= 0,
+      canLeadClaimEvil: (privateView.leaderClaimOptions || []).indexOf("evil") >= 0,
       leader, isLeader: privateView.id === game.leaderId,
       devMode,
       stepMode: !!room.stepMode,
@@ -269,8 +274,8 @@ Page({
       botPlayers: devMode ? pendingBots : [],
       tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode && !room.stepMode))) : this.data.tableVisible,
       tableMode: phaseChanged && room.phase === "mission" ? "team" : this.data.tableMode,
-      tableTitle: phaseChanged && room.phase === "mission" ? "选择同行骑士" : this.data.tableTitle,
-      tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名同行骑士` : this.data.tableHint,
+      tableTitle: phaseChanged && room.phase === "mission" ? "选择出征成员" : this.data.tableTitle,
+      tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名出征成员` : this.data.tableHint,
       selectedTeam: phaseChanged ? game.current.team.slice() : this.data.selectedTeam,
       magicTargetId: phaseChanged ? game.current.magicTargetId : this.data.magicTargetId,
       finalTargets: phaseChanged || finalStageChanged ? [] : this.data.finalTargets,
@@ -299,6 +304,7 @@ Page({
     this.setData({
       voteSwap: gameUtil.choiceSwapped(room.roomId, "vote", round, myId),
       claimSwap: gameUtil.choiceSwapped(room.roomId, "claim", round, myId),
+      leadClaimSwap: gameUtil.choiceSwapped(room.roomId, "leadclaim", round, myId),
       hunterSwap: gameUtil.choiceSwapped(room.roomId, "hunter", myId),
       traitorSwap: gameUtil.choiceSwapped(room.roomId, "traitor", myId)
     })
@@ -337,7 +343,7 @@ Page({
         symbol: "",
         symbolImage: assets.packedAsset(goodReachedThree ? "crest-good.png" : "crest-evil.png"),
         title: goodReachedThree ? "圣杯三度告捷" : "黑暗三度得手",
-        subtitle: "常规远征结束，最终审判开启",
+        subtitle: "常规远征结束，终局之战开启",
         target: null
       })
       return events
@@ -527,7 +533,7 @@ Page({
     return null
   },
 
-  // 「我的密录」：把服务端下发的私密记录整理成可读文案。
+  // 「身份信息」：把服务端下发的私密记录整理成可读文案。
   // 这里只用 privateView 里的数据，不做任何本地推断，避免显示出玩家本不该知道的信息。
   buildDossier(privateView, players) {
     const label = id => {
@@ -651,8 +657,19 @@ Page({
 
   startIdentity() { this.sendAction("startIdentity") },
   rememberIdentity() {
-    this.sendAction("identityRemembered")
+    // 这一步也可能是在「身份信息」浮层里点的（阅读时间在浮层开着时走完了）。
+    // 点完必须把浮层收掉，否则按钮消失、画面不动，看着像没生效。
+    return this.sendAction("identityRemembered").then(() => {
+      if (this.data.dossierVisible) this.setData({ dossierVisible: false })
+    })
   },
+
+  // 身份牌大图：对局中随时点开自己的立绘看清楚，也方便给同桌看一眼。
+  openRoleArt() {
+    if (!this.data.identityUnlocked || !this.data.myRoleArt) return
+    this.setData({ roleArtVisible: true })
+  },
+  closeRoleArt() { this.setData({ roleArtVisible: false }) },
   enterNight() { this.sendAction("enterNight") },
 
   // 首夜由房主逐条念、逐条推进。
@@ -752,11 +769,11 @@ Page({
 
   openTable(event) {
     const mode = event.currentTarget.dataset.mode || "status"
-    const titles = { team: "选择同行骑士", magic: "交付魔法指示物", leader: "移交皇冠", amuletOwner: "交付护身符", inspect: "选择查验对象", final: "选择两位玩家", status: "圆桌座位" }
+    const titles = { team: "选择出征成员", magic: "指定魔法目标指示物", leader: "移交皇冠", amuletOwner: "交付护身符", inspect: "选择查验对象", final: "选择两位玩家", status: "圆桌座位" }
     const hints = {
       // 面板全屏盖住主界面，人数与保护轮必须在这里再说一遍
       team: `本轮 ${this.data.missionSize} 人任务，选满为止${this.data.protectedText ? "；双败保护：需 2 张失败票才失败" : ""}`,
-      magic: "只能选择本轮同行骑士",
+      magic: "只能选择本轮出征成员",
       leader: "已担任队长或曾持护身符者不可接任", amuletOwner: "不可与新队长为同一人",
       inspect: "不可查验持符者、曾持符者或已被查验者", final: "每位玩家私密选择两人"
     }
@@ -949,7 +966,7 @@ Page({
       this.vibrate("light")
     }
     if (mode === "magic") {
-      if (this.data.selectedTeam.indexOf(id) < 0) return wx.showToast({ title: "只能给同行骑士", icon: "none" })
+      if (this.data.selectedTeam.indexOf(id) < 0) return wx.showToast({ title: "只能给出征成员", icon: "none" })
       this.setData({ magicTargetId: id })
       this.vibrate("medium")
     }

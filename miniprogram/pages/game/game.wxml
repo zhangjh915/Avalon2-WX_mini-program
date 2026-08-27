@@ -118,7 +118,7 @@
   </view>
 
   <view wx:if="{{phase === 'mission'}}" class="panel">
-    <view class="section-title">队长指定同行骑士</view>
+    <view class="section-title">队长指定出征成员</view>
     <view class="muted">当前队长：{{leader.name}}。本轮需要 {{missionSize}} 人同行{{protectedText}}。</view>
     <view wx:if="{{roundNotices.length}}" class="panel" style="margin-top: 16rpx; margin-bottom: 16rpx;">
       <view class="section-title">角色提醒</view>
@@ -129,7 +129,7 @@
     </view>
     <view class="spacer"></view>
     <view class="section-title">魔法指示物</view>
-    <view class="muted">请从同行骑士中选择一名封印对象。</view>
+    <view class="muted">请从出征成员中选择一名封印对象。</view>
     <view class="wrap" style="margin-top: 16rpx;">
       <button wx:for="{{teamPlayers}}" wx:key="id" class="btn {{item.id === game.current.magicTargetId ? '' : 'secondary'}}" data-id="{{item.id}}" bindtap="setMagic">{{item.id}}号</button>
     </view>

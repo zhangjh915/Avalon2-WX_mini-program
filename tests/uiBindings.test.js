@@ -227,10 +227,26 @@ seatTokens.forEach(tag => assert.match(tag, /width: \{\{seatSize\}\}px/, "座位
   const offenders = []
   sheets.forEach(rel => {
     const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
-    const decls = css.match(/[a-z-]+\s*:\s*[^;{}]+/g) || []
-    decls.forEach(decl => {
+    // 按**规则**遍历而不是按声明：要判断一条 background 是「底面」还是
+    // 「用 background 画出来的图形」，得看同一条规则里的其他声明。
+    // 关闭的 ×、拖动条这些整个视觉就是那个 background，压暗了等于元素消失——
+    // 深色化那一轮就是这么把关闭按钮弄没的（实战中被抓到）。
+    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
+    rules.forEach(rule => {
+      const ruleBody = rule.slice(rule.indexOf("{"))
+      const size = /(?:^|;|\{)\s*(?:width|height):\s*(\d+)rpx/.exec(ruleBody)
+      const hasText = /font-size|(?:^|;|\{)\s*color:/.test(ruleBody)
+      // 小尺寸 + 没文字 = 图形，它的浅色 background 是笔画不是底。
+      // 光靠尺寸不够：只覆盖颜色的那种规则（.history-head .modal-close-glyph::after）
+      // 自己不写尺寸，所以名字里带 glyph/handle/dot 的一并按图形算。
+      const ruleSel = rule.slice(0, rule.indexOf("{"))
+      const isGlyph = (!!size && Number(size[1]) <= 46 && !hasText) ||
+        /glyph|handle|-dot\b/.test(ruleSel)
+      const decls = ruleBody.match(/[a-z-]+\s*:\s*[^;{}]+/g) || []
+      decls.forEach(decl => {
       const prop = decl.slice(0, decl.indexOf(":")).trim()
       if (SURFACE.indexOf(prop) < 0) return
+      if (isGlyph) return
       const hexes = decl.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g) || []
       hexes.forEach(hex => {
         const { L, C } = lum(hex.toLowerCase())
@@ -242,9 +258,29 @@ seatTokens.forEach(tag => assert.match(tag, /width: \{\{seatSize\}\}px/, "座位
         // #70b099）色度 64——卡 70 会把它误当浅底面。
         if (L > 150 && C < 60) offenders.push(`${rel}: ${decl.trim().slice(0, 60)}`)
       })
+      })
     })
   })
   assert.strictEqual(offenders.length, 0, `深色主题里混进了浅底面:\n  ${offenders.join("\n  ")}`)
+
+  // 反过来的一条：关闭的 × 整个视觉就是那两根横条，压暗了按钮就等于消失。
+  // 深色化那一轮把它从 #d9dfda 翻成 #202623，浮层于是变成一个出不来的陷阱
+  //（玩家原话：「没有任何按钮可以关闭」）。上面的豁免只是不拦它，
+  // 这里要求它必须够亮，否则同样的事会再发生一次。
+  const faint = []
+  sheets.forEach(rel => {
+    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
+    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
+    rules.forEach(rule => {
+      const sel = rule.slice(0, rule.indexOf("{"))
+      if (!/modal-close-glyph/.test(sel)) return
+      const bg = /background(?:-color)?:\s*(#[0-9a-fA-F]{6})/.exec(rule)
+      if (!bg) return
+      const { L } = lum(bg.group ? bg.group(1) : bg[1])
+      if (L < 120) faint.push(`${rel}: ${sel.trim().slice(0, 46)} -> ${bg[1]} 亮度 ${Math.round(L)}`)
+    })
+  })
+  assert.deepStrictEqual(faint, [], `关闭按钮的 × 太暗，等于按钮不存在:\n  ${faint.join("\n  ")}`)
 }
 // 导航栏要贴合首页底图顶部，不能是原来那个棕色
 const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.json"), "utf8"))

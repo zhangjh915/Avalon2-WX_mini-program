@@ -1195,7 +1195,7 @@ button::after {
   height: 8rpx;
   margin: 0 auto 14rpx;
   border-radius: 4rpx;
-  background: #2e3732;
+  background: #55635c;
 }
 
 .sheet-header {
@@ -1428,9 +1428,6 @@ button::after {
 .round-strip { margin-bottom: 8rpx; }
 .round-kicker { margin-bottom: 5rpx; color: #cdb270; font-size: 20rpx; font-weight: 800; }
 .table-icon-button { display: flex; width: 58rpx; min-width: 58rpx; max-width: 58rpx; height: 58rpx; min-height: 58rpx; max-height: 58rpx; padding: 0; flex: 0 0 58rpx; align-items: center; justify-content: center; border: 2rpx solid #48554f; border-radius: 5rpx; background: #1d2824; box-sizing: border-box; color: #d8c27f; }
-.history-glyph { display: flex; width: 28rpx; height: 28rpx; flex-direction: column; justify-content: space-between; }
-.history-glyph > view { position: relative; width: 21rpx; height: 4rpx; margin-left: 7rpx; border-radius: 1rpx; background: #d8c27f; }
-.history-glyph > view::before { position: absolute; top: 0; left: -7rpx; width: 4rpx; height: 4rpx; border-radius: 1rpx; background: #d8c27f; content: ""; }
 .leader-line { display: flex; min-height: 72rpx; padding: 10rpx 14rpx; align-items: center; border: 2rpx solid #404d47; border-radius: 7rpx; background: #1a2420; box-sizing: border-box; color: #ece7dc; font-size: 23rpx; }
 .leader-crown { display: flex; width: 46rpx; height: 46rpx; margin-right: 12rpx; flex: 0 0 auto; align-items: center; justify-content: center; }
 /* 换成 <image> 后必须显式给尺寸：图片按自然尺寸渲染（96~224px），
@@ -1579,10 +1576,10 @@ button::after {
 .table-overlay { position: fixed; inset: 0; z-index: 80; display: flex; align-items: flex-end; background: rgba(5, 10, 8, 0.76); animation: overlay-in 160ms ease both; }
 .table-sheet { width: 100%; max-height: 92vh; padding: 24rpx; overflow-y: auto; border-radius: 8rpx 8rpx 0 0; background: #141c18; box-sizing: border-box; animation: sheet-up 220ms ease both; }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; padding-bottom: 14rpx; }
-.sheet-handle { width: 72rpx; height: 7rpx; margin: -6rpx auto 18rpx; border-radius: 4rpx; background: #2e3732; }
+.sheet-handle { width: 72rpx; height: 7rpx; margin: -6rpx auto 18rpx; border-radius: 4rpx; background: #55635c; }
 .modal-close { display: flex; width: 72rpx; height: 72rpx; margin: -8rpx -8rpx -8rpx 0; flex: none; align-items: center; justify-content: center; background: transparent; box-sizing: border-box; }
 .modal-close-glyph { position: relative; width: 30rpx; height: 30rpx; }
-.modal-close-glyph::before,.modal-close-glyph::after { position: absolute; top: 14rpx; left: 2rpx; width: 27rpx; height: 3rpx; border-radius: 2rpx; background: #4b514d; content: ""; }
+.modal-close-glyph::before,.modal-close-glyph::after { position: absolute; top: 14rpx; left: 2rpx; width: 27rpx; height: 3rpx; border-radius: 2rpx; background: #c8d0cb; content: ""; }
 .modal-close-glyph::before { transform: rotate(45deg); }
 .modal-close-glyph::after { transform: rotate(-45deg); }
 .modal-close:active { opacity: .5; transform: scale(.94); }
@@ -1642,7 +1639,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .history-head { flex: none; align-items: center; border-bottom: 2rpx solid #34413b; }
 .history-head .sheet-title { color: #f0ede6; }
 .history-head .sheet-hint { color: #8e9993; }
-.history-head .modal-close-glyph::before,.history-head .modal-close-glyph::after { background: #202623; }
+.history-head .modal-close-glyph::before,.history-head .modal-close-glyph::after { background: #dfe4e0; }
 .history-scroll { min-height: 0; flex: 1; padding-top: 12rpx; box-sizing: border-box; }
 .history-empty { padding: 180rpx 20rpx; color: #8e9993; font-size: 24rpx; text-align: center; }
 .history-round { padding: 22rpx 0; border-bottom: 2rpx solid #303c37; }
@@ -1733,7 +1730,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 
 /* 我的密录：随时可回看自己的身份、查验与出牌 */
 .header-tools { display: flex; align-items: center; gap: 10rpx; }
-.dossier-glyph { font-size: 26rpx; font-weight: 900; line-height: 1; }
 .dossier-identity { margin-bottom: 18rpx; padding: 24rpx 22rpx; border: 2rpx solid #48554f; border-left-width: 8rpx; border-radius: 6rpx; background: #1d2824; }
 .dossier-identity.role-good { border-left-color: #2f7358; }
 .dossier-identity.role-evil { border-left-color: #8b3f45; }
@@ -1917,3 +1913,54 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
   border-top: 2rpx solid #2a332e;
 }
 .dossier-finish .primary-action { width: 100%; }
+
+/* 顶栏两个入口从「密」单字和三横图形换成短词：
+   单字和抽象图形在这个尺寸下没人猜得出是什么，短词一眼就懂。 */
+.icon-button-text {
+  color: #cfd6d1;
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+  white-space: nowrap;
+}
+
+/* .table-icon-button 是固定 58rpx 的方块，装不下「身份牌」三个字。
+   带文字的这两个按内容撑开，高度仍和方块按钮对齐。 */
+.table-icon-button.text-button {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  padding: 0 16rpx;
+  flex: none;
+}
+
+/* 身份牌大图：对局中随时点开看清楚，也方便给同桌看一眼。
+   z-index 要压过身份信息浮层（110），否则从浮层里点开会被它盖住。 */
+.role-art-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+  padding: 40rpx;
+  background: rgba(6, 10, 8, 0.94);
+  box-sizing: border-box;
+}
+.role-art-full {
+  width: 100%;
+  max-width: 620rpx;
+  height: 70vh;
+  border-radius: 12rpx;
+}
+.role-art-caption { color: #ead38c; font-size: 30rpx; font-weight: 800; }
+.role-art-close { color: #8b968a; font-size: 22rpx; }
+
+.art-zoom-hint {
+  margin-top: 8rpx;
+  color: #8b968a;
+  font-size: 20rpx;
+  text-align: center;
+}

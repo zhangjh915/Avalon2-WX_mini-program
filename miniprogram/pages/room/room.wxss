@@ -44,8 +44,8 @@ page { height: 100%; overflow: hidden; background: #1a1f1c; }
 .role-config-button:active { border-color: #537561; background: #181d1a; }
 .role-config-icon { position: relative; display: flex; width: 48rpx; height: 48rpx; flex: none; align-items: center; justify-content: center; }
 .role-card-glyph { position: relative; width: 29rpx; height: 38rpx; border: 2rpx solid #8d6a45; border-radius: 3rpx; background: #795436; box-sizing: border-box; transform: rotate(5deg); }
-.role-card-glyph::before { position: absolute; top: 6rpx; left: 7rpx; width: 10rpx; height: 10rpx; border: 2rpx solid #403929; border-radius: 50%; content: ""; }
-.role-card-glyph::after { position: absolute; right: 5rpx; bottom: 6rpx; left: 5rpx; height: 7rpx; border-top: 2rpx solid #403929; border-bottom: 2rpx solid #403929; content: ""; }
+.role-card-glyph::before { position: absolute; top: 6rpx; left: 7rpx; width: 10rpx; height: 10rpx; border: 2rpx solid #e0c88a; border-radius: 50%; content: ""; }
+.role-card-glyph::after { position: absolute; right: 5rpx; bottom: 6rpx; left: 5rpx; height: 7rpx; border-top: 2rpx solid #e0c88a; border-bottom: 2rpx solid #e0c88a; content: ""; }
 .role-config-copy { min-width: 0; flex: 1; }
 .role-config-title { color: #dadedc; font-size: 25rpx; font-weight: 850; }
 .role-config-meta { margin-top: 2rpx; overflow: hidden; color: #b3bcb7; font-size: 19rpx; text-overflow: ellipsis; white-space: nowrap; }
@@ -98,7 +98,7 @@ page { height: 100%; overflow: hidden; background: #1a1f1c; }
 .role-viewer-title { margin-top: 3rpx; color: #f6f0e7; font-size: 35rpx; font-weight: 900; }
 .modal-close { display: flex; width: 64rpx; height: 64rpx; flex: none; align-items: center; justify-content: center; background: transparent; }
 .modal-close-glyph { position: relative; width: 28rpx; height: 28rpx; }
-.modal-close-glyph::before,.modal-close-glyph::after { position: absolute; top: 13rpx; left: 1rpx; width: 27rpx; height: 3rpx; border-radius: 2rpx; background: #1c211f; content: ""; }
+.modal-close-glyph::before,.modal-close-glyph::after { position: absolute; top: 13rpx; left: 1rpx; width: 27rpx; height: 3rpx; border-radius: 2rpx; background: #c8d0cb; content: ""; }
 .modal-close-glyph::before { transform: rotate(45deg); }
 .modal-close-glyph::after { transform: rotate(-45deg); }
 .modal-close:active { opacity: .5; transform: scale(.94); }

@@ -245,7 +245,7 @@ Page({
     const game = this.data.game
     const size = gameUtil.currentMissionSize(game)
     if (game.current.team.length !== size) {
-      wx.showToast({ title: `请选择 ${size} 名同行骑士`, icon: "none" })
+      wx.showToast({ title: `请选择 ${size} 名出征成员`, icon: "none" })
       return
     }
     if (!game.current.magicTargetId) {
