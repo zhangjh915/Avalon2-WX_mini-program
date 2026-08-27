@@ -506,7 +506,9 @@ async function identityAction(event, openid) {
     if (event.action === "identityClaim") {
       if (["good", "evil"].indexOf(event.claim) < 0) fail("展示阵营选择不合法")
       if (player.id !== game.firstLeaderId) fail("只有首任队长需要选择展示阵营")
-      if (!identity.revealAt || Date.now() < identity.revealAt) fail("身份尚未揭示")
+      // 必须在全员揭示**之前**提交：教士的首夜信息里写着「第一位领袖显示为X」，
+      // 队长还没选就揭示的话，教士读到的是一句空话。
+      if (!identity.claimAt) fail("还没轮到选择展示阵营")
       if (state.secret.priestClaim) fail("展示阵营已经提交")
       // 非骗徒只能亮真实阵营。界面已经置灰了另一个，这里再挡一层——
       // 前端置灰是提示，不是校验。
@@ -515,13 +517,20 @@ async function identityAction(event, openid) {
         fail("只能展示你真实的阵营")
       }
       state.secret.priestClaim = event.claim
+      // 队长选完，全员揭示才开始
+      identity.revealAt = Date.now() + 3000
+      identity.closeAt = identity.revealAt + 40000
     }
     if (event.action === "startIdentity") {
       requireHost(state.secret, openid)
-      if (identity.revealAt) fail("身份已经开始揭示")
+      if (identity.revealAt || identity.claimAt) fail("身份已经开始揭示")
       if (identity.readyIds.length < game.playerCount) fail("还有玩家未准备好")
-      identity.revealAt = Date.now() + 3000
-      identity.closeAt = identity.revealAt + 40000
+      identity.claimAt = Date.now()
+      // 队长是 bot 的话展示阵营在开局时就填好了，不用等他，直接进全员揭示
+      if (state.secret.priestClaim) {
+        identity.revealAt = Date.now() + 3000
+        identity.closeAt = identity.revealAt + 40000
+      }
     }
     if (event.action === "identityRemembered") {
       if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份阅读时间尚未结束")

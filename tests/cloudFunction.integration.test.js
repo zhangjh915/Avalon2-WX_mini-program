@@ -385,11 +385,15 @@ async function testFirstLeaderDeceiverClaim() {
   await expectFailure(action("identityClaim", { roomId, claim: "good" }, otherOpenid), /只有首任队长/)
   for (const player of privateState.players) await action("identityReady", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
   await action("startIdentity", { roomId }, "host")
-  room(roomId).game.identity.revealAt = Date.now() - 1
-  room(roomId).game.identity.closeAt = Date.now() - 1
-  await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /请先选择/)
+  // 新时序：startIdentity 之后先只开「队长选展示阵营」这一步，
+  // 队长提交完才开始全员揭示与阅读窗口。
+  assert.ok(room(roomId).game.identity.claimAt, "应当先进入队长选择阶段")
+  assert.strictEqual(room(roomId).game.identity.revealAt, 0, "队长没选之前不该开始揭示")
+  await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /尚未结束|请先选择/)
   await action("identityClaim", { roomId, claim: "good" }, leaderOpenid)
   assert.strictEqual(secret(roomId).priestClaim, "good")
+  assert.ok(room(roomId).game.identity.revealAt > 0, "队长选完就该开始全员揭示")
+  room(roomId).game.identity.closeAt = Date.now() - 1
   await action("identityRemembered", { roomId }, leaderOpenid)
 }
 
@@ -1109,7 +1113,8 @@ async function testEveryFirstLeaderClaims() {
 
   // 3) 非骗徒提交另一个阵营要被服务端拒——界面置灰只是提示，不是校验
   if (leader.role !== "deceiver") {
-    room(roomId).game.identity.revealAt = Date.now() - 1
+    // 选择阶段由 startIdentity 开启（claimAt），不再依赖 revealAt
+    room(roomId).game.identity.claimAt = room(roomId).game.identity.claimAt || Date.now()
     const wrong = core.displayedFaction(leader) === "good" ? "evil" : "good"
     await expectFailure(action("identityClaim", { roomId, claim: wrong }, who(leaderId)), /真实的阵营/)
   }
@@ -1125,6 +1130,51 @@ async function testEveryFirstLeaderClaims() {
   const viewB = core.privateView(room(roomB).game, secret(roomB), leaderB.id === 1 ? "host" : `user-${leaderB.id}`)
   assert.strictEqual(viewB.needsLeaderClaim, true, "没有教士时也必须走这一步，否则等于公开没有教士")
   console.log("  every first leader claims ok")
+}
+
+
+// 时序：队长必须在**全员揭示之前**选完展示阵营。
+// 教士的首夜信息里写着「第一位领袖显示为X」——队长还没选就揭示的话，
+// 教士读到的是一句空话，他这个角色本轮就废了。
+async function testLeaderClaimsBeforeReveal() {
+  cloudMock.reset()
+  const counts = gameUtil.countRoles(["loyal", "priest", "squire", "morgan", "hunter", "deceiver"])
+  const created = await action("createRoom", {
+    playerCount: 6, roleCounts: counts, unknownRoles: false, hunterVoteVariant: false, tableType: "round"
+  })
+  const roomId = created.roomId
+  for (let seatNo = 1; seatNo <= 6; seatNo += 1) {
+    await action("takeSeat", { roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
+  }
+  const originalRandom = Math.random
+  Math.random = () => 0
+  try { await action("startGame", { roomId }) } finally { Math.random = originalRandom }
+
+  const players = secret(roomId).players
+  const who = id => (id === 1 ? "host" : `user-${id}`)
+  for (const p of players) await action("identityReady", { roomId }, who(p.id))
+  await action("startIdentity", { roomId }, "host")
+
+  // 队长没选之前：不能开始揭示
+  assert.strictEqual(room(roomId).game.identity.revealAt, 0,
+    "队长还没选展示阵营，不该开始全员揭示——教士会读到空信息")
+  assert.ok(room(roomId).game.identity.claimAt > 0, "应当停在队长选择阶段")
+
+  // 此时教士拿到的信息里不该出现「显示为」——本来也还没有值
+  const priest = players.find(p => p.role === "priest")
+  const before = core.privateView(room(roomId).game, secret(roomId), who(priest.id))
+  assert.ok(!(before.nightInfo || []).some(t => /显示为/.test(t)),
+    "队长还没选，教士不该已经拿到展示结果")
+
+  // 队长选完：揭示才开始，教士的信息也齐了
+  const leader = core.getPlayer(secret(roomId), room(roomId).game.firstLeaderId)
+  const claim = leader.role === "deceiver" ? "good" : core.displayedFaction(leader)
+  await action("identityClaim", { roomId, claim }, who(leader.id))
+  assert.ok(room(roomId).game.identity.revealAt > 0, "队长选完就该开始全员揭示")
+  const after = core.privateView(room(roomId).game, secret(roomId), who(priest.id))
+  assert.ok((after.nightInfo || []).some(t => /第一位领袖显示为/.test(t)),
+    "队长选完之后，教士必须拿到展示结果")
+  console.log("  leader claims before reveal ok")
 }
 
 async function run() {
@@ -1151,6 +1201,7 @@ async function run() {
   await testAssetUrls()
   await testFirstLeaderChoice()
   await testEveryFirstLeaderClaims()
+  await testLeaderClaimsBeforeReveal()
   await testNoRoleLeakAcrossClients()
   await testNoActingForOthers()
   await testVoteSecrecyBeforeReveal()

@@ -357,4 +357,8 @@ button,
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 栅格/弹性布局里的项默认 min-width: auto，会以内容的最小宽度为下限。
+     微信原生 button 自带左右内边距，算出来 184pt，塞进 1fr 的 166pt 轨道就顶出屏幕
+     （「正义/邪恶」那一行实测溢出 12pt）。允许它按轨道收窄。 */
+  min-width: 0;
 }

@@ -38,6 +38,25 @@
       </view>
 
 
+      <!-- 队长先选：只有他能动，其他人等着。顺序不能反——教士的首夜信息
+           写着「第一位领袖显示为X」，队长没选就揭示的话那句话是空的。 -->
+      <view wx:if="{{identityMode === 'leaderClaim'}}" class="phase-content">
+        <view class="waiting-title">你是首任队长</view>
+        <view class="waiting-copy">先选择对外展示的阵营，选完全员一起翻牌。</view>
+        <view class="leader-claim-card">
+          <image class="claim-role-art" src="{{myRoleArt}}" mode="aspectFill" bindtap="openRoleArt" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
+          <view class="claim-role-name {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.roleName}} · {{privateView.factionName}}</view>
+        </view>
+        <view class="shuffle-note">不合法的选项已置灰，左右位置随机</view>
+        <view class="loyalty-row {{leadClaimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim" disabled="{{!canLeadClaimEvil}}">邪恶</button></view>
+      </view>
+
+      <view wx:if="{{identityMode === 'waitLeaderClaim'}}" class="phase-content ceremony-content">
+        <view class="ceremony-mark"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /></view>
+        <view class="waiting-title">首任队长正在准备</view>
+        <view class="waiting-copy">稍等，马上一起翻开身份牌。</view>
+      </view>
+
       <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
         <!-- 点击牌背翻牌；两段 scaleX，不用 3D 变换 -->
         <view class="identity-stage {{cardFlipped ? 'flipped' : ''}}" bindtap="flipIdentityCard">

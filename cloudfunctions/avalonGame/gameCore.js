@@ -217,7 +217,7 @@ function createGame(settings, seats, options) {
       missionPreset: missionPresets[settings.playerCount],
       missions: [],
       amuletHistory: [],
-      identity: { readyIds: [], revealAt: 0, closeAt: 0, rememberedIds: [] },
+      identity: { readyIds: [], claimAt: 0, revealAt: 0, closeAt: 0, rememberedIds: [] },
       current: { team: [], magicTargetId: null, voteCount: 0, votedIds: [] },
       amulet: null,
       final: null,

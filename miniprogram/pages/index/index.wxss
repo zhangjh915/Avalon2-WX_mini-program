@@ -24,7 +24,7 @@
 .compact-select, .mini-command { min-height: 58rpx; padding: 10rpx 20rpx; border: 1rpx solid #323b36; border-radius: 6rpx; background: #141816; color: #c2c9c6; font-size: 24rpx; line-height: 36rpx; box-sizing: border-box; }
 .mini-command { display: flex; flex: none; align-items: center; margin: 0; }
 .player-count-row { margin-top: 6rpx; }
-.table-type-tabs { display: grid; width: 100%; margin-top: 18rpx; grid-template-columns: 1fr 1fr; gap: 14rpx; }
+.table-type-tabs { display: grid; width: 100%; margin-top: 18rpx; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14rpx; }
 .table-type-option { display: flex; min-width: 0; height: 112rpx; align-items: center; justify-content: center; gap: 16rpx; border: 2rpx solid #28302c; border-radius: 6rpx; background: #181d1a; color: #b8c0bc; font-size: 26rpx; font-weight: 700; box-sizing: border-box; }
 .table-type-option.active { border-color: #795436; background: #141816; color: #decbbc; box-shadow: inset 0 0 0 2rpx rgba(121, 84, 54, 0.08); }
 .table-type-icon { flex: none; border: 3rpx solid #795436; background: #a87952; box-shadow: inset 0 0 0 3rpx rgba(255, 255, 255, 0.12); box-sizing: border-box; }
@@ -67,7 +67,7 @@
 .layout-overlay { position: fixed; z-index: 1000; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(24, 20, 17, 0.58); animation: overlay-fade-in 160ms ease-out; }
 .role-overlay { position: fixed; z-index: 1001; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(24, 20, 17, 0.58); animation: overlay-fade-in 160ms ease-out; }
 .role-sheet { display: flex; width: 100%; max-height: 92vh; padding: 16rpx 24rpx calc(26rpx + env(safe-area-inset-bottom)); flex-direction: column; border-radius: 14rpx 14rpx 0 0; background: #151917; box-sizing: border-box; animation: sheet-rise-in 220ms cubic-bezier(.2,.8,.2,1); }
-.role-quota-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 10rpx; margin-top: 22rpx; }
+.role-quota-strip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10rpx; margin-top: 22rpx; }
 .role-quota { padding: 14rpx; border-radius: 6rpx; font-size: 23rpx; font-weight: 750; text-align: center; }
 .good-quota { background: #1c221f; color: #c1dfd2; }
 .evil-quota { background: #1c211f; color: #d5aeab; }

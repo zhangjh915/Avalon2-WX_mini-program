@@ -600,6 +600,18 @@ Page({
       // 阅读计时从「本人翻开牌」那一刻算起，不是从全局揭示时刻算起。
       // 否则没翻牌的人会被倒计时直接推到下一步，整局都没看到自己的身份。
       let readingHint = ""
+      // 队长先选展示阵营，选完才全员揭示。这一段是那个「只有队长在动」的窗口：
+      // 队长看到自己的牌和两个选项，其他人等着。
+      // 顺序不能反——教士的首夜信息里写着「第一位领袖显示为X」，
+      // 队长还没选就揭示的话，教士读到的是一句空话。
+      if (identity.claimAt && !identity.revealAt) {
+        const iAmLeader = (this.data.privateView || {}).needsLeaderClaim
+        const next = { identityMode: iAmLeader ? "leaderClaim" : "waitLeaderClaim",
+                       roleVisible: !!iAmLeader, identityCountdown: 3, identitySecondsLeft: 40,
+                       readingHint: "", readingUrgent: false }
+        if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
+        return
+      }
       if (identity.revealAt) {
         if (now < identity.revealAt) {
           // 不再做 3-2-1 倒计时：牌本来就要手动翻，等待感由牌背自己承担
