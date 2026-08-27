@@ -25,12 +25,24 @@
       <block wx:if="{{tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" data-field="longTable.src" data-raw="{{longTable.raw}}" binderror="onRemoteImageError" /></view></block>
       <image wx:elif="{{tableType === 'round'}}" class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
       <image class="table-emblem" style="{{tableType === 'long' ? longTable.emblemStyle : ''}}" src="{{ui.tableEmblem}}" mode="aspectFit" />
-      <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="chooseSeat" data-seat="{{item.seatNo}}">
+      <view wx:for="{{room.seats}}" wx:key="seatNo" class="seat-token compact-seat-token {{item.name ? 'occupied' : 'vacant'}} {{item.isMine ? 'mine' : ''}} {{writing ? 'seat-disabled' : ''}} {{leaderPickMode && item.name ? 'leader-pickable' : ''}} {{firstLeaderSeatNo === item.seatNo ? 'leader-chosen' : ''}}" style="left: {{item.x}}%; top: {{item.y}}%;" bindtap="{{leaderPickMode ? 'pickFirstLeader' : 'chooseSeat'}}" data-seat="{{item.seatNo}}">
         <view class="seat-avatar"><image wx:if="{{item.avatar}}" class="seat-avatar-art" src="{{item.avatar}}" mode="scaleToFill" /><text wx:else>{{item.name ? item.initial : ''}}</text></view>
         <view class="seat-caption"><text>{{item.seatNo}}号</text><text wx:if="{{item.name}}"> {{item.name}}</text></view>
         <view wx:if="{{item.isMine}}" class="mine-dot"></view>
+        <view wx:if="{{firstLeaderSeatNo === item.seatNo}}" class="leader-crown-mark"><image class="symbol-icon" src="{{ui.crown}}" mode="aspectFit" /></view>
       </view>
     </view>
+  </view>
+
+  <view wx:if="{{isHost && !leaderPickMode}}" class="leader-pick-row" bindtap="enterLeaderPick">
+    <view class="leader-pick-label">首任队长</view>
+    <view class="leader-pick-value">{{firstLeaderName}}</view>
+    <view class="leader-pick-arrow">›</view>
+  </view>
+  <view wx:if="{{isHost && leaderPickMode}}" class="leader-pick-row picking">
+    <view class="leader-pick-label">点一个座位，从他开始</view>
+    <view class="leader-pick-reset" catchtap="clearFirstLeader">改回随机</view>
+    <view class="leader-pick-cancel" catchtap="exitLeaderPick">取消</view>
   </view>
 
   <view wx:if="{{isHost}}" class="lobby-actions">
@@ -41,6 +53,7 @@
     <view class="waiting-dot"></view><view>等待房主开始游戏</view>
   </view>
   <view wx:if="{{writing}}" class="sync-indicator">座位同步中</view>
+
 
   <view wx:if="{{roleViewerVisible}}" class="role-viewer">
     <view class="role-viewer-head">

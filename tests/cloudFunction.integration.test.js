@@ -176,7 +176,11 @@ async function createStartedRoom(playerCount, roleCounts, options) {
   return created.roomId
 }
 
-async function createHumanRoom(playerCount, roleCounts) {
+// options.firstLeaderSeatNo：指定首任队长（不传 = 随机，服务端默认行为）
+// options.realRandom：不要钉住 Math.random。默认钉住是为了让绝大多数用例可复现；
+//   只有专门验「默认确实是随机的」那条才需要放开。
+async function createHumanRoom(playerCount, roleCounts, options) {
+  const opts = options || {}
   const created = await action("createRoom", {
     playerCount,
     roleCounts: roleCounts || gameUtil.buildDefaultRoleCounts(playerCount, false),
@@ -187,9 +191,11 @@ async function createHumanRoom(playerCount, roleCounts) {
   for (let seatNo = 1; seatNo <= playerCount; seatNo += 1) {
     await action("takeSeat", { roomId: created.roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
   }
+  const payload = { roomId: created.roomId }
+  if (opts.firstLeaderSeatNo) payload.firstLeaderSeatNo = opts.firstLeaderSeatNo
   const originalRandom = Math.random
-  Math.random = () => 0
-  try { await action("startGame", { roomId: created.roomId }, "host") } finally { Math.random = originalRandom }
+  if (!opts.realRandom) Math.random = () => 0
+  try { await action("startGame", payload, "host") } finally { Math.random = originalRandom }
   return created.roomId
 }
 
@@ -1014,6 +1020,47 @@ async function testPublicStateAgreesAcrossClients() {
   console.log("  公共状态多端一致 ok")
 }
 
+
+// 首任队长：默认随机，房主可在候场页指定。
+async function testFirstLeaderChoice() {
+  // 1) 不指定 = 随机。跑多局，首任队长不能永远是同一个人
+  const seen = new Set()
+  for (let i = 0; i < 30; i += 1) {
+    cloudMock.reset()
+    const roomId = await createHumanRoom(6, null, { realRandom: true })
+    seen.add(room(roomId).game.firstLeaderId)
+  }
+  assert.ok(seen.size > 1, `默认应当随机，30 局却只出现过 ${[...seen]} 号`)
+
+  // 2) 指定了就必须是那个人。逐个座位试一遍，别只测一个碰巧对的
+  for (let seat = 1; seat <= 6; seat += 1) {
+    cloudMock.reset()
+    const roomId = await createHumanRoom(6, null, { firstLeaderSeatNo: seat })
+    assert.strictEqual(room(roomId).game.firstLeaderId, seat,
+      `指定了 ${seat} 号，实际首任队长是 ${room(roomId).game.firstLeaderId} 号`)
+    // 指定的人同时要被标记为「已当过队长」，否则轮转会把他算成还没轮到
+    const leader = secret(roomId).players.find(p => p.id === seat)
+    assert.ok(leader.hasLed, `${seat} 号当了首任队长却没被标记 hasLed`)
+  }
+
+  // 3) 指定一个没人坐的座位要被拒——客户端可能拿着过期的座位号。
+  // 这里不能用 createHumanRoom：它自己就把局开了，第二次 startGame 会先撞上
+  //「游戏已经开始」，测不到我们想测的那条校验。
+  cloudMock.reset()
+  const created = await action("createRoom", {
+    playerCount: 6, roleCounts: gameUtil.buildDefaultRoleCounts(6, false),
+    unknownRoles: false, hunterVoteVariant: false, tableType: "round"
+  })
+  for (let seatNo = 1; seatNo <= 6; seatNo += 1) {
+    await action("takeSeat", { roomId: created.roomId, seatNo, name: `玩家${seatNo}` },
+      seatNo === 1 ? "host" : `user-${seatNo}`)
+  }
+  await expectFailure(action("startGame", { roomId: created.roomId, firstLeaderSeatNo: 99 }, "host"), /没有人/)
+  // 拒绝之后房间必须还停在候场，不能被改坏
+  assert.strictEqual(room(created.roomId).status, "lobby", "开局被拒后房间状态不该变")
+  console.log("  first leader choice ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -1036,6 +1083,7 @@ async function run() {
   await testStepModeBotSuggest()
   await testStepModeHandoffAmulet()
   await testAssetUrls()
+  await testFirstLeaderChoice()
   await testNoRoleLeakAcrossClients()
   await testNoActingForOthers()
   await testVoteSecrecyBeforeReveal()

@@ -5,6 +5,7 @@ const assets = require("../../utils/assets")
 
 Page({
   data: {
+    firstLeaderSeatNo: 0, leaderPickMode: false, firstLeaderName: "随机",
     roomId: "",
     room: null,
     playerName: "",
@@ -151,6 +152,9 @@ Page({
       devMode: !!room.devMode,
       mySeatNo: mySeat ? mySeat.seatNo : 0,
       seatedCount: seats.filter(seat => seat.name).length,
+      // 指定的队长如果中途离座（换座、退出），自动退回随机——
+      // 否则会带着一个空座位号去开局，被服务端拒掉，房主还不知道为什么
+      ...this.resolveFirstLeader(seats),
       settingsSummary: settings.length ? settings.join(" · ") : "基础规则",
       rolePoolCount: roleCandidates.reduce((total, role) => total + role.count, 0),
       goodRoleCount: roleCandidates.filter(role => role.faction === "good").reduce((total, role) => total + role.count, 0),
@@ -328,6 +332,35 @@ Page({
       .finally(() => this.setData({ writing: false }))
   },
 
+  // 弹层内部的点击不能冒泡到遮罩，否则点一下卡片就把自己关了
+  stopPropagation() {},
+
+  // 指定的队长必须仍然坐在那个位置上；人走了就退回随机。
+  resolveFirstLeader(seats) {
+    const wanted = this.data.firstLeaderSeatNo
+    if (!wanted) return { firstLeaderName: "随机" }
+    const seat = (seats || []).find(item => item.seatNo === wanted && item.name)
+    if (!seat) return { firstLeaderSeatNo: 0, firstLeaderName: "随机" }
+    return { firstLeaderName: `${seat.seatNo}号 ${seat.name}` }
+  },
+
+  // 首任队长：默认随机。房主点桌面上的座位来指定——线下的动作是「指着那个人」，
+  // 从名单里挑名字反而要先把人和座位号对上。
+  enterLeaderPick() { if (this.data.isHost) this.setData({ leaderPickMode: true }) },
+  exitLeaderPick() { this.setData({ leaderPickMode: false }) },
+  clearFirstLeader() { this.setData({ firstLeaderSeatNo: 0, firstLeaderName: "随机", leaderPickMode: false }) },
+
+  pickFirstLeader(event) {
+    const seatNo = Number(event.currentTarget.dataset.seat) || 0
+    const seat = ((this.data.room || {}).seats || []).find(item => item.seatNo === seatNo)
+    // 空座位点了不算——指定一个没人的位置，开局会被服务端拒掉
+    if (!seat || !seat.name) {
+      wx.showToast({ title: "这个位置还没有人", icon: "none" })
+      return
+    }
+    this.setData({ firstLeaderSeatNo: seatNo, firstLeaderName: `${seatNo}号 ${seat.name}`, leaderPickMode: false })
+  },
+
   startGame() {
     if (this.data.writing) return Promise.resolve()
     if (this.data.seatedCount !== this.data.room.playerCount) {
@@ -337,7 +370,7 @@ Page({
     this.stateGeneration += 1
     this.setData({ writing: true })
     wx.showLoading({ title: "命运洗牌中" })
-    return roomStore.startGame(this.data.roomId).then(result => {
+    return roomStore.startGame(this.data.roomId, this.data.firstLeaderSeatNo).then(result => {
       wx.hideLoading()
       this.applyState(result)
     }).catch(error => {

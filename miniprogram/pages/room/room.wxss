@@ -127,3 +127,53 @@ page { height: 100%; overflow: hidden; background: #1a1f1c; }
   .role-candidate-row { padding-top: 15rpx; padding-bottom: 14rpx; }
 }
 
+
+/* 首任队长入口。放在「开始游戏」正上方——房主按下去之前最后看到的一行。 */
+.leader-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-bottom: 14rpx;
+  padding: 18rpx 22rpx;
+  border: 2rpx solid #2a332e;
+  border-radius: 8rpx;
+  background: #151b18;
+}
+.leader-pick-label { flex: none; color: #b6beba; font-size: 25rpx; font-weight: 700; }
+.leader-pick-value { flex: 1; color: #e9ece9; font-size: 25rpx; font-weight: 800; text-align: right; }
+.leader-pick-arrow { flex: none; color: #8b968a; font-size: 34rpx; line-height: 1; }
+
+
+/* 指定模式：可点的座位镀一圈金边，已选的那个戴皇冠。
+   金色是全 app 的「队长」色（皇冠、队长徽标都用它），这里沿用不另造。 */
+.leader-pick-row.picking { border-color: #d0b36f; background: #1e2620; }
+.leader-pick-row.picking .leader-pick-label { flex: 1; color: #ead38c; }
+.leader-pick-reset,
+.leader-pick-cancel {
+  flex: none;
+  padding: 6rpx 16rpx;
+  border: 2rpx solid #3a463f;
+  border-radius: 6rpx;
+  color: #b6beba;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+.leader-pick-reset { border-color: #6b5a33; color: #d0b36f; }
+
+.compact-seat-token.leader-pickable .seat-avatar {
+  border-color: #d0b36f;
+  box-shadow: 0 0 0 6rpx rgba(208, 179, 111, 0.18);
+}
+.compact-seat-token.leader-chosen .seat-avatar {
+  border-color: #ead38c;
+  box-shadow: 0 0 0 8rpx rgba(234, 211, 140, 0.28);
+}
+/* 皇冠压在头像左上角外侧，和对局页队长徽标同一个方位，位置语义保持一致 */
+.leader-crown-mark {
+  position: absolute;
+  top: -10rpx;
+  left: -12rpx;
+  width: 34rpx;
+  height: 34rpx;
+}
+.leader-crown-mark .symbol-icon { display: block; width: 100%; height: 100%; }

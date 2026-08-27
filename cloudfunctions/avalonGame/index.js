@@ -456,6 +456,10 @@ async function startGame(event, openid) {
     openid: seat.bot ? "" : state.secret.seatBindings[String(seat.seatNo)] || ""
   }))
   if (seats.some(seat => !seat.bot && !seat.openid)) fail("有真人座位缺少微信身份绑定")
+  const wantedLeader = Number(event.firstLeaderSeatNo) || 0
+  if (wantedLeader && !seats.some(seat => seat.seatNo === wantedLeader && seat.name)) {
+    fail("指定的首任队长座位上没有人")
+  }
   core.validateSettings({ ...state.room.settings, playerCount: state.room.playerCount })
   // 测试房间可以指定房主自己的角色，方便复现特定角色的问题
   const hostSeatNo = Object.keys(state.secret.seatBindings || {})
@@ -463,7 +467,12 @@ async function startGame(event, openid) {
   const built = core.createGame(
     { ...state.room.settings, playerCount: state.room.playerCount },
     seats,
-    { hostRole: state.room.devMode ? state.room.hostRole : "", hostSeatNo: hostSeatNo ? Number(hostSeatNo) : 0 }
+    {
+      hostRole: state.room.devMode ? state.room.hostRole : "",
+      hostSeatNo: hostSeatNo ? Number(hostSeatNo) : 0,
+      // 房主在候场页可以指定首任队长；不指定就是随机（默认）
+      firstLeaderSeatNo: Number(event.firstLeaderSeatNo) || 0
+    }
   )
   const botIds = built.secret.players.filter(player => player.bot).map(player => player.id)
   built.publicGame.identity.readyIds = botIds.slice()

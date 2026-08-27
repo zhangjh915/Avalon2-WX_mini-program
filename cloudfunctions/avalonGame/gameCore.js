@@ -189,7 +189,13 @@ function createGame(settings, seats, options) {
     }
   }
   const players = assignArtVariants(orderedSeats.map((seat, index) => makePlayer(seat, roles[index], index)))
-  const firstLeader = players[Math.floor(Math.random() * players.length)]
+  // 首任队长：默认随机；房主在候场页指定了座位就用那个人。
+  // 校验放在这里而不是只信客户端——指定的座位可能已经被人换走了。
+  const wantedLeaderSeat = Number(options && options.firstLeaderSeatNo) || 0
+  const designated = wantedLeaderSeat
+    ? players.find(player => player.id === wantedLeaderSeat)
+    : null
+  const firstLeader = designated || players[Math.floor(Math.random() * players.length)]
   firstLeader.hasLed = true
   return {
     secret: {

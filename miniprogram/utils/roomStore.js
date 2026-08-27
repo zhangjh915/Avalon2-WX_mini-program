@@ -103,7 +103,7 @@ function getState(roomId) { return call("getState", { roomId }) }
 function takeSeat(roomId, seatNo, name) { return call("takeSeat", { roomId, seatNo, name }) }
 function fillBots(roomId) { return call("fillBots", { roomId }) }
 function updateSettings(roomId, settings) { return call("updateSettings", { roomId, ...settings }) }
-function startGame(roomId) { return call("startGame", { roomId }) }
+function startGame(roomId, firstLeaderSeatNo) { return call("startGame", { roomId, firstLeaderSeatNo: firstLeaderSeatNo || 0 }) }
 function action(roomId, actionName, payload) { return call(actionName, { roomId, ...(payload || {}) }) }
 function getResult(roomId) { return call("getResult", { roomId }) }
 
