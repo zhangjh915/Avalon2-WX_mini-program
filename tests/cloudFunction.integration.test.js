@@ -1061,6 +1061,40 @@ async function testFirstLeaderChoice() {
   console.log("  first leader choice ok")
 }
 
+
+// 首任队长必须知道自己是首任队长。
+// 骗徒有「选择向教士展示什么」那一步所以他知道；其他角色的展示由服务端自动完成，
+// 屏幕上原本一个字都没有——房主指定自己当首任队长，全程不知道教士读过自己。
+async function testFirstLeaderIsTold() {
+  cloudMock.reset()
+  const roomId = await createHumanRoom(7)
+  const players = secret(roomId).players
+  const who = id => (id === 1 ? "host" : `user-${id}`)
+  const leaderId = room(roomId).game.firstLeaderId
+  const leader = players.find(p => p.id === leaderId)
+
+  const view = await action("getState", { roomId }, who(leaderId))
+  const info = (view.private.nightInfo || []).join(" ")
+  if (leader.role === "deceiver") {
+    assert.ok(view.private.needsLeaderClaim, "骗徒首任队长应当走选择展示阵营那一步")
+  } else {
+    assert.match(info, /首任队长/, `${leader.role} 当首任队长却没被告知`)
+    const shown = leader.faction === "good" ? "正义方" : "邪恶方"
+    assert.ok(info.indexOf(shown) >= 0, `没说清对外显示为${shown}`)
+  }
+
+  // 不是首任队长的人不该看到这句——否则等于告诉他别人是队长兼透露阵营
+  const other = players.find(p => p.id !== leaderId)
+  const otherView = await action("getState", { roomId }, who(other.id))
+  const otherInfo = ((otherView.private || {}).nightInfo || []).join(" ")
+  assert.ok(otherInfo.indexOf("你是本局首任队长") < 0, "非队长不该收到队长告知")
+
+  // 措辞不能提「教士」：角色配置可以是隐藏的，提了等于确认场上有教士
+  assert.ok(info.indexOf("教士") < 0 || leader.role === "priest",
+    "首任队长的告知不该提教士——会泄露角色配置")
+  console.log("  first leader is told ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -1084,6 +1118,7 @@ async function run() {
   await testStepModeHandoffAmulet()
   await testAssetUrls()
   await testFirstLeaderChoice()
+  await testFirstLeaderIsTold()
   await testNoRoleLeakAcrossClients()
   await testNoActingForOthers()
   await testVoteSecrecyBeforeReveal()

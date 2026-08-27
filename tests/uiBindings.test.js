@@ -152,10 +152,22 @@ assert.match(playWxml, /class="table-emblem" style="\{\{[^"]*emblemStyle/, "长�
 const assetsSrc6 = fs.readFileSync(path.join(root, "..", "utils", "assets.js"), "utf8")
 assert.match(assetsSrc6, /emblemStyle/, "pickLongTable 要给出圣杯尺寸")
 
-// 阅读时间结束要自动收起密录，否则它是全屏浮层会把「我已记住」整个挡住
+// 阅读时间结束**不能**把密录强行收起。
+// 原先是收的（怕全屏浮层挡住「我已记住」），但阅读窗口只有 40 秒，
+// 读完「本局思路」基本必定超时——一超时浮层被关、身份牌同时收起，
+// 玩家再也回不到身份大图（实战中被抓到）。
+// 现在改成把收尾操作搬进浮层里，所以这里锁两件事：
+//   1. 不许再出现「到点就 dossierVisible: false」
+//   2. 浮层里必须有出路（「我已记住」），否则换成另一种困住
 const playSrc5 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
-assert.match(playSrc5, /identityMode === "remember"[\s\S]{0,200}dossierVisible: false/,
-  "阅读结束要自动收起密录")
+assert.ok(!/identityMode === "remember"[\s\S]{0,200}dossierVisible: false/.test(playSrc5),
+  "阅读结束不该强行收起密录——会把人踢到再也翻不开身份牌的界面")
+const dossier = playWxml.slice(playWxml.indexOf('wx:if="{{dossierVisible}}"'))
+const dossierBlock = dossier.slice(0, dossier.indexOf("</scroll-view>"))
+assert.match(dossierBlock, /bindtap="rememberIdentity"/,
+  "阅读时间可能在密录开着时走完，浮层里必须能就地确认，否则玩家被困住")
+assert.match(dossierBlock, /identityMode === 'remember'/,
+  "浮层里的收尾操作应当只在阅读时间结束后出现")
 
 delete global.Page
 console.log("UI binding tests passed")

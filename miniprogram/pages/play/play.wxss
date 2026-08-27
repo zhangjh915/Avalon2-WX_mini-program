@@ -1909,3 +1909,11 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
   font-size: 20rpx;
   text-align: center;
 }
+
+/* 阅读时间在密录开着时走完了，就在密录里把这一步收尾 */
+.dossier-finish {
+  margin-top: 26rpx;
+  padding-top: 22rpx;
+  border-top: 2rpx solid #2a332e;
+}
+.dossier-finish .primary-action { width: 100%; }

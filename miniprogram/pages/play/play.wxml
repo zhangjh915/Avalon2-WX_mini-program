@@ -308,6 +308,16 @@
           <view class="guide-goal">{{myRoleGuide.goal}}</view>
           <view wx:for="{{myRoleGuide.tips}}" wx:key="*this" class="guide-tip">{{index + 1}}. {{item}}</view>
         </view>
+
+        <!-- 阅读时间在浮层开着的时候走完了：就地把这一步收尾，
+             不要把人踢回一个身份牌已经收起、再也翻不开的界面。 -->
+        <view wx:if="{{phase === 'reveal' && identityMode === 'remember' && !identityRemembered}}" class="dossier-finish">
+          <view wx:if="{{privateView.needsLeaderClaim && !privateView.leaderClaimSubmitted}}" class="leader-claim-box">
+            <view class="intel-title">骗徒 · 请选择向教士展示的阵营</view>
+            <view class="loyalty-row"><button class="loyalty-button" data-faction="good" bindtap="submitLeaderClaim">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="submitLeaderClaim">邪恶</button></view>
+          </view>
+          <button wx:if="{{!privateView.needsLeaderClaim || privateView.leaderClaimSubmitted}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
+        </view>
       </scroll-view>
     </view>
   </view>

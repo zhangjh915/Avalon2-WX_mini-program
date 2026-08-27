@@ -297,6 +297,15 @@ function privateNightInfo(game, secret, player) {
     const morgan = secret.players.find(item => item.role === "morgan")
     if (morgan) info.push(`摩根勒菲是 ${morgan.id}号。`)
   }
+  // 首任队长自己得知道这件事。骗徒有「选择向教士展示什么」那一步，所以他知道；
+  // 其他角色的展示是服务端自动完成的，屏幕上从头到尾一个字都没有——
+  // 实战中房主指定自己当首任队长，全程不知道教士已经读过自己。
+  //
+  // 措辞不提「教士」在不在场：角色配置可以是隐藏的（未知角色变体），
+  // 说「教士会看到」等于确认场上有教士。只陈述自己被展示成什么。
+  if (player.id === game.firstLeaderId && player.role !== "deceiver") {
+    info.push(`你是本局首任队长，你的忠诚对外显示为${displayedFaction(player) === "good" ? "正义方" : "邪恶方"}。`)
+  }
   if (player.role === "priest") {
     const leader = getPlayer(secret, game.firstLeaderId)
     if (leader && secret.priestClaim) info.push(`第一位领袖显示为${secret.priestClaim === "good" ? "正义方" : "邪恶方"}。`)

@@ -622,10 +622,11 @@ Page({
       }
       // 只在真的变了才 setData。这个定时器 200ms 跑一次，无条件 setData 等于
     // 每秒白白推 5 次渲染，和别的更新抢通道。
-    // 阅读时间一到就收起密录/攻略：它是全屏浮层，开着会把「我已记住」整个挡住
-    if (identityMode === "remember" && this.data.identityMode !== "remember" && this.data.dossierVisible) {
-      this.setData({ dossierVisible: false })
-    }
+    // 阅读时间到了**不再**强制收起密录。
+    // 原先收是怕浮层挡住「我已记住」，但代价更大：阅读窗口只有 40 秒，
+    // 读完「本局思路」基本必定超时，一超时浮层被关、身份牌同时收起，
+    // 玩家就再也回不到身份大图了（实战中被抓到）。
+    // 现在改成把「我已记住」搬进浮层里，就地读完就地确认。
     const next = { identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint,
                    readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 }
     if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
