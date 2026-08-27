@@ -8,7 +8,7 @@
   </view>
 
   <view class="result-section identity-section">
-    <view class="section-head"><view class="section-kicker">全员公开</view><view class="section-title">圆桌身份</view></view>
+    <view class="section-head"><view class="section-kicker">全员公开</view><view class="section-title">全员身份</view></view>
     <view class="identity-list">
       <view wx:for="{{players}}" wx:key="id" class="identity-row {{item.faction === 'good' ? 'good-row' : 'evil-row'}}" style="animation-delay: {{item.revealDelay}}ms;">
         <view class="identity-avatar">{{item.initial}}</view>
@@ -19,12 +19,12 @@
   </view>
 
   <view class="result-section final-record animated-section">
-    <view class="section-head"><view class="section-kicker">终局档案</view><view class="section-title">游戏结果</view></view>
+    <view class="section-head"><view class="section-kicker">本局战绩</view><view class="section-title">游戏结果</view></view>
     <view class="record-copy">{{report}}</view>
   </view>
 
   <view class="result-section archive-section animated-section">
-    <view class="section-head"><view class="section-kicker">五次远征</view><view class="section-title">任务档案</view></view>
+    <view class="section-head"><view class="section-kicker">五次远征</view><view class="section-title">任务回顾</view></view>
     <view class="mission-archive">
       <view wx:for="{{missionLines}}" wx:key="round" class="archive-row">
         <image class="archive-orb" src="{{item.crest}}" mode="aspectFit" />
