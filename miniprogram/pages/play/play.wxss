@@ -75,7 +75,6 @@ button::after {
   color: #d7c395;
   font-size: 24rpx;
   font-weight: 800;
-  line-height: 72rpx;
 }
 
 .mission-board {
@@ -577,7 +576,6 @@ button::after {
   border-radius: 6rpx;
   font-size: 26rpx;
   font-weight: 800;
-  line-height: 88rpx;
   transition: transform 0.1s ease, opacity 0.1s ease, background-color 0.15s ease;
 }
 
@@ -1143,7 +1141,6 @@ button::after {
   background: transparent;
   color: #84908b;
   font-size: 20rpx;
-  line-height: 56rpx;
 }
 
 .debug-content {
@@ -1506,7 +1503,7 @@ button::after {
 .vote-progress-fill { height: 100%; background: #d0b36f; transition: width 220ms ease; }
 .bot-vote-list { width: 100%; margin-top: 26rpx; padding-top: 18rpx; border-top: 2rpx solid #34413b; }
 .bot-vote-row { display: grid; margin-top: 10rpx; grid-template-columns: 1fr 76rpx 76rpx; align-items: center; gap: 8rpx; color: #9eaaa4; font-size: 21rpx; }
-.bot-vote-row button { min-height: 58rpx; padding: 0; border-radius: 5rpx; background: #2b3732; color: #e6e9e6; font-size: 20rpx; line-height: 58rpx; }
+.bot-vote-row button { min-height: 58rpx; padding: 0; border-radius: 5rpx; background: #2b3732; color: #e6e9e6; font-size: 20rpx; }
 .result-emblem,.amulet-emblem { display: flex; width: 140rpx; height: 140rpx; margin: 20rpx auto 24rpx; align-items: center; justify-content: center; border: 4rpx solid; border-radius: 50%; font-size: 50rpx; font-weight: 900; animation: result-enter 360ms ease both; }
 .mission-card-reveal { display: flex; width: 100%; min-height: 210rpx; padding: 20rpx 0 28rpx; align-items: center; justify-content: center; gap: 12rpx; perspective: 1200rpx; }
 /* 翻牌用两段 scaleX 实现，不用双面 3D 翻转。
@@ -1546,7 +1543,7 @@ button::after {
 .ceremony-step { color: #909993; font-size: 21rpx; text-align: center; }
 .ceremony-text { min-height: 240rpx; padding: 42rpx 12rpx; color: #f0f2ef; font-size: 34rpx; font-weight: 700; line-height: 1.8; text-align: center; animation: script-enter 260ms ease both; }
 .ceremony-controls { display: flex; align-items: center; justify-content: center; gap: 12rpx; }
-.icon-action { width: 76rpx; height: 76rpx; min-height: 76rpx; margin: 0; padding: 0; border: 2rpx solid #69736d; border-radius: 50%; background: #333d38; color: #eef1ed; font-size: 32rpx; line-height: 72rpx; }
+.icon-action { width: 76rpx; height: 76rpx; min-height: 76rpx; margin: 0; padding: 0; border: 2rpx solid #69736d; border-radius: 50%; background: #333d38; color: #eef1ed; font-size: 32rpx; }
 .inline-action { width: auto; min-width: 300rpx; margin: 0; }
 .empty-selection { width: 100%; padding: 26rpx 0; color: #8a8d88; font-size: 23rpx; text-align: center; }
 .mission-vote[disabled] { opacity: 0.3; filter: grayscale(1); }
@@ -1805,7 +1802,14 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .overlay-intel-line { color: #e6d7a8; font-size: 22rpx; line-height: 1.5; }
 
 .reading-actions { display: flex; margin-top: 16rpx; justify-content: center; }
-.ghost-action { margin: 0; padding: 0 34rpx; border: 2rpx solid #48554f; border-radius: 6rpx; background: #1d2824; color: #cfd6d1; font-size: 25rpx; line-height: 68rpx; }
+/* 用 <view> 而不是 <button>：微信原生 button 的内部尺寸压不住，
+   width:auto / fit-content 都不生效，实测始终被撑到 184pt。
+   这里只需要一个可点的次要操作，view 的尺寸跟内容走，可控。 */
+.ghost-action {
+  flex: none;
+  width: auto;
+  align-self: center;
+  min-height: 68rpx; margin: 0; padding: 0 34rpx; border: 2rpx solid #48554f; border-radius: 6rpx; background: #1d2824; color: #cfd6d1; font-size: 25rpx; }
 .reading-clock { margin-top: 14rpx; }
 
 /* 未揭示/已记住阶段用小尺寸卡背，给下面的按钮和进度留出空间 */
@@ -1953,12 +1957,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .role-art-caption { color: #ead38c; font-size: 30rpx; font-weight: 800; }
 .role-art-close { color: #8b968a; font-size: 22rpx; }
 
-.art-zoom-hint {
-  margin-top: 8rpx;
-  color: #8b968a;
-  font-size: 20rpx;
-  text-align: center;
-}
 
 /* 微信原生的 button[disabled] 会刷一层近白底（实测 rgb(250,250,250)），
    在深色主题上就是一块刺眼的白。单类选择器压不过它，这里用父级提高特异性。 */

@@ -63,7 +63,7 @@ assert.match(playWxml, /class="submitted-seal[^"]*"[^>]*>\s*<image class="seal-b
 // 翻开身份牌之前，密录和「本局思路」里直接写着自己的角色，点开就等于提前看牌
 assert.match(playWxml, /bindtap="openDossier"/, "对局中要能打开密录")
 ;[/wx:if="\{\{privateView\.roleName && identityUnlocked\}\}"[^>]*dossier-button/,
-  /<button wx:if="\{\{identityUnlocked\}\}"[^>]*>查看本局思路<\/button>/].forEach(re => {
+  /<view wx:if="\{\{identityUnlocked\}\}"[^>]*>查看本局思路<\/view>/].forEach(re => {
   assert.match(playWxml, re, "身份揭示前必须藏起密录/攻略入口")
 })
 const playJsSrc = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
@@ -324,6 +324,29 @@ assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航
   })
   assert.deepStrictEqual(uncovered, [],
     `这些按钮设了高度但没被居中规则覆盖，文字会贴顶:\n  ${uncovered.join("\n  ")}`)
+
+  // 反过来的一条：按钮不许写死「行高 = 按钮高度」。
+  // 那种写法只在单行时看着对，文字一换行每行都占满按钮高度，按钮就裂成两截
+  //（「队伍已选齐，指定魔法目标」实测裂开）。垂直居中由 flex 负责，
+  // 行高交给 app.wxss 里的统一值。
+  const rigid = []
+  sheets.forEach(rel => {
+    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
+    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
+    rules.forEach(rule => {
+      const sel = rule.slice(0, rule.indexOf("{"))
+      const body = rule.slice(rule.indexOf("{"))
+      if (!/-action\b|\.btn\b|loyalty-button|-button\b/.test(sel)) return
+      if (/caption|seat-/.test(sel)) return          // 单行截断的标签，写死行高是对的
+      const lh = /line-height:\s*(\d+)rpx/.exec(body)
+      const h = /(?:min-)?height:\s*(\d+)rpx/.exec(body)
+      if (lh && h && Math.abs(Number(lh[1]) - Number(h[1])) <= 6) {
+        rigid.push(`${rel}: ${sel.trim().slice(0, 44)} 行高${lh[1]} 高${h[1]}`)
+      }
+    })
+  })
+  assert.deepStrictEqual(rigid, [],
+    `按钮写死了「行高=高度」，文字换行会裂成两截:\n  ${rigid.join("\n  ")}`)
 }
 
 // 队长选展示阵营那一屏放了角色立绘。立绘是 3:4（990x1320），

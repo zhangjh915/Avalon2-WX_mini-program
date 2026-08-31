@@ -121,7 +121,7 @@
 .edge-step-button { display: flex; width: 52rpx; height: 52rpx; align-items: center; justify-content: center; border: 1rpx solid #2c3531; border-radius: 5rpx; background: #1c211f; color: #c9cfcc; font-size: 30rpx; font-weight: 800; line-height: 1; box-sizing: border-box; box-shadow: 0 3rpx 8rpx rgba(56,43,30,0.08); }
 .edge-stepper text { display: flex; width: 46rpx; height: 52rpx; align-items: center; justify-content: center; border: 1rpx solid #262d2a; border-radius: 5rpx; background: #141816; color: #e0e3e2; font-size: 25rpx; font-weight: 800; text-align: center; box-sizing: border-box; }
 .layout-sheet-actions { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 14rpx; margin-top: 20rpx; }
-.layout-reset, .layout-confirm { min-height: 78rpx; margin: 0; border-radius: 7rpx; font-size: 26rpx; font-weight: 800; line-height: 78rpx; }
+.layout-reset, .layout-confirm { min-height: 78rpx; margin: 0; border-radius: 7rpx; font-size: 26rpx; font-weight: 800; }
 .layout-reset { background: #1e2421; color: #cfd4d2; }
 .layout-confirm { background: #6f4728; color: #fff8ec; }
 .layout-confirm[disabled] { background: #29312d; color: #f7f3ec; opacity: 1; }

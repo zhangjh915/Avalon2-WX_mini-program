@@ -353,7 +353,13 @@ button,
 .choice-action,
 .loyalty-button,
 .bot-step-action,
-.join-room-action {
+.join-room-action,
+.icon-action,
+.seat-map-button,
+.debug-button,
+.ghost-action,
+.layout-reset,
+.layout-confirm {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -361,4 +367,8 @@ button,
      微信原生 button 自带左右内边距，算出来 184pt，塞进 1fr 的 166pt 轨道就顶出屏幕
      （「正义/邪恶」那一行实测溢出 12pt）。允许它按轨道收窄。 */
   min-width: 0;
+  /* 文字换行时的行高交给这里，别在各自规则里写死 line-height: 88rpx 那种
+     ——一换行每行都占满按钮高度，按钮就裂成两截（「指定魔法目标」被抓到过）。
+     垂直居中已经由上面的 flex 负责，写死行高既多余又有害。 */
+  line-height: 1.35;
 }

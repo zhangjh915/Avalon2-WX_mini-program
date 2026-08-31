@@ -85,7 +85,7 @@
         <view wx:if="{{privateView.needsLeaderClaim}}" class="claim-submitted">你已对外展示{{privateView.leaderClaim === 'good' ? '正义' : '邪恶'}}</view>
 
         <view class="reading-actions">
-          <button wx:if="{{identityUnlocked}}" class="ghost-action" bindtap="openDossier">查看本局思路</button>
+          <view wx:if="{{identityUnlocked}}" class="ghost-action" bindtap="openDossier">查看本局思路</view>
         </view>
         <view class="reading-clock">{{readingHint}}</view>
       </view>
@@ -264,7 +264,7 @@
         </view>
       </view>
       <view class="sheet-actions {{syncing ? 'sheet-actions-syncing' : ''}}">
-        <button wx:if="{{tableMode === 'team' && selectedTeam.length === missionSize}}" class="primary-action" bindtap="chooseMagicMode" disabled="{{syncing}}">队伍已选齐，指定魔法目标</button>
+        <button wx:if="{{tableMode === 'team' && selectedTeam.length === missionSize}}" class="primary-action" bindtap="chooseMagicMode" disabled="{{syncing}}">指定魔法目标</button>
         <button wx:if="{{tableMode === 'magic' && magicTargetId}}" class="launch-action" bindtap="startVote" disabled="{{syncing}}">{{syncing ? '发车中…' : '确认发车'}}</button>
         <button wx:if="{{tableMode === 'leader' && nextLeaderId && needsAmulet}}" class="primary-action" data-mode="amuletOwner" bindtap="openTable" disabled="{{syncing}}">继续分配护身符</button>
         <button wx:if="{{tableMode === 'leader' && nextLeaderId && !needsAmulet}}" class="launch-action" bindtap="handoff" disabled="{{syncing}}">{{syncing ? '交接中…' : '确认交接'}}</button>
@@ -304,7 +304,6 @@
       <scroll-view class="history-scroll" scroll-y>
         <view class="dossier-card">
           <image class="dossier-art" src="{{myRoleArt}}" mode="aspectFill" bindtap="openRoleArt" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
-          <view class="art-zoom-hint" bindtap="openRoleArt">点开看大图</view>
           <view class="dossier-identity {{privateView.faction === 'good' ? 'role-good' : 'role-evil'}}">
             <view class="dossier-faction">{{privateView.factionName}}</view>
             <view class="dossier-name">{{privateView.roleName}}</view>
