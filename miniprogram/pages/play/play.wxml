@@ -46,7 +46,7 @@
         <!-- 立绘是 3:4，容器也必须是 3:4，否则 aspectFill 会把人裁掉。
              沿用揭示页那张牌的 39vh/52vh，同一比例、同一套观感。 -->
         <view class="claim-card">
-          <image class="claim-card-art" src="{{myRoleArt}}" mode="aspectFill" bindtap="openRoleArt" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
+          <image class="claim-card-art" src="{{myRoleArt}}" mode="aspectFill" data-field="myRoleArt" data-raw="{{artRaw.myRoleArt}}" binderror="onRemoteImageError" />
           <view class="claim-card-label">
             <text class="claim-card-faction {{privateView.faction === 'good' ? 'faction-good' : 'faction-evil'}}">{{privateView.factionName}}</text>
             <text class="claim-card-name">{{privateView.roleName}}</text>

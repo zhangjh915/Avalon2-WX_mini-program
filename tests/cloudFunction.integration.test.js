@@ -184,15 +184,11 @@ async function createStartedRoom(playerCount, roleCounts, options) {
 // 非骗徒只有一个合法选项，这里按服务端给的选项提交。
 async function submitLeaderClaim(roomId) {
   const game = room(roomId).game
+  // bot 当队长时 startGame 已经填好 priestClaim，这个早退同时覆盖了 bot 的情况
   if (!game || secret(roomId).priestClaim) return
   const leader = core.getPlayer(secret(roomId), game.firstLeaderId)
-  if (!leader || leader.bot) return
-  // 揭示有 3 秒延迟（revealAt = now + 3000），测试里直接把它推到过去，
-  // 不然刚 startIdentity 就提交会被「身份尚未揭示」挡下
-  if (game.identity && game.identity.revealAt > Date.now()) game.identity.revealAt = Date.now() - 1
-  const who = leader.id === 1 ? "host" : `user-${leader.id}`
   const claim = leader.role === "deceiver" ? "good" : core.displayedFaction(leader)
-  await action("identityClaim", { roomId, claim }, who)
+  await action("identityClaim", { roomId, claim }, leader.id === 1 ? "host" : `user-${leader.id}`)
 }
 
 async function createHumanRoom(playerCount, roleCounts, options) {
@@ -389,7 +385,7 @@ async function testFirstLeaderDeceiverClaim() {
   // 队长提交完才开始全员揭示与阅读窗口。
   assert.ok(room(roomId).game.identity.claimAt, "应当先进入队长选择阶段")
   assert.strictEqual(room(roomId).game.identity.revealAt, 0, "队长没选之前不该开始揭示")
-  await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /尚未结束|请先选择/)
+  await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /尚未结束/)
   await action("identityClaim", { roomId, claim: "good" }, leaderOpenid)
   assert.strictEqual(secret(roomId).priestClaim, "good")
   assert.ok(room(roomId).game.identity.revealAt > 0, "队长选完就该开始全员揭示")
@@ -1094,7 +1090,6 @@ async function testEveryFirstLeaderClaims() {
   const who = id => (id === 1 ? "host" : `user-${id}`)
   const leaderId = room(roomId).game.firstLeaderId
   const leader = players.find(p => p.id === leaderId)
-  secret(roomId).priestClaim = null
 
   const view = core.privateView(room(roomId).game, secret(roomId), who(leaderId))
   assert.strictEqual(view.needsLeaderClaim, true, `${leader.role} 当首任队长却不用选择展示阵营`)
@@ -1114,7 +1109,7 @@ async function testEveryFirstLeaderClaims() {
   // 3) 非骗徒提交另一个阵营要被服务端拒——界面置灰只是提示，不是校验
   if (leader.role !== "deceiver") {
     // 选择阶段由 startIdentity 开启（claimAt），不再依赖 revealAt
-    room(roomId).game.identity.claimAt = room(roomId).game.identity.claimAt || Date.now()
+    room(roomId).game.identity.claimAt = Date.now()
     const wrong = core.displayedFaction(leader) === "good" ? "evil" : "good"
     await expectFailure(action("identityClaim", { roomId, claim: wrong }, who(leaderId)), /真实的阵营/)
   }
@@ -1125,7 +1120,6 @@ async function testEveryFirstLeaderClaims() {
   const noPriest = gameUtil.countRoles(["loyal", "loyal", "squire", "morgan", "hunter", "minion"])
   const roomB = await createHumanRoom(6, noPriest)
   assert.ok(!secret(roomB).players.some(p => p.role === "priest"), "这局本不该有教士")
-  secret(roomB).priestClaim = null
   const leaderB = core.getPlayer(secret(roomB), room(roomB).game.firstLeaderId)
   const viewB = core.privateView(room(roomB).game, secret(roomB), leaderB.id === 1 ? "host" : `user-${leaderB.id}`)
   assert.strictEqual(viewB.needsLeaderClaim, true, "没有教士时也必须走这一步，否则等于公开没有教士")
@@ -1139,16 +1133,7 @@ async function testEveryFirstLeaderClaims() {
 async function testLeaderClaimsBeforeReveal() {
   cloudMock.reset()
   const counts = gameUtil.countRoles(["loyal", "priest", "squire", "morgan", "hunter", "deceiver"])
-  const created = await action("createRoom", {
-    playerCount: 6, roleCounts: counts, unknownRoles: false, hunterVoteVariant: false, tableType: "round"
-  })
-  const roomId = created.roomId
-  for (let seatNo = 1; seatNo <= 6; seatNo += 1) {
-    await action("takeSeat", { roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
-  }
-  const originalRandom = Math.random
-  Math.random = () => 0
-  try { await action("startGame", { roomId }) } finally { Math.random = originalRandom }
+  const roomId = await createHumanRoom(6, counts)
 
   const players = secret(roomId).players
   const who = id => (id === 1 ? "host" : `user-${id}`)

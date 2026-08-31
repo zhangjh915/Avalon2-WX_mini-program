@@ -6,6 +6,18 @@ page {
   font-size: 28rpx;
 }
 
+/* 微信原生给 button[disabled] 刷一层近白底（实测 rgb(250,250,250)），
+   在深色主题上就是一块刺眼的白。它的内建选择器特异度不低，各页面此前是
+   一处一处硬猜特异度去压（8 处、3 种写法），猜不中就漏一块白出来。
+   这里一次性中和成「继承自己那条规则的配色」，之后各类只需普通特异度
+   声明禁用色即可。和下面 button::after 的做法同构。 */
+button[disabled],
+button[disabled][disabled] {
+  background-color: inherit;
+  color: inherit;
+  opacity: 1;
+}
+
 button::after {
   border: 0;
 }
@@ -345,6 +357,9 @@ button:active,
    又没同步设行高，文字就贴在顶上（「让测试骑士行动」那颗被抓到过）。
    用 flex 居中而不是写死 line-height：按钮换行时行高会失效，flex 不会。
    放在 app.wxss 是因为这是所有按钮的通病，逐个补迟早再漏一个。 */
+/* 名单里只有 .ghost-action 是 <view>（原生 button 的内部尺寸压不住，
+   它单独改成了 view），类型选择器覆盖不到才点名。其余都是 <button>，
+   开头那个类型选择器已经兜住——别再往这份名单里加类名。 */
 button,
 .btn,
 .primary-action,
@@ -354,12 +369,7 @@ button,
 .loyalty-button,
 .bot-step-action,
 .join-room-action,
-.icon-action,
-.seat-map-button,
-.debug-button,
-.ghost-action,
-.layout-reset,
-.layout-confirm {
+.ghost-action {
   display: flex;
   align-items: center;
   justify-content: center;

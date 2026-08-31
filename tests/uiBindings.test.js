@@ -170,7 +170,6 @@ assert.match(dossierBlock, /identityMode === 'remember'/,
   "浮层里的收尾操作应当只在阅读时间结束后出现")
 
 delete global.Page
-console.log("UI binding tests passed")
 // 首夜屏：真人主持念稿，app 只提供一个「天亮」按钮。
 // 逐句推进的仪式脚本已整套下线——玩家认人时全程闭眼，屏上文字没人看，
 // 还逼房主一边主持一边读屏。锁住：不许把脚本推进重新长回来。
@@ -208,80 +207,86 @@ const seatTokens = playWxml.match(/<view[^>]*class="seat-token game-seat-token[^
 assert.strictEqual(seatTokens.length, 2, `应有两处座位，实际 ${seatTokens.length}`)
 seatTokens.forEach(tag => assert.match(tag, /width: \{\{seatSize\}\}px/, "座位没吃自适应尺寸"))
 
+// ---- 样式表解析（四条 CSS 守卫共用）----
+// 一次读、一次切，且**先剥注释**：规则切分的正则会把规则前面的注释算进
+// 选择器里，而注释里常常写着 88rpx、<button> 这类词，直接让守卫误报
+//（真踩过：一条解释"别写死行高"的注释自己被判成写死了行高）。
+const STYLE_SHEETS = ["app.wxss", "pages/index/index.wxss", "pages/room/room.wxss",
+  "pages/play/play.wxss", "pages/result/result.wxss"]
+const STYLE_RULES = STYLE_SHEETS.map(rel => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+  const rules = (css.match(/[^{}]+\{[^}]*\}/g) || []).map(rule => {
+    const at = rule.indexOf("{")
+    return { sel: rule.slice(0, at).trim(), body: rule.slice(at) }
+  })
+  return { rel, rules }
+})
+// 颜色亮度 L(0~255) 与色度 C：色度用来分辨「中性羊皮纸」和「金/绿/红强调色」
+const lum = hex => {
+  const v = hex.length === 4
+    ? [hex[1] + hex[1], hex[2] + hex[2], hex[3] + hex[3]]
+    : [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)]
+  const [r, g, b] = v.map(x => parseInt(x, 16))
+  return { L: (r * 299 + g * 587 + b * 114) / 1000, C: Math.max(r, g, b) - Math.min(r, g, b) }
+}
+// 「这条规则画的是笔画，不是底面」——关闭的 ×、拖动条这类，
+// 整个视觉就是那个 background。豁免与「必须够亮」是同一枚硬币的两面，
+// 所以判定只写一次，两个方向共用。
+const isGlyph = sel => /glyph|handle|-dot\b/.test(sel)
+// 「什么算按钮」只定义一次。此前居中守卫和行高守卫各写了一份，
+// 且已经分叉（一份有 dial-key、一份有 -button\b），于是各自漏掉对方覆盖的。
+const BUTTONISH = /-action\b|\.btn\b|-button\b|dial-key/
+
 // 深色主题：全 app 的底面必须是深的。
 // 289 处色值是一次性翻过来的，以后随手补一条 background: #fff 就破功了，
 // 而这种问题在开发者工具里未必一眼看得出（浅底浅字反而"看着还行"）。
-// 只查底面和边框；文字/金饰在深底上本来就该是浅的，不查。
+//
+// 同一次遍历里做两件互为反面的事：
+//   底面 —— 不许浅（会在深色页面上戳出一块白）
+//   笔画 —— 必须够亮（关闭的 × 压暗了等于按钮消失。实战出过一次：
+//           浮层变成一个出不来的陷阱，玩家原话「没有任何按钮可以关闭」）
 {
-  const lum = hex => {
-    const v = hex.length === 4
-      ? [hex[1] + hex[1], hex[2] + hex[2], hex[3] + hex[3]]
-      : [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)]
-    const [r, g, b] = v.map(x => parseInt(x, 16))
-    return { L: (r * 299 + g * 587 + b * 114) / 1000, C: Math.max(r, g, b) - Math.min(r, g, b) }
-  }
   const SURFACE = ["background", "background-color", "border", "border-color", "border-top",
     "border-bottom", "border-left", "border-right", "border-top-color", "border-bottom-color"]
-  const sheets = ["app.wxss", "pages/index/index.wxss", "pages/room/room.wxss",
-    "pages/play/play.wxss", "pages/result/result.wxss"]
   const offenders = []
-  sheets.forEach(rel => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
-    // 按**规则**遍历而不是按声明：要判断一条 background 是「底面」还是
-    // 「用 background 画出来的图形」，得看同一条规则里的其他声明。
-    // 关闭的 ×、拖动条这些整个视觉就是那个 background，压暗了等于元素消失——
-    // 深色化那一轮就是这么把关闭按钮弄没的（实战中被抓到）。
-    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
-    rules.forEach(rule => {
-      const ruleBody = rule.slice(rule.indexOf("{"))
-      const size = /(?:^|;|\{)\s*(?:width|height):\s*(\d+)rpx/.exec(ruleBody)
-      const hasText = /font-size|(?:^|;|\{)\s*color:/.test(ruleBody)
-      // 小尺寸 + 没文字 = 图形，它的浅色 background 是笔画不是底。
-      // 光靠尺寸不够：只覆盖颜色的那种规则（.history-head .modal-close-glyph::after）
-      // 自己不写尺寸，所以名字里带 glyph/handle/dot 的一并按图形算。
-      const ruleSel = rule.slice(0, rule.indexOf("{"))
-      const isGlyph = (!!size && Number(size[1]) <= 46 && !hasText) ||
-        /glyph|handle|-dot\b/.test(ruleSel)
-      const decls = ruleBody.match(/[a-z-]+\s*:\s*[^;{}]+/g) || []
-      decls.forEach(decl => {
-      const prop = decl.slice(0, decl.indexOf(":")).trim()
-      if (SURFACE.indexOf(prop) < 0) return
-      if (isGlyph) return
-      const hexes = decl.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g) || []
-      hexes.forEach(hex => {
-        const { L, C } = lum(hex.toLowerCase())
-        // L 是 0~255 的亮度。150 这个阈值卡在「深色阶最亮的一档」和「羊皮纸」之间：
-        //   深色面 #202623=37、#323b36=56、强调棕 #795436=92  —— 都放行
-        //   羊皮纸 #e5ded2=223、#fffaf1=250              —— 要拦住
-        // 高色度的是金/绿/红强调色，深底上本来就该亮，另外放行。
-        // 60 这个色度界：羊皮纸系全在 20 以下，而最淡的强调色（护身符火花
-        // #70b099）色度 64——卡 70 会把它误当浅底面。
-        if (L > 150 && C < 60) offenders.push(`${rel}: ${decl.trim().slice(0, 60)}`)
-      })
-      })
-    })
-  })
-  assert.strictEqual(offenders.length, 0, `深色主题里混进了浅底面:\n  ${offenders.join("\n  ")}`)
-
-  // 反过来的一条：关闭的 × 整个视觉就是那两根横条，压暗了按钮就等于消失。
-  // 深色化那一轮把它从 #d9dfda 翻成 #202623，浮层于是变成一个出不来的陷阱
-  //（玩家原话：「没有任何按钮可以关闭」）。上面的豁免只是不拦它，
-  // 这里要求它必须够亮，否则同样的事会再发生一次。
   const faint = []
-  sheets.forEach(rel => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
-    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
-    rules.forEach(rule => {
-      const sel = rule.slice(0, rule.indexOf("{"))
-      if (!/modal-close-glyph/.test(sel)) return
-      const bg = /background(?:-color)?:\s*(#[0-9a-fA-F]{6})/.exec(rule)
-      if (!bg) return
-      const { L } = lum(bg.group ? bg.group(1) : bg[1])
-      if (L < 120) faint.push(`${rel}: ${sel.trim().slice(0, 46)} -> ${bg[1]} 亮度 ${Math.round(L)}`)
+  STYLE_RULES.forEach(({ rel, rules }) => {
+    rules.forEach(({ sel, body }) => {
+      if (isGlyph(sel)) {
+        // 笔画那一面：**关闭类控件**必须看得见——看不见就等于被困在浮层里。
+        // 按功能匹配（选择器里带 close）而不是按类名硬编码，
+        // 这样 sheet-close-glyph 之类的新写法也自动进检查。
+        // 不按「所有 glyph」一刀切：.role-card-glyph 是实心小卡片图标、
+        // .sheet-handle 是刻意低调的拖动条，它们暗是对的。
+        if (!/close/.test(sel)) return
+        const bg = /background(?:-color)?:\s*(#[0-9a-fA-F]{6})/.exec(body)
+        if (bg && lum(bg[1]).L < 120) {
+          faint.push(`${rel}: ${sel.slice(0, 46)} -> ${bg[1]} 亮度 ${Math.round(lum(bg[1]).L)}`)
+        }
+        return
+      }
+      const decls = body.match(/[a-z-]+\s*:\s*[^;{}]+/g) || []
+      decls.forEach(decl => {
+        const prop = decl.slice(0, decl.indexOf(":")).trim()
+        if (SURFACE.indexOf(prop) < 0) return
+        const hexes = decl.match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g) || []
+        hexes.forEach(hex => {
+          const { L, C } = lum(hex.toLowerCase())
+          // L 是 0~255 的亮度。150 卡在「深色阶最亮的一档」和「羊皮纸」之间：
+          //   深色面 #202623=37、#323b36=56、强调棕 #795436=92  —— 放行
+          //   羊皮纸 #e5ded2=223、#fffaf1=250                —— 拦住
+          // 色度 60：羊皮纸系全在 20 以下，而最淡的强调色（护身符火花
+          // #70b099）色度 64，卡 70 会把它误当浅底面。
+          if (L > 150 && C < 60) offenders.push(`${rel}: ${decl.trim().slice(0, 60)}`)
+        })
+      })
     })
   })
+  assert.deepStrictEqual(offenders, [], `深色主题里混进了浅底面:\n  ${offenders.join("\n  ")}`)
   assert.deepStrictEqual(faint, [], `关闭按钮的 × 太暗，等于按钮不存在:\n  ${faint.join("\n  ")}`)
 }
+
 // 导航栏要贴合首页底图顶部，不能是原来那个棕色
 const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.json"), "utf8"))
 assert.strictEqual(appJson.window.navigationBarBackgroundColor.toLowerCase(), "#0b110f",
@@ -294,32 +299,53 @@ assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航
 // 现在由 app.wxss 一条通用规则兜底；这里锁住两件事：规则还在，
 // 以及**每个自己设了高度的按钮类**都被那条规则覆盖到。
 {
+  // 「按钮文字要垂直居中」这条，守的应当是**屏幕上真的有的按钮**，
+  // 而不是「类名有没有被抄进 app.wxss 的名单里」。
+  // 第一版守的是后者，于是每发现一个漏网就往名单里加一个类名，
+  // 守卫和缺陷同层——加名字就能变绿，什么都没一般化。
+  // 现在先从 wxml 收集真正用到的类，样式表里的死类不参与判定。
   const appCss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "app.wxss"), "utf8")
   const centerRule = /([^{}]*?)\{[^}]*display:\s*flex[^}]*align-items:\s*center[^}]*justify-content:\s*center[^}]*\}/g
   let covered = null
   let m
   while ((m = centerRule.exec(appCss))) {
-    if (m[1].indexOf("button") >= 0) { covered = m[1].split(",").map(x => x.trim()); break }
+    if (m[1].indexOf("button") >= 0) { covered = m[1].split(",").map(x => x.trim()).filter(Boolean); break }
   }
   assert.ok(covered, "app.wxss 缺少按钮垂直居中的通用规则")
 
-  const sheets = ["app.wxss", "pages/index/index.wxss", "pages/room/room.wxss", "pages/play/play.wxss"]
+  // wxml 里出现过的 class，以及它们是不是写在 <button> 上
+  const liveClasses = new Set()
+  const buttonClasses = new Set()
+  const pages = ["index/index", "room/room", "play/play", "result/result", "game/game"]
+  pages.forEach(rel => {
+    const wxml = fs.readFileSync(path.join(root, ...rel.split("/")) + ".wxml", "utf8")
+    const tags = wxml.match(/<(button|view)\b[^>]*class="[^"]*"[^>]*>/g) || []
+    tags.forEach(tag => {
+      const isButton = tag.slice(0, 8) === "<button "
+      const cls = (/class="([^"]*)"/.exec(tag) || ["", ""])[1]
+      cls.split(/\s+/).forEach(c => {
+        const name = c.replace(/\{\{[\s\S]*/, "").trim()
+        if (!name) return
+        liveClasses.add("." + name)
+        if (isButton) buttonClasses.add("." + name)
+      })
+    })
+  })
+
   const uncovered = []
-  sheets.forEach(rel => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
-    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
-    rules.forEach(rule => {
-      const sel = rule.slice(0, rule.indexOf("{")).trim()
-      const body = rule.slice(rule.indexOf("{"))
-      if (!/-action\b|\.btn\b|loyalty-button|dial-key/.test(sel)) return
+  STYLE_RULES.forEach(({ rel, rules }) => {
+    rules.forEach(({ sel, body }) => {
+      if (!BUTTONISH.test(sel)) return
       if (/\[disabled\]|:active|::after/.test(sel)) return
       if (!/(?:^|;|\{)\s*(?:min-)?height:\s*\d+rpx/.test(body)) return
       if (/line-height:/.test(body)) return
       if (/display:\s*flex/.test(body) && /align-items:\s*center/.test(body)) return
-      // 落到通用规则上才算安全
       const cls = (sel.match(/\.[a-z-]+/g) || []).map(x => x.trim())
-      const hit = cls.some(c => covered.indexOf(c) >= 0)
-      if (!hit) uncovered.push(`${rel}: ${sel.slice(0, 50)}`)
+      // 样式表里的死类不算数：屏幕上没有的按钮不会贴顶
+      if (!cls.some(c => liveClasses.has(c))) return
+      // <button> 由通用规则里的类型选择器兜住；只有写在 <view> 上的才需要点名
+      if (cls.some(c => buttonClasses.has(c))) return
+      if (!cls.some(c => covered.indexOf(c) >= 0)) uncovered.push(`${rel}: ${sel.slice(0, 50)}`)
     })
   })
   assert.deepStrictEqual(uncovered, [],
@@ -330,18 +356,14 @@ assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航
   //（「队伍已选齐，指定魔法目标」实测裂开）。垂直居中由 flex 负责，
   // 行高交给 app.wxss 里的统一值。
   const rigid = []
-  sheets.forEach(rel => {
-    const css = fs.readFileSync(path.join(__dirname, "..", "miniprogram", rel), "utf8")
-    const rules = css.match(/[^{}]+\{[^}]*\}/g) || []
-    rules.forEach(rule => {
-      const sel = rule.slice(0, rule.indexOf("{"))
-      const body = rule.slice(rule.indexOf("{"))
-      if (!/-action\b|\.btn\b|loyalty-button|-button\b/.test(sel)) return
+  STYLE_RULES.forEach(({ rel, rules }) => {
+    rules.forEach(({ sel, body }) => {
+      if (!BUTTONISH.test(sel)) return
       if (/caption|seat-/.test(sel)) return          // 单行截断的标签，写死行高是对的
       const lh = /line-height:\s*(\d+)rpx/.exec(body)
       const h = /(?:min-)?height:\s*(\d+)rpx/.exec(body)
       if (lh && h && Math.abs(Number(lh[1]) - Number(h[1])) <= 6) {
-        rigid.push(`${rel}: ${sel.trim().slice(0, 44)} 行高${lh[1]} 高${h[1]}`)
+        rigid.push(`${rel}: ${sel.slice(0, 44)} 行高${lh[1]} 高${h[1]}`)
       }
     })
   })

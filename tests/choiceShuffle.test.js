@@ -54,7 +54,7 @@ for (let i = 0; i < 50; i += 1) {
   const wxss = fs.readFileSync(path.join(__dirname, "..", "miniprogram", "pages", "play", "play.wxss"), "utf8")
   assert.match(wxss, /\.swap-order\s*\{[^}]*row-reverse/, "翻转应当由 CSS 顺序实现")
   // 四处私密选择都要挂上翻转类
-  ;["voteSwap", "claimSwap", "hunterSwap", "traitorSwap"].forEach(flag => {
+  ;["voteSwap", "claimSwap", "hunterSwap", "traitorSwap", "leadClaimSwap"].forEach(flag => {
     assert.ok(wxml.indexOf(`{{${flag} ? 'swap-order' : ''}}`) >= 0, `${flag} 没有接到界面上`)
   })
   // data-value / data-side 必须是字面量，不能跟着 swap 走

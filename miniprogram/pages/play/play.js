@@ -299,15 +299,22 @@ Page({
       myVotes: dossier.myVotes,
       syncing: false
     })
+    // 五个洗牌方向只由「房间号 + 轮次 + 座号」决定，整局最多变 5 次，
+    // 而这里每 900ms 走一遍。原先是一次无条件 setData——一分钟 67 次跨线程
+    // 通信，其中 66 次推的是完全相同的值。按 key 挡掉。
     const myId = privateView.id || 0
     const round = (game && game.round) || 0
-    this.setData({
-      voteSwap: gameUtil.choiceSwapped(room.roomId, "vote", round, myId),
-      claimSwap: gameUtil.choiceSwapped(room.roomId, "claim", round, myId),
-      leadClaimSwap: gameUtil.choiceSwapped(room.roomId, "leadclaim", round, myId),
-      hunterSwap: gameUtil.choiceSwapped(room.roomId, "hunter", myId),
-      traitorSwap: gameUtil.choiceSwapped(room.roomId, "traitor", myId)
-    })
+    const swapKey = `${this.data.roomId}|${round}|${myId}`
+    if (this.swapKey !== swapKey) {
+      this.swapKey = swapKey
+      this.setData({
+        voteSwap: gameUtil.choiceSwapped(this.data.roomId, "vote", round, myId),
+        claimSwap: gameUtil.choiceSwapped(this.data.roomId, "claim", round, myId),
+        leadClaimSwap: gameUtil.choiceSwapped(this.data.roomId, "leadclaim", round, myId),
+        hunterSwap: gameUtil.choiceSwapped(this.data.roomId, "hunter", myId),
+        traitorSwap: gameUtil.choiceSwapped(this.data.roomId, "traitor", myId)
+      })
+    }
     this.refreshLongTable()
     this.resolveRemoteArts(roleSkin, privateView.role, privateView.artVariant)
     this.refreshSelections()

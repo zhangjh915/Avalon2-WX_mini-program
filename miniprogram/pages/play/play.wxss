@@ -1794,8 +1794,10 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .card-overlay .overlay-desc,
 .card-overlay .overlay-intel-line { text-shadow: 0 2rpx 10rpx rgba(0,0,0,.92), 0 0 3rpx rgba(0,0,0,.7); }
 .overlay-faction { font-size: 21rpx; font-weight: 800; letter-spacing: 2rpx; }
-.overlay-faction.faction-good { color: #8ecdb3; }
-.overlay-faction.faction-evil { color: #e09b9e; }
+.overlay-faction.faction-good,
+.claim-card-faction.faction-good { color: #8ecdb3; }
+.overlay-faction.faction-evil,
+.claim-card-faction.faction-evil { color: #e09b9e; }
 .overlay-name { margin: 4rpx 0 8rpx; color: #f4f6f3; font-size: 40rpx; font-weight: 900; }
 .overlay-desc { color: #c3ccc6; font-size: 23rpx; line-height: 1.5; }
 .overlay-intel { margin-top: 12rpx; padding-top: 12rpx; border-top: 2rpx solid rgba(200,170,98,.35); }
@@ -1911,7 +1913,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
   padding-top: 22rpx;
   border-top: 2rpx solid #2a332e;
 }
-.dossier-finish .primary-action { width: 100%; }
 
 /* 顶栏两个入口从「密」单字和三横图形换成短词：
    单字和抽象图形在这个尺寸下没人猜得出是什么，短词一眼就懂。 */
@@ -1936,6 +1937,7 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 /* 身份牌大图：对局中随时点开看清楚，也方便给同桌看一眼。
    z-index 要压过身份信息浮层（110），否则从浮层里点开会被它盖住。 */
 .role-art-overlay {
+  animation: overlay-in 160ms ease both;
   position: fixed;
   inset: 0;
   z-index: 120;
@@ -1958,8 +1960,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .role-art-close { color: #8b968a; font-size: 22rpx; }
 
 
-/* 微信原生的 button[disabled] 会刷一层近白底（实测 rgb(250,250,250)），
-   在深色主题上就是一块刺眼的白。单类选择器压不过它，这里用父级提高特异性。 */
 
 
 /* 队长选择那一屏的立绘。立绘是 3:4，容器同比例，aspectFill 才不会裁人。
@@ -2008,8 +2008,9 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 }
 /* 微信原生 button[disabled] 会刷一层近白底，单类选择器压不过它，
    用父级提高特异性。禁用的要明确沉下去，但仍看得出是哪一方。 */
-.loyalty-row > .loyalty-button[disabled],
-.loyalty-row > .loyalty-button[disabled].evil-choice {
+/* 原生禁用底色已由 app.wxss 统一中和，这里只声明自己的禁用配色 */
+.loyalty-button[disabled][disabled],
+.loyalty-button[disabled][disabled].evil-choice {
   border-color: #2c3531;
   background: #191e1c;
   color: #5d6963;
