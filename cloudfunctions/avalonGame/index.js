@@ -546,21 +546,20 @@ async function identityAction(event, openid) {
   })
 }
 
+// 身份确认完直接开第一轮远征。
+// 原来中间还有一段「天黑请闭眼」等真人主持念稿，但夜里要传的信息
+//（邪恶互认、亚瑟知摩根勒菲、教士知首任队长展示的阵营……）早就写在
+// 各人身份牌的秘密信息里了，那一屏只剩房主连点两下，中间什么都不发生。
+// enterNight 仍然接受：已上传的体验版还会发它，直接当 enterMission 处理。
 async function advancePhase(event, openid) {
   const state = await loadState(event.roomId)
   requireHost(state.secret, openid)
-  let phase = state.room.phase
-  if (event.action === "enterNight") {
-    if (state.room.phase !== "reveal" || !state.room.game.identity.closeAt || Date.now() < state.room.game.identity.closeAt) fail("身份确认尚未结束")
-    if (state.room.game.identity.rememberedIds.length < state.room.playerCount) fail("还有玩家未确认身份")
-    phase = "night"
-  }
-  if (event.action === "enterMission") {
-    if (state.room.phase !== "night") fail("当前不能开始远征")
-    phase = "mission"
-  }
-  await rooms.doc(event.roomId).update({ data: { phase, updatedAt: Date.now() } })
-  state.room.phase = phase
+  if (state.room.phase !== "reveal") fail("当前不能开始远征")
+  const identity = state.room.game.identity
+  if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份确认尚未结束")
+  if (identity.rememberedIds.length < state.room.playerCount) fail("还有玩家未确认身份")
+  await rooms.doc(event.roomId).update({ data: { phase: "mission", updatedAt: Date.now() } })
+  state.room.phase = "mission"
   return resultView(state.room, state.secret, openid)
 }
 

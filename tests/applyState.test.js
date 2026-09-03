@@ -49,7 +49,7 @@ const definition = global.__playDefinition
 assert.ok(definition, "play page did not register")
 
 // 每个阶段都过一遍：崩溃点往往只在某一个阶段的分支里
-const PHASES = ["reveal", "night", "mission", "vote", "amulet", "finale"]
+const PHASES = ["reveal", "mission", "vote", "missionResult", "amulet", "finale"]
 PHASES.forEach(phase => {
   const view = core.privateView(game, secret, "me")
   assert.ok(view, "privateView 应当能取到本人视角")
@@ -70,7 +70,6 @@ PHASES.forEach(phase => {
     ceremonyQueue: [],
     vibrate() {},
     enqueueCeremonies() {},
-    startNightAuto() {},
     stopTimers() {}
   })
 
@@ -79,6 +78,8 @@ PHASES.forEach(phase => {
   assert.ok(context.data.game, `${phase} 阶段没有把 game 写进 data，对局页会整页白屏`)
   assert.strictEqual(context.data.decoratedPlayers.length, PLAYER_COUNT, `${phase} 阶段座位数不对`)
   assert.strictEqual(context.data.phase, phase)
+  // 换阶段绝不自动弹选人面板（队长刚拿到皇冠时全桌还在讨论谁上车）
+  assert.strictEqual(context.data.tableVisible, false, `${phase} 阶段不该自动弹出选人面板`)
 })
 
 // ---- 边界：这些都真实发生过，且表现全是整页白屏 ----
@@ -87,7 +88,7 @@ function contextFor(overrides) {
     data: JSON.parse(JSON.stringify(definition.data)),
     setData(patch) { Object.assign(this.data, patch) },
     ceremonyQueue: [], vibrate() {}, enqueueCeremonies() {},
-    startNightAuto() {}, stopTimers() {}, measureStage() {}, startTimers() {}
+    stopTimers() {}, measureStage() {}, startTimers() {}
   }, overrides || {})
 }
 

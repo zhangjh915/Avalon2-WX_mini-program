@@ -673,56 +673,6 @@ button::after {
   padding: 8rpx 0;
 }
 
-.night-screen {
-  padding: 28rpx 0 8rpx;
-}
-
-.night-moon {
-  position: relative;
-  width: 92rpx;
-  height: 92rpx;
-  margin: 0 auto 22rpx;
-  overflow: hidden;
-  border-radius: 50%;
-  background: #d5c38f;
-  box-shadow: 0 0 30rpx rgba(213, 195, 143, 0.25);
-}
-
-.night-moon::after {
-  position: absolute;
-  top: -10rpx;
-  left: 32rpx;
-  width: 92rpx;
-  height: 92rpx;
-  border-radius: 50%;
-  background: #191e1c;
-  content: "";
-}
-
-.script-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44rpx;
-  height: 44rpx;
-  margin-right: 16rpx;
-  border-radius: 50%;
-  background: #263d36;
-  color: #ffffff;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.script-body {
-  flex: 1;
-}
-
-.script-role {
-  margin-bottom: 5rpx;
-  font-size: 24rpx;
-  font-weight: 900;
-}
-
 .notice-box {
   padding: 18rpx;
   margin-bottom: 20rpx;
@@ -1490,6 +1440,8 @@ button::after {
 .identity-countdown { display: flex; min-height: 590rpx; flex-direction: column; align-items: center; justify-content: center; }
 .countdown-number { color: #e4d195; font-size: 176rpx; font-weight: 900; animation: countdown-pulse 1s ease-in-out infinite; }
 .selected-riders { display: flex; width: 100%; min-height: 128rpx; margin: 12rpx 0 22rpx; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16rpx; }
+/* 投票/结算屏上出征名单的小标题 */
+.roster-caption { margin-top: 4rpx; color: #8f9a94; font-size: 22rpx; text-align: center; }
 .rider-token { display: flex; width: 86rpx; flex-direction: column; align-items: center; color: #aab4af; font-size: 19rpx; }
 .rider-entering { animation: rider-board 520ms cubic-bezier(.18,.78,.22,1) both; }
 .rider-avatar { position: relative; display: flex; width: 70rpx; height: 70rpx; margin-bottom: 6rpx; align-items: center; justify-content: center; border: 3rpx solid #57645e; border-radius: 50%; background: #202b27; color: #f3eee5; font-size: 25rpx; font-weight: 900; }
@@ -1740,10 +1692,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 .waiting-bar-progress { color: #d8c27f; font-size: 24rpx; font-weight: 700; font-variant-numeric: tabular-nums; }
 @keyframes waiting-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
 
-/* 首夜由房主逐条推进 */
-.night-controls { display: flex; width: 100%; margin-top: 28rpx; gap: 16rpx; }
-.night-controls button { flex: 1; margin: 0; }
-
 /* 高频事件用不打断的顶部横幅，替代全屏仪式 */
 .event-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 97; display: flex; align-items: center; gap: 14rpx; padding: 22rpx 28rpx; border-bottom: 2rpx solid #3d4a44; background: rgba(20, 28, 24, 0.97); animation: banner-drop 260ms cubic-bezier(.2,.75,.2,1) both; }
 .banner-symbol { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; font-size: 34rpx; }
@@ -1883,10 +1831,6 @@ button:active:not([disabled]) { transform: translateY(2rpx) scale(0.99); opacity
 
 /* 双败保护标签：这条规则直接改变出牌判定，要一眼看到，不能混在小字里 */
 .protect-tag { flex: none; margin-left: 10rpx; padding: 3rpx 12rpx; border: 2rpx solid #d0b36f; border-radius: 999rpx; color: #ead38c; font-size: 19rpx; font-weight: 800; }
-
-/* 首夜屏：真人主持念稿，屏幕上只留月亮 + 一句话 + 房主的「天亮」按钮。
-   玩家全程闭着眼，多写一个字都是给房主添乱。 */
-.night-title { margin-bottom: 6rpx; color: #e8ebe6; font-size: 36rpx; font-weight: 900; letter-spacing: 4rpx; text-align: center; }
 
 /* 私密选择的左右打乱。
    用 row-reverse 翻转视觉顺序，DOM 顺序和 data-value 都不动——

@@ -105,6 +105,22 @@ async function main() {
     const drawn = r.type === "long" ? r.long : r.round
     if (!drawn) problems.push(`[桌子缺失] ${label}：台面和地毯都在，但 ${r.type} 桌没渲染（stage=${r.stage} 档位=${r.tier}）`)
   }
+  // 选人面板不再自动弹出（队长拿到皇冠时全桌还在讨论谁上车），
+  // 查桌子前脚本自己点开，查完关掉；顺手确认进组队阶段时面板确实是关着的。
+  async function expectSheetClosed(label) {
+    const open = await withTimeout(mp.evaluate(() => !!getCurrentPages().slice(-1)[0].data.tableVisible), 8000, "查面板状态")
+    if (open) problems.push(`[自动弹面板] ${label}：进入组队阶段时选人面板自己弹开了`)
+  }
+  async function openTeamSheet() {
+    await withTimeout(mp.evaluate(() => {
+      getCurrentPages().slice(-1)[0].openTable({ currentTarget: { dataset: { mode: "team" } } })
+    }), 8000, "打开选人面板")
+    await sleep(900)
+  }
+  async function closeTeamSheet() {
+    await withTimeout(mp.evaluate(() => { getCurrentPages().slice(-1)[0].closeTable() }), 8000, "关闭选人面板")
+    await sleep(400)
+  }
   mp.on("exception", error => problems.push(`[exception] ${error.message}`))
   mp.on("console", message => {
     if (message.type !== "error") return
@@ -246,15 +262,15 @@ async function main() {
     log("等待身份阅读时长（约 40 秒）")
     await sleep(41000)
     await call("identityRemembered", { roomId })
-    // 首夜结束后 play 页自己会替房主推进到组队阶段，
-    // 脚本这里可能已经晚了一步，因此只在阶段还没走到时才补推。
-    await advanceTo("night", "enterNight")
-    await sleep(1500)
-    await shot("night")
-
+    // 全员记住身份后由房主开远征；只在阶段还没走到时才补推
     await advanceTo("mission", "enterMission")
     await sleep(1200)
     await shot("mission-round-1")
+    await expectSheetClosed("第 1 轮")
+    await openTeamSheet()
+    await shot("mission-round-1-sheet")
+    await checkTableRendered("第 1 轮组队")
+    await closeTeamSheet()
 
     // ---- 五轮远征 ----
     let current = await state(roomId)
@@ -325,8 +341,13 @@ async function main() {
         }
       }
       await sleep(1200)
-      await shot(`mission-round-${(await state(roomId)).room.game.round}`)
-      await checkTableRendered(`第 ${(await state(roomId)).room.game.round} 轮组队`)
+      const roundNo = (await state(roomId)).room.game.round
+      await shot(`mission-round-${roundNo}`)
+      await expectSheetClosed(`第 ${roundNo} 轮`)
+      await openTeamSheet()
+      await shot(`mission-round-${roundNo}-sheet`)
+      await checkTableRendered(`第 ${roundNo} 轮组队`)
+      await closeTeamSheet()
     }
 
     // ---- 终局 ----

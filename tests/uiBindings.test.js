@@ -85,13 +85,15 @@ assert.match(playJsSrc, /openDossier\(\) \{[^}]*identityUnlocked/s, "openDossier
 
 
 
-// 选人面板有两条打开路径：openTable（点按钮）和 applyState 自动打开
-// （队长进入组队阶段）。长桌要靠实测 stage 尺寸才能挑档，测量必须两条路径都覆盖——
-// 只挂在 openTable 上时，真实对局里队长那一轮的长桌整个不渲染（e2e 截图逮到过）。
+// 选人面板只能由人点开（openTable），applyState **不许**替队长自动弹出：
+// 队长刚拿到皇冠时全桌正在讨论谁上车，他的手机不该被钉在满屏座位图上。
+// 阶段一换只做一件事——把开着的面板收掉。
 const playSrc2 = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
-assert.match(playSrc2, /tableVisible:\s*phaseChanged \?/, "applyState 仍会自动打开选人面板")
+assert.match(playSrc2, /tableVisible:\s*phaseChanged \? false :/, "applyState 不得在换阶段时自动打开选人面板")
+assert.ok(!/tableVisible:\s*phaseChanged \? \(room\.phase === "mission"/.test(playSrc2), "选人面板又被自动弹开了")
+// 长桌要靠实测 stage 尺寸才能挑档；面板开着却量到 0 时必须补测，否则桌子整个不渲染
 assert.match(playSrc2, /refreshLongTable\(\) \{[\s\S]{0,400}?measureStage\(\)/,
-  "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则自动打开的面板挑不出档")
+  "refreshLongTable 在没有 stage 尺寸时必须主动补测，否则面板挑不出档")
 
 // homeBg 特意不在这张清单里：它已进包、走 /assets/ 绝对路径，
 // 不经云存储也就没有签名/下载失败这回事，不需要 binderror 兜底。
@@ -170,21 +172,25 @@ assert.match(dossierBlock, /identityMode === 'remember'/,
   "浮层里的收尾操作应当只在阅读时间结束后出现")
 
 delete global.Page
-// 首夜屏：真人主持念稿，app 只提供一个「天亮」按钮。
-// 逐句推进的仪式脚本已整套下线——玩家认人时全程闭眼，屏上文字没人看，
-// 还逼房主一边主持一边读屏。锁住：不许把脚本推进重新长回来。
-const nightBlock = (playWxml.match(/<view wx:if="\{\{phase === 'night'\}\}"[\s\S]*?\n    <\/view>/) || [""])[0]
-assert.ok(nightBlock, "找不到首夜屏区块")
-;["nightStep", "currentNightLine", "nightProgressPercent", "nextNightStep", "prevNightStep"].forEach(gone => {
-  assert.ok(nightBlock.indexOf(gone) < 0, `首夜屏不该再有仪式脚本推进: ${gone}`)
+// 「天黑请闭眼」整段下线：夜里要传的信息全在身份牌的秘密信息里，
+// 那一屏只剩房主连点两下。全员记住身份后，房主的按钮直接开远征。
+assert.ok(playWxml.indexOf("phase === 'night'") < 0, "夜晚屏又长回来了")
+assert.ok(playWxml.indexOf("enterNight") < 0 && playSrc2.indexOf("enterNight") < 0, "客户端不该再发 enterNight")
+const rememberBlock = (playWxml.match(/identityMode === 'remember'[\s\S]*?identity-progress[\s\S]*?<\/view>\s*<\/view>/) || [""])[0]
+assert.match(rememberBlock, /bindtap="enterMission">开始远征</, "全员记住后房主应当一键「开始远征」")
+
+// 出征名单要常驻在投票屏和结算屏上（全员可见）：队伍是队长在自己手机上定的，
+// 别人只在横幅里看到 2.6 秒，之后只能去战绩里翻。
+;["vote", "missionResult"].forEach(phase => {
+  const block = (playWxml.match(new RegExp(`<view wx:if="\\{\\{phase === '${phase}'\\}\\}"[\\s\\S]*?\\n    <\\/view>`)) || [""])[0]
+  assert.ok(block, `找不到 ${phase} 屏区块`)
+  assert.match(block, /wx:for="\{\{teamPlayers\}\}"/, `${phase} 屏必须列出出征成员`)
+  assert.match(block, /magicTargetId/, `${phase} 屏的名单要标出火球在谁身上`)
 })
-const nightButtons = nightBlock.match(/<button[^>]*bindtap="([^"]+)"/g) || []
-assert.strictEqual(nightButtons.length, 1, `首夜屏房主只该有一个按钮，实际 ${nightButtons.length} 个`)
-assert.match(nightButtons[0], /bindtap="enterMission"/, "那一个按钮必须是「天亮」")
-const playSrcNight = fs.readFileSync(path.join(root, "play", "play.js"), "utf8")
-;["applyNightStep", "startNightDirectives", "nightCeremony", "nightDirective"].forEach(gone => {
-  assert.ok(playSrcNight.indexOf(gone) < 0, `play.js 残留已下线的夜间仪式代码: ${gone}`)
-})
+// 结算屏对老队长先是结算屏：讨论完了再点「交接皇冠」进选人，不许一上来就是选人界面
+const resultBlock = (playWxml.match(/<view wx:if="\{\{phase === 'missionResult'\}\}"[\s\S]*?\n    <\/view>/) || [""])[0]
+assert.match(resultBlock, /'交接皇冠'/, "结算屏的入口按钮应当是「交接皇冠」")
+assert.ok(!/等待当前队长/.test(resultBlock), "结算屏不该催队长")
 
 // 座位尺寸必须跟着台面实测值算，不能写死。
 // 两块台面差很多：选人面板是 flex:1 撑满屏高（10 人局实测 584pt），

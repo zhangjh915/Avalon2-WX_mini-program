@@ -65,8 +65,10 @@ assert.strictEqual(vote.progress, "2/3")
 const voteAll = hint("vote", baseGame({ current: { team: [1, 2], voteCount: 2, votedIds: [1, 2] } }))
 assert.strictEqual(voteAll, null)
 
-// 结算阶段等交接皇冠；加拉哈德接管时要指向他
+// 结算阶段指向交接皇冠的人；加拉哈德接管时要指向他。
+// 但措辞不能是「等待」——结算后全桌先讨论，写等待就是在催老队长
 assert.match(hint("missionResult", baseGame()).text, /2号 乙 交接皇冠/)
+assert.ok(!/^等待/.test(hint("missionResult", baseGame()).text), "结算阶段的提示不该催队长交接")
 assert.match(hint("missionResult", baseGame({ galahadLeaderId: 4 })).text, /4号 丁/)
 
 // 护身符三个子状态各自等不同的人
@@ -79,8 +81,5 @@ assert.match(hint("finale", baseGame({ final: { stage: "hunterDecision" } })).te
 const identify = hint("finale", baseGame({ final: { stage: "identify", submittedCount: 3 } }))
 assert.strictEqual(identify.progress, "3/5")
 assert.strictEqual(hint("finale", baseGame({ final: { stage: "identify", submittedCount: 5 } })), null)
-
-// 首夜与已结束阶段不显示等待条
-assert.strictEqual(hint("night", baseGame()), null)
 
 console.log("waiting hint tests passed")

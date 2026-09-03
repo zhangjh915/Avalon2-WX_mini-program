@@ -143,9 +143,8 @@ async function run() {
     await sleep(43500)
     await call("identityRemembered", { roomId })
     await call("identityRemembered", { roomId })
-    await call("enterNight", { roomId })
-    await expectFailure("enterNight", { roomId }, /身份确认尚未结束/)
     await call("enterMission", { roomId })
+    await expectFailure("enterMission", { roomId }, /当前不能开始远征/)
 
     current = await state(roomId)
     const botIds = current.room.game.players

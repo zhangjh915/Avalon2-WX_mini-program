@@ -218,7 +218,6 @@ async function finishIdentity(roomId) {
   await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   await action("identityRemembered", { roomId })
-  await action("enterNight", { roomId })
   await action("enterMission", { roomId })
   assert.strictEqual(room(roomId).phase, "mission")
 }
@@ -343,7 +342,7 @@ async function testInvalidClicks() {
   cloudMock.reset()
   const roomId = await createStartedRoom(5)
   await expectFailure(action("startGame", { roomId }), /游戏已经开始/)
-  await expectFailure(action("enterMission", { roomId }), /当前不能开始远征/)
+  await expectFailure(action("enterMission", { roomId }), /身份确认尚未结束/)
   await finishIdentity(roomId)
   const selection = chooseTeam(roomId, "good")
   const nonTeamPlayer = secret(roomId).players.find(player => !selection.team.includes(player.id))
@@ -491,7 +490,6 @@ async function testRealMultiplayerFlow() {
   for (const player of players) {
     await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
   }
-  await action("enterNight", { roomId }, "host")
   await action("enterMission", { roomId }, "host")
   assert.strictEqual(room(roomId).game.leaderId, 1)
   const team = [1, 2]
@@ -521,7 +519,6 @@ async function testHumanInspectionClaim() {
   await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const player of privateState.players) await action("identityRemembered", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
-  await action("enterNight", { roomId }, "host")
   await action("enterMission", { roomId }, "host")
   for (let round = 1; round <= 2; round += 1) {
     const game = room(roomId).game
@@ -929,7 +926,6 @@ async function testNoActingForOthers() {
 
   // 队长动作同理：非队长带着队长的 id 也不能开投票
   for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
-  await action("enterNight", { roomId }, "host")
   await action("enterMission", { roomId }, "host")
   const leader = players.find(p => p.id === room(roomId).game.leaderId)
   const notLeader = players.find(p => p.id !== leader.id)
@@ -949,7 +945,6 @@ async function testVoteSecrecyBeforeReveal() {
   await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
-  await action("enterNight", { roomId }, "host")
   await action("enterMission", { roomId }, "host")
   const leader = players.find(p => p.id === room(roomId).game.leaderId)
   const team = [players[0].id, players[1].id]
@@ -987,7 +982,6 @@ async function testConcurrentSubmissionsCountOnce() {
   await submitLeaderClaim(roomId)
   room(roomId).game.identity.closeAt = Date.now() - 1
   for (const p of players) await action("identityRemembered", { roomId }, who(p.id))
-  await action("enterNight", { roomId }, "host")
   await action("enterMission", { roomId }, "host")
   const leader = players.find(p => p.id === room(roomId).game.leaderId)
   const team = [players[0].id, players[1].id]

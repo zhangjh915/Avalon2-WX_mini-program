@@ -19,7 +19,7 @@
       <text class="waiting-bar-text">{{waitingHint.text}}</text>
       <text wx:if="{{waitingHint.progress}}" class="waiting-bar-progress">{{waitingHint.progress}}</text>
     </view>
-    <view wx:if="{{leader && phase !== 'reveal' && phase !== 'night' && phase !== 'finale'}}" class="leader-line">
+    <view wx:if="{{leader && phase !== 'reveal' && phase !== 'finale'}}" class="leader-line">
       <view class="leader-crown"><image class="symbol-icon crown-icon" src="{{ui.crown}}" mode="aspectFit" /></view><text>{{leader.id}}号 {{leader.name}}</text>
       <text class="leader-rule">{{missionSize}}人任务</text><text wx:if="{{protectedText}}" class="protect-tag">双败保护轮</text>
     </view>
@@ -97,19 +97,8 @@
         <button wx:if="{{!identityRemembered}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-sealed"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">已完成确认</view></view>
         <view class="identity-progress">{{identityRememberedCount}} / {{game.playerCount}}</view>
-        <button wx:if="{{isHost && identityRememberedCount === game.playerCount}}" class="launch-action" bindtap="enterNight">进入天黑请闭眼</button>
+        <button wx:if="{{isHost && identityRememberedCount === game.playerCount}}" class="launch-action" bindtap="enterMission">开始远征</button>
       </view>
-    </view>
-
-    <!-- 首夜由真人主持念稿，app 不再逐句推进：屏幕上只留一个「天亮」按钮，
-         认人全程玩家是闭着眼的，任何文字都没人看，还会让房主分心去读屏。 -->
-    <view wx:if="{{phase === 'night'}}" class="phase-content ceremony-content">
-      <view class="night-moon"></view>
-      <view class="night-title">天黑请闭眼</view>
-      <view wx:if="{{isHost}}" class="night-controls">
-        <button class="launch-action" bindtap="enterMission">天亮，开始远征</button>
-      </view>
-      <view wx:else class="waiting-copy">闭眼等待，听主持人的指令行动。</view>
     </view>
 
     <view wx:if="{{phase === 'mission'}}" class="phase-content">
@@ -127,6 +116,12 @@
     </view>
 
     <view wx:if="{{phase === 'vote'}}" class="phase-content">
+      <!-- 出征名单常驻：队伍是队长在自己手机上定的，别人只在横幅里看到 2.6 秒，
+           之后就只能去战绩里翻。谁上了车、火球在谁身上，是全桌讨论的基础。 -->
+      <view class="roster-caption">本轮出征成员</view>
+      <view class="selected-riders">
+        <view wx:for="{{teamPlayers}}" wx:key="id" class="rider-token {{item.id === magicTargetId ? 'magic-rider' : ''}}"><view class="rider-avatar">{{item.initial}}<image wx:if="{{item.id === magicTargetId}}" class="rider-fire symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view class="rider-no">{{item.id}}号</view></view>
+      </view>
       <view wx:if="{{myInTeam && !privateView.hasVoted && !myVotePending}}">
         <view class="action-copy">选择一张任务牌。提交后不可更改，其他人只会看到最终票数。</view>
         <view class="shuffle-note">左右位置随机</view>
@@ -155,6 +150,9 @@
       </view>
       <view class="result-title">{{lastMission.winner === 'good' ? '远征成功' : '远征失败'}}</view>
       <view class="waiting-copy">成功 {{lastMission.successCount}} · 失败 {{lastMission.failCount}}</view>
+      <view class="selected-riders">
+        <view wx:for="{{teamPlayers}}" wx:key="id" class="rider-token {{item.id === magicTargetId ? 'magic-rider' : ''}}"><view class="rider-avatar">{{item.initial}}<image wx:if="{{item.id === magicTargetId}}" class="rider-fire symbol-icon fire-icon" src="{{ui.fire}}" mode="aspectFit" /></view><view class="rider-no">{{item.id}}号</view></view>
+      </view>
       <button wx:if="{{canClaimGalahad}}" class="launch-action" bindtap="claimGalahad">公开加拉哈德，接管皇冠</button>
       <view wx:if="{{canControlLeader}}" class="handoff-actions">
         <view wx:if="{{nextLeaderPlayer || nextAmuletPlayer}}" class="handoff-preview">
@@ -167,12 +165,12 @@
             <view><view class="handoff-preview-label">护身符</view><view class="handoff-preview-name">{{nextAmuletPlayer.id}}号 {{nextAmuletPlayer.name}}</view></view>
           </view>
         </view>
-        <button wx:if="{{!game.galahadLeaderId}}" class="primary-action" data-mode="leader" bindtap="openTable">{{nextLeaderId ? '更换下一位队长' : '选择下一位队长'}}</button>
+        <button wx:if="{{!game.galahadLeaderId}}" class="primary-action" data-mode="leader" bindtap="openTable">{{nextLeaderId ? '更换下一任队长' : '交接皇冠'}}</button>
         <view wx:if="{{game.galahadLeaderId}}" class="waiting-copy">加拉哈德已公开并接管下一任皇冠。</view>
         <button wx:if="{{needsAmulet && (nextLeaderId || game.galahadLeaderId)}}" class="secondary-action" data-mode="amuletOwner" bindtap="openTable">{{nextAmuletId ? '更换护身符持有者' : '分配护身符'}}</button>
         <button wx:if="{{(nextLeaderId || game.galahadLeaderId) && (!needsAmulet || nextAmuletId)}}" class="launch-action" bindtap="handoff">确认交接</button>
       </view>
-      <view wx:else class="waiting-copy">等待当前队长完成皇冠交接。</view>
+      <view wx:else class="waiting-copy">讨论结束后，由队长交接皇冠。</view>
     </view>
 
     <view wx:if="{{phase === 'amulet'}}" class="phase-content">
@@ -184,7 +182,7 @@
         <view class="loyalty-row {{claimSwap ? 'swap-order' : ''}}"><button class="loyalty-button" data-faction="good" bindtap="inspectionClaim" disabled="{{!canClaimGood}}">正义</button><button class="loyalty-button evil-choice" data-faction="evil" bindtap="inspectionClaim" disabled="{{!canClaimEvil}}">邪恶</button></view>
       </view>
       <view wx:if="{{amulet.status === 'result' && inspectionResultName}}"><view class="waiting-title">护身符显示为</view><view class="inspection-result {{privateView.inspectionResult === 'good' ? 'good-result' : 'evil-result'}}">{{inspectionResultName}}</view><button wx:if="{{isAmuletOwner}}" class="launch-action" bindtap="completeAmulet">收起护身符，开始讨论</button></view>
-      <view wx:if="{{!(amulet.status === 'select' && isAmuletOwner) && !(amulet.status === 'claim' && isInspectionTarget) && !(amulet.status === 'result' && inspectionResultName)}}" class="submitted-state"><view class="submitted-seal spectator seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">护身符正在传递信息</view></view>
+      <view wx:if="{{!(amulet.status === 'select' && isAmuletOwner) && !(amulet.status === 'claim' && isInspectionTarget) && !(amulet.status === 'result' && inspectionResultName)}}" class="submitted-state"><view class="submitted-seal spectator seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">{{inspectionPairText || '护身符正在传递信息'}}</view></view>
     </view>
 
     <view wx:if="{{phase === 'finale'}}" class="phase-content finale-content">
@@ -192,6 +190,7 @@
       <view wx:if="{{finalStage === 'discussion'}}">
         <view class="final-timer">{{finalClock}}</view>
         <view class="waiting-title">全员自由讨论</view><view class="waiting-copy">时间归零后立即停止交谈。</view>
+        <view wx:if="{{lastMission}}" class="identity-progress">第 {{lastMission.round}} 次远征{{lastMission.winner === 'good' ? '成功' : '失败'}} · 成功 {{lastMission.successCount}} · 失败 {{lastMission.failCount}}</view>
         <button wx:if="{{isHost && finalSecondsLeft === 0}}" class="launch-action" bindtap="finishDiscussion">结束讨论</button>
         <button wx:if="{{isHost && finalSecondsLeft > 0}}" class="text-command" bindtap="forceFinishDiscussion">提前结束</button>
       </view>

@@ -2,13 +2,12 @@ const roomStore = require("../../utils/roomStore")
 const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const roleGuideData = require("../../data/roleGuides")
-const ttsData = require("../../data/ttsLines")
 const assets = require("../../utils/assets")
 
 const IDENTITY_READ_MS = 40000
 
 const phaseNames = {
-  reveal: "确认身份", night: "命运揭示", amulet: "护身符查验", mission: "组建远征",
+  reveal: "确认身份", amulet: "护身符查验", mission: "组建远征",
   vote: "秘密投票", missionResult: "远征结算", finale: "终局之战"
 }
 
@@ -34,7 +33,7 @@ Page({
     decoratedPlayers: [], selectedTeam: [], magicTargetId: null, teamPlayers: [],
     nextLeaderId: null, nextAmuletId: null, needsAmulet: false,
     voteCount: 0, votePercent: 0, myVotePending: false,
-    amulet: null, isAmuletOwner: false, isInspectionTarget: false, inspectionResultName: "",
+    amulet: null, isAmuletOwner: false, isInspectionTarget: false, inspectionResultName: "", inspectionPairText: "",
     canClaimGalahad: false,
     finalStage: "", finalSelectionMode: "", finalSecondsLeft: 300, finalTargets: [], finalSubmitted: false,
     canOperateHunter: false,
@@ -59,7 +58,6 @@ Page({
   clockTimer: null,
   ceremonyTimer: null,
   bannerTimer: null,
-  nightTimer: null,
   selectionTimer: null,
   deliverTimer: null,
   ceremonyQueue: [],
@@ -110,7 +108,6 @@ Page({
     this.stopTimers()
     if (this.ceremonyTimer) clearTimeout(this.ceremonyTimer)
     if (this.bannerTimer) clearTimeout(this.bannerTimer)
-    if (this.nightTimer) clearTimeout(this.nightTimer)
     if (this.selectionTimer) clearTimeout(this.selectionTimer)
     if (this.deliverTimer) clearTimeout(this.deliverTimer)
   },
@@ -228,6 +225,9 @@ Page({
     const myInitial = mySeat ? mySeat.initial : ""
     const history = this.buildGameHistory(game, decoratedPlayers, dossier.myVotes)
     const waitingHint = this.buildWaitingHint(room, game, decoratedPlayers)
+    // 查验一出结果，旁观者的手机上写清「谁查了谁」——线下本来就看得见护身符递给了谁。
+    // 只取公开的 amuletHistory 里本轮那条；结果本身仍只有持符者看得到。
+    const inspectionPairText = this.describeInspectionPair(game, amulet, decoratedPlayers)
     // 皮肤在房间创建时定死，同局所有玩家取同一套图
     const missionSkin = room.missionSkin || "a"
     const roleSkin = room.roleSkin || "painted"
@@ -262,6 +262,7 @@ Page({
       amulet, isAmuletOwner: !!amulet && amulet.ownerId === privateView.id,
       isInspectionTarget: !!privateView.isInspectionTarget,
       inspectionResultName: privateView.inspectionResult ? gameUtil.factionLabel(privateView.inspectionResult) : "",
+      inspectionPairText,
       canClaimGalahad: !!privateView.canClaimGalahad,
       finalStage, finalSelectionMode, traitorSide: retainedTraitorSide, finalSubmitted: !!privateView.finalSubmitted,
       canOperateHunter: privateView.role === "hunter" || !!privateView.canControlBotHunter,
@@ -272,10 +273,10 @@ Page({
       canVoteFail: (privateView.voteOptions || []).indexOf("fail") >= 0,
       hasBots: devMode && pendingBots.length > 0,
       botPlayers: devMode ? pendingBots : [],
-      tableVisible: phaseChanged ? (room.phase === "mission" && (privateView.id === game.leaderId || (!!result.isHost && !!leader && !!leader.bot && devMode && !room.stepMode))) : this.data.tableVisible,
-      tableMode: phaseChanged && room.phase === "mission" ? "team" : this.data.tableMode,
-      tableTitle: phaseChanged && room.phase === "mission" ? "选择出征成员" : this.data.tableTitle,
-      tableHint: phaseChanged && room.phase === "mission" ? `选择${missionSize}名出征成员` : this.data.tableHint,
+      // 阶段一换就把选人面板收掉，**不**替队长自动弹开。
+      // 原先队长一拿到皇冠手机就直接是满屏座位图，而那会儿全桌正在讨论谁上车，
+      // 队长的手机被钉在选人界面上，讨论完了才该点进去选。
+      tableVisible: phaseChanged ? false : this.data.tableVisible,
       selectedTeam: phaseChanged ? game.current.team.slice() : this.data.selectedTeam,
       magicTargetId: phaseChanged ? game.current.magicTargetId : this.data.magicTargetId,
       finalTargets: phaseChanged || finalStageChanged ? [] : this.data.finalTargets,
@@ -388,7 +389,7 @@ Page({
       })
     }
     const roundAdvanced = Number(previousGame.round) !== Number(game.round)
-    if (phase === "mission" && (roundAdvanced || previousPhase === "night" || previousPhase === "amulet")) {
+    if (phase === "mission" && (roundAdvanced || previousPhase === "reveal" || previousPhase === "amulet")) {
       events.push({
         type: "round", symbol: String(game.round), title: `第 ${game.round} 轮远征`,
         subtitle: `${game.missionPreset.sizes[game.round - 1]}名骑士即将出发${game.missionPreset.protectedRounds.indexOf(game.round) >= 0 ? " · 本轮需要两张失败牌" : ""}`,
@@ -512,7 +513,8 @@ Page({
         ? { text: `等待 ${listing(pending)} 提交任务牌`, progress: `${game.current.voteCount || 0}/${(game.current.team || []).length}` }
         : null
     }
-    if (room.phase === "missionResult") return { text: `等待 ${nameOf(game.galahadLeaderId || game.leaderId)} 交接皇冠`, progress: "" }
+    // 结算后全桌要先讨论，这条别写成「等待」——那是在催老队长赶紧交接
+    if (room.phase === "missionResult") return { text: `讨论结束后由 ${nameOf(game.galahadLeaderId || game.leaderId)} 交接皇冠`, progress: "" }
     if (room.phase === "amulet" && game.amulet) {
       if (game.amulet.status === "select") return { text: `等待 ${nameOf(game.amulet.ownerId)} 选择查验对象`, progress: "" }
       if (game.amulet.status === "claim") return { text: "等待被查验者选择展示阵营", progress: "" }
@@ -538,6 +540,17 @@ Page({
       }
     }
     return null
+  },
+
+  describeInspectionPair(game, amulet, players) {
+    if (!amulet || amulet.status !== "result") return ""
+    const entry = (game.amuletHistory || []).filter(item => Number(item.round) === Number(game.round)).pop()
+    if (!entry) return ""
+    const label = id => {
+      const player = players.find(item => Number(item.id) === Number(id))
+      return player ? `${player.id}号 ${player.name}` : `${id}号`
+    }
+    return `${label(entry.ownerId)} 查验了 ${label(entry.targetId)}`
   },
 
   // 「身份信息」：把服务端下发的私密记录整理成可读文案。
@@ -689,9 +702,7 @@ Page({
     this.setData({ roleArtVisible: true })
   },
   closeRoleArt() { this.setData({ roleArtVisible: false }) },
-  enterNight() { this.sendAction("enterNight") },
-
-  // 首夜由房主逐条念、逐条推进。
+  // 全员记住身份后，房主一键开第一轮远征。
   enterMission() { this.sendAction("enterMission") },
 
   // 长桌挑档要用**运行时实测的 stage 尺寸**：stage 宽随屏宽变而高固定，
@@ -760,9 +771,8 @@ Page({
       return
     }
     if (!data.stageW || !data.stageH) {
-      // 选人面板还会被 applyState **自动**打开（队长进入组队阶段，见 tableVisible 那行），
-      // 那条路径不经过 openTable，测量从来没发生过——于是挑不出档、长桌整个不渲染。
-      // 实测 e2e 跑真实对局时第 2 轮就是这样：地毯和座位都在，桌子没了。
+      // 面板开着却没有台面尺寸（openTable 的测量偶尔量到 0），补测一次，
+      // 否则挑不出档、长桌整个不渲染——实测 e2e 第 2 轮出过：地毯和座位都在，桌子没了。
       if (data.tableVisible) this.measureStage()
       return
     }
