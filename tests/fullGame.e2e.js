@@ -121,6 +121,27 @@ async function main() {
     await withTimeout(mp.evaluate(() => { getCurrentPages().slice(-1)[0].closeTable() }), 8000, "关闭选人面板")
     await sleep(400)
   }
+  // 出征名单要真的渲染出来（投票屏、结算屏），不是只躺在 data 里；
+  // 截图通道不稳定时这就是界面层面的证据。顺手确认面板没开着。
+  async function checkRoster(label, expected) {
+    let r
+    try {
+      r = await withTimeout(mp.evaluate(function () {
+        return new Promise(function (res) {
+          const page = getCurrentPages().slice(-1)[0]
+          wx.createSelectorQuery().in(page).selectAll(".selected-riders .rider-token").fields({ size: true }, null).exec(function (rs) {
+            res({ rendered: (rs[0] || []).filter(x => x.width > 0).length, sheet: !!page.data.tableVisible, phase: page.data.phase })
+          })
+        })
+      }), 8000, "查名单")
+    } catch (error) {
+      problems.push(`[检查未执行] ${label}：查名单超时`)
+      return
+    }
+    if (r.rendered !== expected) problems.push(`[名单缺失] ${label}：应渲染 ${expected} 人，实际 ${r.rendered}（phase=${r.phase}）`)
+    else log(`  ${label}：出征名单已渲染 ${r.rendered} 人`)
+    if (r.sheet) problems.push(`[自动弹面板] ${label}：选人面板不该开着`)
+  }
   mp.on("exception", error => problems.push(`[exception] ${error.message}`))
   mp.on("console", message => {
     if (message.type !== "error") return
@@ -249,18 +270,52 @@ async function main() {
 
     // ---- 开局与身份 ----
     await call("startGame", { roomId })
+    // 首页/候场页的截图本来就不稳定（见文件头已知限制 3），它们的失败
+    // 不该把对局页的截图也一并关掉——进对局页时重新给机会。
+    shotFailures = 0
+    if (shotDisabled) {
+      shotDisabled = false
+      const stale = problems.indexOf("[截图不可用] 渲染通道无响应，重启开发者工具后重跑可恢复")
+      if (stale >= 0) problems.splice(stale, 1)
+    }
     await waitForRoute("pages/play/play", 20000)
     await sleep(1200)
     await shot("identity-prepare")
 
     await call("identityReady", { roomId })
     await call("startIdentity", { roomId })
+    await sleep(1500)
+    // 首任队长要先选对外展示的阵营，其他人才能一起翻牌。队长是房主本人时
+    // （8 人局 1/8 的概率）脚本得替他点一下——之前没处理，撞上就卡在
+    // 「身份阅读时间尚未结束」。
+    {
+      const afterStart = await state(roomId)
+      const pv = afterStart.private || {}
+      if (pv.needsLeaderClaim && !pv.leaderClaimSubmitted) {
+        await shot("identity-leader-claim")
+        const claim = (pv.leaderClaimOptions || ["good"])[0]
+        await call("identityClaim", { roomId, claim })
+        log(`房主是首任队长，已展示阵营 ${claim}`)
+      }
+    }
     await sleep(4000)
     await shot("identity-reveal")
 
-    // 服务端强制 40 秒统一阅读时长
-    log("等待身份阅读时长（约 40 秒）")
-    await sleep(41000)
+    // 阅读窗口以服务端的 closeAt 为准，不再死等 41 秒
+    {
+      const closeAt = (await state(roomId)).room.game.identity.closeAt
+      const wait = Math.max(0, closeAt - Date.now()) + 1500
+      log(`等待身份阅读时长（约 ${Math.round(wait / 1000)} 秒）`)
+      // 截图通道闲置几十秒后常常失去响应：等待期间每 8 秒截一张保活，
+      // 顺手留下阅读中的画面
+      const deadline = Date.now() + wait
+      let tick = 0
+      while (Date.now() < deadline) {
+        await sleep(Math.min(8000, deadline - Date.now()))
+        tick += 1
+        if (!shotDisabled && Date.now() < deadline) await shot(`identity-reading-${tick}`)
+      }
+    }
     await call("identityRemembered", { roomId })
     // 全员记住身份后由房主开远征；只在阶段还没走到时才补推
     await advanceTo("mission", "enterMission")
@@ -283,6 +338,10 @@ async function main() {
       // 优先让机器人上车，队长自己也可能在车上
       const team = game.players.slice().sort((a, b) => Number(b.bot) - Number(a.bot)).slice(0, size).map(p => p.id)
       await call("startVote", { roomId, team, magicTargetId: team[0] })
+      // 投票屏：全员常驻的出征名单就在这一屏
+      await sleep(1200)
+      await shot(`vote-round-${game.round}`)
+      await checkRoster(`第 ${game.round} 轮投票屏`, team.length)
 
       // 车上的真人（房主本人）需要自己投票，其余交给测试玩家批量投
       const me = current.private.id
@@ -309,6 +368,8 @@ async function main() {
         problems.push(`[数据不一致] 第 ${mission.round} 轮 服务端 ${mission.successCount}/${mission.failCount}，界面 ${shown.s}/${shown.f}`)
       }
       await shot(`mission-${mission.round}-result`)
+      // 第三胜直接进终局、没有结算屏，名单检查只在结算阶段做
+      if (resolved.room.phase === "missionResult") await checkRoster(`第 ${mission.round} 轮结算屏`, mission.team.length)
 
       if (resolved.room.phase !== "missionResult") break
 
