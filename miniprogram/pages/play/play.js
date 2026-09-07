@@ -44,7 +44,7 @@ Page({
     deliverIcon: "", deliverFlying: false, deliverX: 50, deliverY: 50, deliverTargetId: 0,
     hasBots: false, botPlayers: [], debugVisible: false, syncing: false, devMode: false,
     stepMode: false, botPending: "",
-    nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [],
+    nextLeaderPlayer: null, nextAmuletPlayer: null, teamPulseId: 0, missionResultCards: [], handoffWarning: "",
     missionCardBack: "", missionCardSuccess: "", missionCardFail: "",
     artRaw: {},
     myRoleArt: "", identityBackArt: "", cardFlipped: false, identityUnlocked: false, myInitial: "", readingHint: "", readingUrgent: false,
@@ -1037,7 +1037,8 @@ Page({
       decoratedPlayers,
       teamPlayers: decoratedPlayers.filter(player => this.data.selectedTeam.indexOf(player.id) >= 0),
       nextLeaderPlayer: decoratedPlayers.find(player => player.id === Number(this.data.game && this.data.game.galahadLeaderId || this.data.nextLeaderId)) || null,
-      nextAmuletPlayer: decoratedPlayers.find(player => player.id === Number(this.data.nextAmuletId)) || null
+      nextAmuletPlayer: decoratedPlayers.find(player => player.id === Number(this.data.nextAmuletId)) || null,
+      handoffWarning: gameUtil.handoffWarning(this.data.privateView, this.data.game, this.data.nextLeaderId)
     })
   },
 

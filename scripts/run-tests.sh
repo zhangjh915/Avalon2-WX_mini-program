@@ -40,6 +40,7 @@ TESTS=(
   applyState
   roomStoreRetry
   choiceShuffle
+  handoffWarning
 )
 
 failed=0

@@ -278,18 +278,38 @@ function displayedFaction(player, claim) {
   return player.faction
 }
 
+// 揭露阶段一起睁眼的邪恶方（说明书只给了例外名单，其余邪恶角色都按普通爪牙）
+const mutualEvilRoles = ["morgan", "minion", "barbarian", "revealer", "lunatic", "deceiver", "boaster", "saboteur"]
+// 只竖拇指让爪牙看见、自己不睁眼的邪恶角色
+const thumbOnlyRoles = ["hunter", "traitor", "lancelotEvil"]
+
+// 本人在揭露阶段确认过的邪恶方（不含自己）。
+// 秘密信息的文案和客户端的「全队长邪恶」提醒都从这一份取，两处永远一致。
+function knownEvilPlayers(secret, player) {
+  const evils = secret.players.filter(item => item.faction === "evil" && item.id !== player.id)
+  if (mutualEvilRoles.indexOf(player.role) >= 0) {
+    const seen = evils.filter(item => mutualEvilRoles.indexOf(item.role) >= 0 || thumbOnlyRoles.indexOf(item.role) >= 0)
+    if (player.role === "morgan") seen.push(...evils.filter(item => item.role === "crownPrince"))
+    return seen
+  }
+  // 幻形妖在揭露阶段既不睁眼也不竖拇指，谁都看不见他——边缘人也不例外
+  // （幻形妖的牌面写着「其他邪恶方也不知道你」，这里不能食言）
+  if (player.role === "outsider") return evils.filter(item => item.role !== "shapeshifter")
+  if (player.role === "arthur") return evils.filter(item => item.role === "morgan")
+  if (player.role === "lancelotGood") return evils.filter(item => item.role === "lancelotEvil")
+  return []
+}
+
 function privateNightInfo(game, secret, player) {
-  const evils = secret.players.filter(item => item.faction === "evil")
-  const mutualRoles = ["morgan", "minion", "barbarian", "revealer", "lunatic", "deceiver", "boaster", "saboteur"]
-  const knownRoles = ["hunter", "traitor", "lancelotEvil"]
+  const known = knownEvilPlayers(secret, player)
   const info = []
-  if (mutualRoles.indexOf(player.role) >= 0) {
-    const visible = evils.filter(item => mutualRoles.indexOf(item.role) >= 0 && item.id !== player.id)
+  if (mutualEvilRoles.indexOf(player.role) >= 0) {
+    const visible = known.filter(item => mutualEvilRoles.indexOf(item.role) >= 0)
     if (visible.length) info.push(`你确认的邪恶方：${visible.map(item => `${item.id}号${item.roleName}`).join("、")}`)
-    const known = evils.filter(item => knownRoles.indexOf(item.role) >= 0)
-    if (known.length) info.push(`额外得知：${known.map(item => `${item.id}号${item.roleName}`).join("、")}`)
+    const extra = known.filter(item => thumbOnlyRoles.indexOf(item.role) >= 0)
+    if (extra.length) info.push(`额外得知：${extra.map(item => `${item.id}号${item.roleName}`).join("、")}`)
     if (player.role === "morgan") {
-      const prince = evils.find(item => item.role === "crownPrince")
+      const prince = known.find(item => item.role === "crownPrince")
       if (prince) info.push(`王储是 ${prince.id}号。`)
     }
   }
@@ -307,11 +327,8 @@ function privateNightInfo(game, secret, player) {
     const priests = secret.players.filter(item => item.role === "priest")
     if (priests.length) info.push(`教士是 ${priests.map(item => `${item.id}号`).join("、")}。`)
   }
-  if (player.role === "outsider") {
-    // 幻形妖在揭露阶段既不睁眼也不竖拇指，谁都看不见他——边缘人也不例外
-    // （幻形妖的牌面写着「其他邪恶方也不知道你」，这里不能食言）
-    const seen = evils.filter(item => item.id !== player.id && item.role !== "shapeshifter")
-    if (seen.length) info.push(`你知道的其他邪恶方：${seen.map(item => `${item.id}号`).join("、")}`)
+  if (player.role === "outsider" && known.length) {
+    info.push(`你知道的其他邪恶方：${known.map(item => `${item.id}号`).join("、")}`)
   }
   if (player.role === "lancelotGood" || player.role === "lancelotEvil") {
     const pair = secret.players.find(item => item.role === (player.role === "lancelotGood" ? "lancelotEvil" : "lancelotGood"))
@@ -365,6 +382,8 @@ function privateView(game, secret, openid) {
     faction: player.faction,
     factionName: player.faction === "good" ? "正义方" : "邪恶方",
     nightInfo: privateNightInfo(game, secret, player),
+    // 揭露阶段确认过的邪恶方座位，供客户端做「全队长邪恶」提醒；和 nightInfo 同源，不多给一个人
+    knownEvilIds: knownEvilPlayers(secret, player).map(item => item.id),
     // 供「我的密录」随时回看：身份、首夜信息之外，还要能查到自己的查验与出牌
     inspectionHistory: myInspectionHistory(secret, player),
     voteHistory: myVoteHistory(secret, player),
@@ -540,6 +559,7 @@ module.exports = {
   automaticVote,
   displayedFaction,
   privateView,
+  knownEvilPlayers,
   resolveMission,
   needsAmulet,
   shouldEnterFinale,

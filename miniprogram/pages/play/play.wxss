@@ -1501,6 +1501,8 @@ button::after {
 .mission-vote[disabled] { opacity: 0.3; filter: grayscale(1); }
 .result-title { margin-bottom: 10rpx; color: #ecf0ed; font-size: 38rpx; font-weight: 900; text-align: center; }
 .handoff-actions { width: 100%; margin-top: 28rpx; }
+/* 「全队长邪恶」提醒：只给邪恶队长看，文案不带座位号 */
+.handoff-warning { width: 100%; box-sizing: border-box; margin: 10rpx 0 14rpx; padding: 14rpx 18rpx; border-left: 6rpx solid #c9a24d; background: rgba(201, 162, 77, 0.12); color: #e6d5a6; font-size: 23rpx; line-height: 1.5; text-align: left; }
 .inspection-result { margin: 26rpx auto; padding: 24rpx 40rpx; border: 2rpx solid; border-radius: 6rpx; font-size: 38rpx; font-weight: 900; text-align: center; }
 .good-result { border-color: #4f9274; background: #1d2320; color: #b7d9cc; }
 .evil-result { border-color: #b75b55; background: #1c221f; color: #cfa19e; }

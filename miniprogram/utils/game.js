@@ -252,7 +252,23 @@ function choiceSwapped(...parts) {
   return hash % 2 === 1
 }
 
+// 「全队长邪恶」提醒：说明书特例——每次远征的队长都是邪恶方时正义方直接获胜。
+// 只在邪恶队长把皇冠交给**他自己认识的**邪恶方、且此前每一任队长也都是他认识的邪恶方时提醒。
+// 判断只用他手机上本来就有的信息（自己的阵营 + 揭露阶段确认过的邪恶方 knownEvilIds），
+// 盲眼杀手/叛徒这类不认识队友的角色永远不会收到提醒——提醒不能成为新的信息来源。
+// 文案里不带座位号，旁人瞄一眼也得不到东西。
+function handoffWarning(privateView, game, nextLeaderId) {
+  if (!privateView || privateView.faction !== "evil" || !game || !nextLeaderId) return ""
+  const missions = game.missions || []
+  if (missions.length < 2) return ""
+  const known = new Set([Number(privateView.id)].concat((privateView.knownEvilIds || []).map(Number)))
+  if (!missions.every(mission => known.has(Number(mission.leaderId)))) return ""
+  if (!known.has(Number(nextLeaderId))) return ""
+  return "此前每一任队长和你选的下一任都是你认识的邪恶方。若整局队长全是邪恶方，正义方直接获胜。"
+}
+
 module.exports = {
+  handoffWarning,
   choiceSwapped,
   roleInfo,
   officialRolePresets,

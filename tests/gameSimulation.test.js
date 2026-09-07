@@ -778,6 +778,9 @@ class Sim {
     if (!setEqual(mentioned, expected)) {
       record(`knowledge:${me.role}`, `${me.roleName}(${me.id}号) 秘密信息提到 [${Array.from(mentioned)}]，说明书应为 [${Array.from(expected)}]；全桌 ${this.roleSummary()}；原文 ${JSON.stringify(pv.nightInfo)}`, this)
     }
+    // 「全队长邪恶」提醒用的 knownEvilIds 必须和秘密信息同源：恰好是他认识的那些邪恶方
+    const knownEvil = new Set(oracle.knownSeats(me, secret.players).filter(id => oracle.faction(secret.players.find(item => item.id === id)) === "evil"))
+    if (!setEqual(new Set(pv.knownEvilIds || []), knownEvil)) record(`knownEvilIds:${me.role}`, `${me.roleName} knownEvilIds=${pv.knownEvilIds}，应为 ${Array.from(knownEvil)}`, this)
     if (me.role === "priest") {
       const claim = secret.priestClaim
       if (claim) {

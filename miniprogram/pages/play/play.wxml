@@ -165,6 +165,7 @@
             <view><view class="handoff-preview-label">护身符</view><view class="handoff-preview-name">{{nextAmuletPlayer.id}}号 {{nextAmuletPlayer.name}}</view></view>
           </view>
         </view>
+        <view wx:if="{{handoffWarning}}" class="handoff-warning">{{handoffWarning}}</view>
         <button wx:if="{{!game.galahadLeaderId}}" class="primary-action" data-mode="leader" bindtap="openTable">{{nextLeaderId ? '更换下一任队长' : '交接皇冠'}}</button>
         <view wx:if="{{game.galahadLeaderId}}" class="waiting-copy">加拉哈德已公开并接管下一任皇冠。</view>
         <button wx:if="{{needsAmulet && (nextLeaderId || game.galahadLeaderId)}}" class="secondary-action" data-mode="amuletOwner" bindtap="openTable">{{nextAmuletId ? '更换护身符持有者' : '分配护身符'}}</button>
@@ -250,6 +251,7 @@
   <view wx:if="{{tableVisible}}" class="table-overlay selector-overlay">
     <view class="table-sheet selector-page">
       <view class="sheet-head"><view><view class="sheet-title">{{tableTitle}}</view><view class="sheet-hint">{{tableHint}}</view></view><view wx:if="{{tableMode === 'team'}}" class="team-counter {{selectedTeam.length === missionSize ? 'ready' : ''}}">{{selectedTeam.length}} / {{missionSize}}</view><view class="selector-tools"><view class="table-icon-button text-button selector-history" bindtap="openHistory" aria-role="button" aria-label="查看游戏记录"><view class="icon-button-text">战绩</view></view><view class="modal-close" bindtap="closeTable" aria-role="button" aria-label="关闭"><view class="modal-close-glyph"></view></view></view></view>
+      <view wx:if="{{tableMode === 'leader' && handoffWarning}}" class="handoff-warning">{{handoffWarning}}</view>
       <view class="table-stage compact-stage {{room.tableType === 'round' ? 'round-seat-stage' : 'long-seat-stage'}}"><image class="stage-floor" src="{{ui.floor}}" mode="scaleToFill" data-field="ui.floor" data-raw="{{artRaw.floor}}" binderror="onRemoteImageError" />
         <block wx:if="{{room.tableType === 'long'}}"><view class="table-slot" style="{{longTable.slot}}"><image class="long-table" src="{{longTable.src}}" mode="scaleToFill" style="{{longTable.style}}" data-field="longTable.src" data-raw="{{longTable.raw}}" binderror="onRemoteImageError" /></view></block>
         <image wx:else class="round-table" src="{{ui.tableRound}}" mode="scaleToFill" />
