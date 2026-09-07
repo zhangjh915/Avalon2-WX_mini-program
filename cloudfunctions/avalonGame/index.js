@@ -190,11 +190,18 @@ function resolveFinalIdentify(game, secret, room) {
   game.final.submittedCount = requiredPlayers.filter(player => !!secret.finalSubmissions[String(player.id)]).length
   if (game.final.submittedCount < requiredCount) return
   const correction = core.findFinaleCorrection(secret, traitorConverted)
+  // 说明书 §七（二）特例：每次远征的队长都是邪恶方，无论指认结果如何正义方直接获胜。
+  // 在叛徒转正之前算——叛徒当过队长也按邪恶方计。
+  const leadersAllEvil = game.missions.length > 0 && game.missions.every(mission => {
+    const leader = core.getPlayer(secret, mission.leaderId)
+    return !!leader && leader.faction === "evil"
+  })
   if (traitorConverted) traitor.faction = "good"
   game.final.stage = "resolved"
-  game.final.identifySuccess = correction.success
+  game.final.identifySuccess = correction.success || leadersAllEvil
+  game.final.leadersAllEvil = leadersAllEvil
   game.final.corrections = correction.corrections
-  game.winner = correction.success ? "good" : "evil"
+  game.winner = game.final.identifySuccess ? "good" : "evil"
   room.status = "finished"
   room.phase = "result"
 }
@@ -460,7 +467,9 @@ async function startGame(event, openid) {
   if (wantedLeader && !seats.some(seat => seat.seatNo === wantedLeader && seat.name)) {
     fail("指定的首任队长座位上没有人")
   }
-  core.validateSettings({ ...state.room.settings, playerCount: state.room.playerCount })
+  // 配置不合法是规则错误，要把原因透给房主；不包一层的话会被当成内部错误，
+  // 客户端只看到「服务器开小差了」
+  try { core.validateSettings({ ...state.room.settings, playerCount: state.room.playerCount }) } catch (error) { fail(error.message) }
   // 测试房间可以指定房主自己的角色，方便复现特定角色的问题
   const hostSeatNo = Object.keys(state.secret.seatBindings || {})
     .find(key => state.secret.seatBindings[key] === state.secret.hostOpenid)

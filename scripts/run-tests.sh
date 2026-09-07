@@ -28,6 +28,7 @@ TESTS=(
   indexConfig
   roomLobby
   cloudFunction.integration
+  gameSimulation
   uiBindings
   uiAnimations
   stateSync

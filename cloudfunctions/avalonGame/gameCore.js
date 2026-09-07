@@ -299,15 +299,19 @@ function privateNightInfo(game, secret, player) {
   }
   if (player.role === "priest") {
     const leader = getPlayer(secret, game.firstLeaderId)
+    // 队长选完之前什么都不写：原先骗徒队长会多一句「正在选择」，
+    // 而这句只在队长是骗徒时出现——接口层面等于提前告诉教士队长是骗徒。
     if (leader && secret.priestClaim) info.push(`第一位领袖显示为${secret.priestClaim === "good" ? "正义方" : "邪恶方"}。`)
-    else if (leader && leader.role === "deceiver") info.push("第一位领袖正在选择本次向你展示的阵营。")
   }
   if (player.role === "percival") {
     const priests = secret.players.filter(item => item.role === "priest")
     if (priests.length) info.push(`教士是 ${priests.map(item => `${item.id}号`).join("、")}。`)
   }
   if (player.role === "outsider") {
-    info.push(`你知道的其他邪恶方：${evils.filter(item => item.id !== player.id).map(item => `${item.id}号`).join("、")}`)
+    // 幻形妖在揭露阶段既不睁眼也不竖拇指，谁都看不见他——边缘人也不例外
+    // （幻形妖的牌面写着「其他邪恶方也不知道你」，这里不能食言）
+    const seen = evils.filter(item => item.id !== player.id && item.role !== "shapeshifter")
+    if (seen.length) info.push(`你知道的其他邪恶方：${seen.map(item => `${item.id}号`).join("、")}`)
   }
   if (player.role === "lancelotGood" || player.role === "lancelotEvil") {
     const pair = secret.players.find(item => item.role === (player.role === "lancelotGood" ? "lancelotEvil" : "lancelotGood"))

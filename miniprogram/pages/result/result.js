@@ -57,6 +57,7 @@ Page({
       const targets = game.final.hunterTargets.map(id => `${id}号`).join("、")
       return `盲眼杀手选择猎杀 ${targets}，${game.final.hunterSuccess ? "猎杀成功，黑暗改写了结局。" : "猎杀失败，正义方守住了最后机会。"}`
     }
+    if (game.final.leadersAllEvil) return "每次远征的队长都是邪恶方，按规则正义方直接获胜。"
     const corrections = (game.final.corrections || []).join("；")
     return `${game.final.identifySuccess ? "正义方完成了最终指认。" : "正义方未能完整指认邪恶阵营。"}${corrections ? ` 生效修正：${corrections}。` : ""}`
   },

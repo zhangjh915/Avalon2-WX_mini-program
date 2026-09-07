@@ -1,143 +1,11 @@
 const assert = require("assert")
-const Module = require("module")
 const gameUtil = require("../miniprogram/utils/game")
 const core = require("../cloudfunctions/avalonGame/gameCore")
 
-function clone(value) {
-  if (value === undefined) return undefined
-  return JSON.parse(JSON.stringify(value))
-}
-
-function createCloudMock() {
-  const collections = new Map()
-  let openid = "host"
-  let nextId = 1
-  const setMarker = Symbol("set")
-  const command = { set: value => ({ [setMarker]: true, value }) }
-
-  function records(name) {
-    if (!collections.has(name)) collections.set(name, new Map())
-    return collections.get(name)
-  }
-
-  function isSet(value) {
-    return !!(value && value[setMarker])
-  }
-
-  function applyPath(target, path, value) {
-    const parts = path.split(".")
-    let cursor = target
-    for (let index = 0; index < parts.length - 1; index += 1) {
-      const part = parts[index]
-      if (cursor[part] === undefined) cursor[part] = {}
-      if (cursor[part] === null || typeof cursor[part] !== "object" || Array.isArray(cursor[part])) {
-        throw new Error(`Cannot create field '${parts[index + 1]}' in element {${part}: ${cursor[part]}}`)
-      }
-      cursor = cursor[part]
-    }
-    cursor[parts[parts.length - 1]] = clone(value)
-  }
-
-  function flattenUpdate(value, prefix, output) {
-    if (isSet(value)) {
-      output.push([prefix, value.value])
-      return
-    }
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      const keys = Object.keys(value)
-      if (keys.length) {
-        keys.forEach(key => flattenUpdate(value[key], prefix ? `${prefix}.${key}` : key, output))
-        return
-      }
-    }
-    output.push([prefix, value])
-  }
-
-  function docApi(name, id) {
-    return {
-      async get() {
-        const value = records(name).get(String(id))
-        if (!value) throw new Error(`document ${name}/${id} not found`)
-        return { data: clone(value) }
-      },
-      async set({ data }) {
-        const normalized = {}
-        Object.keys(data).forEach(key => {
-          normalized[key] = isSet(data[key]) ? clone(data[key].value) : clone(data[key])
-        })
-        normalized._id = normalized._id || String(id)
-        records(name).set(String(id), normalized)
-        return { stats: { created: 1 } }
-      },
-      async update({ data }) {
-        const current = records(name).get(String(id))
-        if (!current) throw new Error(`document ${name}/${id} not found`)
-        const updates = []
-        Object.keys(data).forEach(key => flattenUpdate(data[key], key, updates))
-        updates.forEach(([path, value]) => applyPath(current, path, value))
-        records(name).set(String(id), current)
-        return { stats: { updated: 1 } }
-      }
-    }
-  }
-
-  function collectionApi(name) {
-    return {
-      doc(id) { return docApi(name, id) },
-      async add({ data }) {
-        const id = `room-${nextId++}`
-        records(name).set(id, { ...clone(data), _id: id })
-        return { _id: id }
-      },
-      where(query) {
-        return {
-          limit() { return this },
-          async get() {
-            const data = Array.from(records(name).values()).filter(item => Object.keys(query).every(key => item[key] === query[key]))
-            return { data: clone(data) }
-          }
-        }
-      }
-    }
-  }
-
-  const database = {
-    command,
-    collection: collectionApi,
-    async runTransaction(handler) {
-      return handler({ collection: collectionApi })
-    }
-  }
-
-  return {
-    sdk: {
-      DYNAMIC_CURRENT_ENV: "test",
-      init() {},
-      database: () => database,
-      getWXContext: () => ({ OPENID: openid }),
-      // 服务端签名接口：管理员身份、不受存储权限限制，这里给个可辨认的假链接
-      async getTempFileURL({ fileList }) {
-        return { fileList: (fileList || []).map(id => ({ fileID: id, tempFileURL: "https://signed.example/" + id.split("/").pop() })) }
-      }
-    },
-    setOpenid(value) { openid = value },
-    get(name, id) { return records(name).get(String(id)) },
-    reset() {
-      collections.clear()
-      openid = "host"
-      nextId = 1
-    }
-  }
-}
+const { createCloudMock, loadCloudFunction } = require("./lib/cloudMock")
 
 const cloudMock = createCloudMock()
-const originalLoad = Module._load
-Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === "wx-server-sdk") return cloudMock.sdk
-  return originalLoad.call(this, request, parent, isMain)
-}
-const cloudFunction = require("../cloudfunctions/avalonGame/index")
-Module._load = originalLoad
+const cloudFunction = loadCloudFunction(cloudMock)
 
 async function action(name, payload, openid) {
   cloudMock.setOpenid(openid || "host")
@@ -219,6 +87,18 @@ async function finishIdentity(roomId) {
   room(roomId).game.identity.closeAt = Date.now() - 1
   await action("identityRemembered", { roomId })
   await action("enterMission", { roomId })
+  assert.strictEqual(room(roomId).phase, "mission")
+}
+
+// 全真人房间：每个座位各自准备、确认身份
+async function finishHumanIdentity(roomId) {
+  const players = secret(roomId).players
+  for (const player of players) await action("identityReady", { roomId }, player.openid)
+  await action("startIdentity", { roomId }, "host")
+  await submitLeaderClaim(roomId)
+  room(roomId).game.identity.closeAt = Date.now() - 1
+  for (const player of players) await action("identityRemembered", { roomId }, player.openid)
+  await action("enterMission", { roomId }, "host")
   assert.strictEqual(room(roomId).phase, "mission")
 }
 
@@ -1156,6 +1036,79 @@ async function testLeaderClaimsBeforeReveal() {
   console.log("  leader claims before reveal ok")
 }
 
+// 说明书 §七（二）特例：每次远征的队长都是邪恶方时，正义方在最后机会直接获胜（哪怕全员乱指）。
+// 随机对局机（gameSimulation）在邪恶队长偏好下会撞上它；这里留一条确定性的。
+async function testAllEvilLeadersWinForGood() {
+  const roleCounts = { loyal: 2, priest: 1, morgan: 1, minion: 1, lunatic: 1 }
+  let roomId = null
+  // Math.random 被钉住，座位与角色的对应每次一样：挑一个落在邪恶方的座位当首任队长
+  for (let seat = 1; seat <= 6 && !roomId; seat += 1) {
+    cloudMock.reset()
+    const candidate = await createHumanRoom(6, roleCounts, { firstLeaderSeatNo: seat })
+    const leader = core.getPlayer(secret(candidate), room(candidate).game.firstLeaderId)
+    if (leader.faction === "evil") roomId = candidate
+  }
+  assert.ok(roomId, "找不到落在邪恶方的首任队长座位")
+  await finishHumanIdentity(roomId)
+  for (let round = 1; round <= 3; round += 1) {
+    const game = room(roomId).game
+    const leader = core.getPlayer(secret(roomId), game.leaderId)
+    assert.strictEqual(leader.faction, "evil")
+    const size = game.missionPreset.sizes[round - 1]
+    const players = secret(roomId).players
+    // 疯子没拿魔法时必出失败：把他塞进队伍、魔法给别人，任务稳败
+    const lunatic = players.find(player => player.role === "lunatic")
+    const team = [lunatic.id].concat(players.filter(player => player.id !== lunatic.id).slice(0, size - 1).map(player => player.id))
+    await action("startVote", { roomId, team, magicTargetId: team[1] }, leader.openid)
+    for (const id of team) {
+      const player = core.getPlayer(secret(roomId), id)
+      const options = core.legalVoteOptions(room(roomId).game, player)
+      await action("submitVote", { roomId, value: options.indexOf("fail") >= 0 ? "fail" : "success" }, player.openid)
+    }
+    assert.strictEqual(room(roomId).game.missions[round - 1].winner, "evil")
+    if (round === 3) break
+    const evilNext = secret(roomId).players.find(player => player.faction === "evil" && !player.hasLed && !player.hadAmulet)
+    assert.ok(evilNext, "没有可接任的邪恶队长")
+    const payload = { roomId, nextLeaderId: evilNext.id }
+    if (core.needsAmulet(6, round)) {
+      payload.amuletOwnerId = secret(roomId).players.find(player => player.faction === "good" && !player.hasLed && !player.hadAmulet).id
+    }
+    await action("handoff", payload, leader.openid)
+    if (room(roomId).phase === "amulet") {
+      const owner = core.getPlayer(secret(roomId), room(roomId).game.amulet.ownerId)
+      const target = secret(roomId).players.find(player => player.id !== owner.id && player.faction === "good" && !player.hadAmulet && !player.fadedAmulet)
+      await action("selectAmuletTarget", { roomId, targetId: target.id }, owner.openid)
+      await action("inspectionClaim", { roomId, claim: core.displayedFaction(target) }, target.openid)
+      await action("completeAmulet", { roomId }, owner.openid)
+    }
+  }
+  assert.strictEqual(room(roomId).phase, "finale")
+  await action("finishDiscussion", { roomId, force: true }, "host")
+  assert.strictEqual(room(roomId).game.final.stage, "identify")
+  // 全员只指正义方：按手势本该邪恶胜
+  const players = secret(roomId).players
+  const goods = players.filter(player => player.faction === "good").map(player => player.id)
+  for (const player of players) {
+    await action("finalIdentify", { roomId, targets: goods.filter(id => id !== player.id).slice(0, 2) }, player.openid)
+  }
+  assert.strictEqual(room(roomId).status, "finished")
+  assert.strictEqual(room(roomId).game.final.leadersAllEvil, true)
+  assert.strictEqual(room(roomId).game.winner, "good", "每次远征的队长都是邪恶方时，正义方应直接获胜")
+  console.log("  all-evil leaders rule ok")
+}
+
+// 角色配置不合法时，房主要看到原因，而不是「服务器开小差了」。
+// validateSettings 抛的是普通 Error，不包一层就会被当成内部错误脱敏掉。
+async function testInvalidConfigSurfacesReason() {
+  cloudMock.reset()
+  const created = await action("createRoom", { playerCount: 6, roleCounts: { morgan: 1, loyal: 5 }, tableType: "round" }, "host")
+  for (let seatNo = 1; seatNo <= 6; seatNo += 1) {
+    await action("takeSeat", { roomId: created.roomId, seatNo, name: `玩家${seatNo}` }, seatNo === 1 ? "host" : `user-${seatNo}`)
+  }
+  await expectFailure(action("startGame", { roomId: created.roomId }, "host"), /角色配置需要3名正义与3名邪恶角色/)
+  console.log("  invalid config reason surfaced ok")
+}
+
 async function run() {
   await testDevModeGating()
   await testRoomCodeLifecycle()
@@ -1186,6 +1139,8 @@ async function run() {
   await testVoteSecrecyBeforeReveal()
   await testConcurrentSubmissionsCountOnce()
   await testPublicStateAgreesAcrossClients()
+  await testAllEvilLeadersWinForGood()
+  await testInvalidConfigSurfacesReason()
   console.log("cloud function integration tests passed")
 }
 
