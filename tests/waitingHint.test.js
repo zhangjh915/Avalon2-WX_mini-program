@@ -73,7 +73,8 @@ assert.match(hint("missionResult", baseGame({ galahadLeaderId: 4 })).text, /4号
 
 // 护身符三个子状态各自等不同的人
 assert.match(hint("amulet", baseGame({ amulet: { ownerId: 3, status: "select" } })).text, /3号 丙 选择查验对象/)
-assert.match(hint("amulet", baseGame({ amulet: { ownerId: 3, status: "claim" } })).text, /被查验者/)
+assert.match(hint("amulet", baseGame({ amulet: { ownerId: 3, status: "claim", targetId: 5 } })).text, /5号 .* 选择展示阵营/)
+assert.match(hint("amulet", baseGame({ amulet: { ownerId: 3, status: "claim" } })).text, /被查验者/)   // 旧数据没有 targetId 时的兜底
 assert.match(hint("amulet", baseGame({ amulet: { ownerId: 3, status: "result" } })).text, /收起护身符/)
 
 // 终局各阶段

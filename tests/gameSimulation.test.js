@@ -763,6 +763,11 @@ class Sim {
     })
     const leader = secret.players.find(player => player.id === game.leaderId)
     if (leader && !leader.hasLed) record("leader-hasLed", "现任队长没有 hasLed", this)
+    // 查验一开始就公开目标（线下看得见护身符递给了谁），且必须和私密记录一致
+    if (game.amulet && (game.amulet.status === "claim" || game.amulet.status === "result")) {
+      const current = secret.currentInspection || {}
+      if (game.amulet.targetId !== current.targetId) record("amulet-target-public", `公开目标 ${game.amulet.targetId}，实际 ${current.targetId}`, this)
+    }
     if (room.status === "playing" && ["reveal", "mission", "vote", "missionResult", "amulet", "finale"].indexOf(room.phase) < 0) record("phase-unknown", room.phase, this)
   }
 
@@ -887,6 +892,11 @@ class Sim {
       if (data.needsAmulet !== oracle.amuletAfterRound(game.playerCount, game.round)) bad("needsAmulet", `${data.needsAmulet}`)
     }
     if (room.phase === "amulet" && game.amulet.status === "select" && !(hint && hint.text.indexOf(`${game.amulet.ownerId}号`) >= 0)) bad("hint-amulet", JSON.stringify(hint))
+    if (room.phase === "amulet" && game.amulet.status === "claim") {
+      if (!(hint && hint.text.indexOf(`${game.amulet.targetId}号`) >= 0)) bad("hint-amulet-claim", JSON.stringify(hint))
+      const pair = data.inspectionPairText || ""
+      if (pair.indexOf(`${game.amulet.ownerId}号`) < 0 || pair.indexOf(`${game.amulet.targetId}号`) < 0) bad("inspectionPairText-claim", pair)
+    }
     if (room.phase === "reveal") {
       const identity = game.identity
       let mode = "prepare"

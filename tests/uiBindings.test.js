@@ -322,7 +322,7 @@ assert.strictEqual(appJson.window.navigationBarTextStyle, "white", "深色导航
   // wxml 里出现过的 class，以及它们是不是写在 <button> 上
   const liveClasses = new Set()
   const buttonClasses = new Set()
-  const pages = ["index/index", "room/room", "play/play", "result/result", "game/game"]
+  const pages = ["index/index", "room/room", "play/play", "result/result"]
   pages.forEach(rel => {
     const wxml = fs.readFileSync(path.join(root, ...rel.split("/")) + ".wxml", "utf8")
     const tags = wxml.match(/<(button|view)\b[^>]*class="[^"]*"[^>]*>/g) || []

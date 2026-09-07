@@ -365,6 +365,14 @@ Page({
       })
       return events
     }
+    // 加拉哈德发动是全桌都该知道的事：他公开了身份，下一任皇冠归他
+    if (!previousGame.galahadLeaderId && game.galahadLeaderId) {
+      const target = findPlayer(game.galahadLeaderId)
+      if (target) events.push({
+        type: "galahad", symbol: "🛡️", title: "加拉哈德现身",
+        subtitle: `${target.id}号 ${target.name} 公开身份，接任下一任队长`, target
+      })
+    }
     if (previousGame.leaderId !== game.leaderId) {
       const target = findPlayer(game.leaderId)
       if (target) events.push({
@@ -405,7 +413,7 @@ Page({
   // 全部走顶部横幅，不再有全屏过场。
   // 轮次开场、几胜几负这类简单动画观感一般又打断线下讨论，先去掉；
   // 过场动画后续会重新设计，到时再决定哪些值得全屏。
-  BANNER_TYPES: ["crown", "amulet", "magic", "round", "mission-good", "mission-evil",
+  BANNER_TYPES: ["crown", "galahad", "amulet", "magic", "round", "mission-good", "mission-evil",
     "finale-good", "finale-evil", "hunter"],
 
   enqueueCeremonies(events) {
@@ -514,10 +522,14 @@ Page({
         : null
     }
     // 结算后全桌要先讨论，这条别写成「等待」——那是在催老队长赶紧交接
-    if (room.phase === "missionResult") return { text: `讨论结束后由 ${nameOf(game.galahadLeaderId || game.leaderId)} 交接皇冠`, progress: "" }
+    // 加拉哈德发动后皇冠归他，但交接这一下仍由现任队长点（还要分护身符）
+    if (room.phase === "missionResult") {
+      const takeover = game.galahadLeaderId ? `，${nameOf(game.galahadLeaderId)} 接任` : ""
+      return { text: `讨论结束后由 ${nameOf(game.leaderId)} 交接皇冠${takeover}`, progress: "" }
+    }
     if (room.phase === "amulet" && game.amulet) {
       if (game.amulet.status === "select") return { text: `等待 ${nameOf(game.amulet.ownerId)} 选择查验对象`, progress: "" }
-      if (game.amulet.status === "claim") return { text: "等待被查验者选择展示阵营", progress: "" }
+      if (game.amulet.status === "claim") return { text: `等待 ${game.amulet.targetId ? nameOf(game.amulet.targetId) : "被查验者"} 选择展示阵营`, progress: "" }
       return { text: `等待 ${nameOf(game.amulet.ownerId)} 收起护身符`, progress: "" }
     }
     if (room.phase === "finale" && game.final) {
@@ -543,13 +555,16 @@ Page({
   },
 
   describeInspectionPair(game, amulet, players) {
-    if (!amulet || amulet.status !== "result") return ""
-    const entry = (game.amuletHistory || []).filter(item => Number(item.round) === Number(game.round)).pop()
-    if (!entry) return ""
+    if (!amulet) return ""
     const label = id => {
       const player = players.find(item => Number(item.id) === Number(id))
       return player ? `${player.id}号 ${player.name}` : `${id}号`
     }
+    // 查验进行中：服务端一选定目标就公开，旁观者和线下一样看得见护身符递给了谁
+    if (amulet.status === "claim" && amulet.targetId) return `${label(amulet.ownerId)} 正在查验 ${label(amulet.targetId)}`
+    if (amulet.status !== "result") return ""
+    const entry = (game.amuletHistory || []).filter(item => Number(item.round) === Number(game.round)).pop()
+    if (!entry) return ""
     return `${label(entry.ownerId)} 查验了 ${label(entry.targetId)}`
   },
 

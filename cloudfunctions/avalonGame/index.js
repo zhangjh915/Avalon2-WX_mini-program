@@ -262,6 +262,7 @@ function autoResolveBotAmulet(game, secret, room) {
   if (!target) fail("没有可供护身符查验的玩家")
   secret.currentInspection = { targetId: target.id, displayedFaction: core.displayedFaction(target) }
   amulet.status = "result"
+  amulet.targetId = target.id
   target.fadedAmulet = true
   secret.firstAmuletUsed = true
   secret.amuletHistory = (secret.amuletHistory || []).concat({ round: game.round, ownerId: owner.id, targetId: target.id, displayedFaction: secret.currentInspection.displayedFaction, trueFaction: target.faction })
@@ -753,6 +754,8 @@ async function amuletAction(event, openid) {
     if (!target || target.id === amulet.ownerId || target.hadAmulet || target.fadedAmulet) fail("该玩家不能被查验")
     state.secret.currentInspection = { targetId: target.id, displayedFaction: null }
     amulet.status = "claim"
+    // 线下本来就看得见护身符递给了谁：查验一开始就公开目标，结果仍然只有持符者看得到
+    amulet.targetId = target.id
     if (target.bot) {
       target.fadedAmulet = true
       state.secret.currentInspection.displayedFaction = core.displayedFaction(target)

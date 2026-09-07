@@ -171,7 +171,7 @@
         <button wx:if="{{needsAmulet && (nextLeaderId || game.galahadLeaderId)}}" class="secondary-action" data-mode="amuletOwner" bindtap="openTable">{{nextAmuletId ? '更换护身符持有者' : '分配护身符'}}</button>
         <button wx:if="{{(nextLeaderId || game.galahadLeaderId) && (!needsAmulet || nextAmuletId)}}" class="launch-action" bindtap="handoff">确认交接</button>
       </view>
-      <view wx:else class="waiting-copy">讨论结束后，由队长交接皇冠。</view>
+      <view wx:else class="waiting-copy">{{game.galahadLeaderId ? '加拉哈德已公开身份，接任下一任队长；由现任队长完成交接。' : '讨论结束后，由队长交接皇冠。'}}</view>
     </view>
 
     <view wx:if="{{phase === 'amulet'}}" class="phase-content">
