@@ -300,22 +300,26 @@ function knownEvilPlayers(secret, player) {
   return []
 }
 
+// 秘密信息里提到谁，都写成「3号 张三」：线下昵称填的是真名，只有座号记不住
+function seatTag(player) { return `${player.id}号 ${player.name}` }
+function seatRoleTag(player) { return `${seatTag(player)}（${player.roleName}）` }
+
 function privateNightInfo(game, secret, player) {
   const known = knownEvilPlayers(secret, player)
   const info = []
   if (mutualEvilRoles.indexOf(player.role) >= 0) {
     const visible = known.filter(item => mutualEvilRoles.indexOf(item.role) >= 0)
-    if (visible.length) info.push(`你确认的邪恶方：${visible.map(item => `${item.id}号${item.roleName}`).join("、")}`)
+    if (visible.length) info.push(`你确认的邪恶方：${visible.map(seatRoleTag).join("、")}`)
     const extra = known.filter(item => thumbOnlyRoles.indexOf(item.role) >= 0)
-    if (extra.length) info.push(`额外得知：${extra.map(item => `${item.id}号${item.roleName}`).join("、")}`)
+    if (extra.length) info.push(`额外得知：${extra.map(seatRoleTag).join("、")}`)
     if (player.role === "morgan") {
       const prince = known.find(item => item.role === "crownPrince")
-      if (prince) info.push(`王储是 ${prince.id}号。`)
+      if (prince) info.push(`王储是 ${seatTag(prince)}。`)
     }
   }
   if (player.role === "arthur") {
     const morgan = secret.players.find(item => item.role === "morgan")
-    if (morgan) info.push(`摩根勒菲是 ${morgan.id}号。`)
+    if (morgan) info.push(`摩根勒菲是 ${seatTag(morgan)}。`)
   }
   if (player.role === "priest") {
     const leader = getPlayer(secret, game.firstLeaderId)
@@ -325,14 +329,14 @@ function privateNightInfo(game, secret, player) {
   }
   if (player.role === "percival") {
     const priests = secret.players.filter(item => item.role === "priest")
-    if (priests.length) info.push(`教士是 ${priests.map(item => `${item.id}号`).join("、")}。`)
+    if (priests.length) info.push(`教士是 ${priests.map(seatTag).join("、")}。`)
   }
   if (player.role === "outsider" && known.length) {
-    info.push(`你知道的其他邪恶方：${known.map(item => `${item.id}号`).join("、")}`)
+    info.push(`你知道的其他邪恶方：${known.map(seatTag).join("、")}`)
   }
   if (player.role === "lancelotGood" || player.role === "lancelotEvil") {
     const pair = secret.players.find(item => item.role === (player.role === "lancelotGood" ? "lancelotEvil" : "lancelotGood"))
-    if (pair) info.push(`另一位兰斯洛特是 ${pair.id}号。`)
+    if (pair) info.push(`另一位兰斯洛特是 ${seatTag(pair)}。`)
   }
   if (player.role === "hunter") info.push("你不知道邪恶队友；他们会在手机上得知你。")
   if (player.role === "shapeshifter") info.push("你不知道邪恶队友，他们也不知道你。")

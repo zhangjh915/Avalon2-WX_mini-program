@@ -780,6 +780,11 @@ class Sim {
     const mentioned = new Set()
     pv.nightInfo.forEach(line => { for (const match of line.matchAll(/(\d+)号/g)) mentioned.add(Number(match[1])) })
     const expected = new Set(oracle.knownSeats(me, secret.players))
+    // 提到谁就得带谁的昵称：线下昵称是真名，只有座号记不住
+    mentioned.forEach(id => {
+      const named = secret.players.find(item => item.id === id)
+      if (named && !pv.nightInfo.some(line => line.indexOf(`${id}号 ${named.name}`) >= 0)) record("knowledge-name-missing", `秘密信息提到 ${id} 号却没带昵称：${JSON.stringify(pv.nightInfo)}`, this)
+    })
     if (!setEqual(mentioned, expected)) {
       record(`knowledge:${me.role}`, `${me.roleName}(${me.id}号) 秘密信息提到 [${Array.from(mentioned)}]，说明书应为 [${Array.from(expected)}]；全桌 ${this.roleSummary()}；原文 ${JSON.stringify(pv.nightInfo)}`, this)
     }
