@@ -3,8 +3,7 @@ const gameUtil = require("../../utils/game")
 const tableLayout = require("../../utils/tableLayout")
 const roleGuideData = require("../../data/roleGuides")
 const assets = require("../../utils/assets")
-
-const IDENTITY_READ_MS = 40000
+const identityAudio = require("../../utils/identityAudio")
 
 const phaseNames = {
   reveal: "确认身份", amulet: "护身符查验", mission: "组建远征",
@@ -18,7 +17,7 @@ Page({
     seatSize: 42,
     roomId: "", room: null, game: null, privateView: null, isHost: false,
     phase: "reveal", phaseName: "确认身份", myRole: null, myRoleGuide: roleGuideData.defaultGuide,
-    roleVisible: false, identityMode: "prepare", identityCountdown: 3, identitySecondsLeft: 40,
+    roleVisible: false, identityMode: "prepare", identitySecondsLeft: 40, claimSecondsLeft: 0, identityAudioOn: true,
     identityReady: false, identityRemembered: false, identityReadyCount: 0, identityRememberedCount: 0,
     leader: null, isLeader: false, missionSize: 0, protectedText: "", missionTrack: [],
     canControlLeader: false,
@@ -68,7 +67,7 @@ Page({
     this.windowWidth = (wx.getSystemInfoSync() || {}).windowWidth || 375
     // 图标集是常量，下发一次即可——放进 applyState 会被 900ms 轮询带着每轮重推
     const ui = assets.uiIcons()
-    this.setData({ roomId: options.roomId, ui })
+    this.setData({ roomId: options.roomId, ui, identityAudioOn: identityAudio.enabled() })
     // 地毯在云端，同样落到本地再用，免得每次开面板重下
     assets.localCopy(ui.floor).then(local => {
       if (local !== ui.floor) this.setData({ "ui.floor": local })
@@ -87,9 +86,13 @@ Page({
     if (!this.data.roomId || this.fatalHandled) return
     this.startTimers()
     this.loadState(false)
+    identityAudio.resume()
   },
 
-  onHide() { this.stopTimers() },
+  onHide() {
+    this.stopTimers()
+    identityAudio.pause()
+  },
 
   startTimers() {
     this.stopTimers()
@@ -106,6 +109,7 @@ Page({
 
   onUnload() {
     this.stopTimers()
+    identityAudio.stop(false)
     if (this.ceremonyTimer) clearTimeout(this.ceremonyTimer)
     if (this.bannerTimer) clearTimeout(this.bannerTimer)
     if (this.selectionTimer) clearTimeout(this.selectionTimer)
@@ -321,11 +325,9 @@ Page({
     this.refreshSelections()
     this.updateClock()
     this.enqueueCeremonies(ceremonies)
+    this.syncIdentityAudio(room, !!result.isHost)
     if (phaseChanged) this.setData({ voteChoice: "" })
-    if (phaseChanged && room.phase !== "reveal") {
-      this.identityFlippedAt = 0
-      this.setData({ cardFlipped: false })
-    }
+    if (phaseChanged && room.phase !== "reveal") this.setData({ cardFlipped: false })
     if (phaseChanged && room.phase === "missionResult") this.vibrate(lastMission && lastMission.winner === "evil" ? "heavy" : "medium")
   },
 
@@ -507,10 +509,12 @@ Page({
     const missing = done => allIds.filter(id => (done || []).indexOf(id) < 0)
 
     if (room.phase === "reveal") {
-      if (!identity.revealAt) {
+      if (!identity.claimAt) {
         const pending = missing(identity.readyIds)
         return pending.length ? { text: `等待 ${listing(pending)} 准备`, progress: `${identity.readyIds.length}/${allIds.length}` } : null
       }
+      // 选阵营、洗牌、阅读这一段大家各看各的，没有在等谁
+      if (identity.closeAt && Date.now() < identity.closeAt) return null
       const pending = missing(identity.rememberedIds)
       return pending.length ? { text: `等待 ${listing(pending)} 确认身份`, progress: `${identity.rememberedIds.length}/${allIds.length}` } : null
     }
@@ -567,6 +571,23 @@ Page({
     if (!entry) return ""
     return `${label(entry.ownerId)} 查验了 ${label(entry.targetId)}`
   },
+
+  // 开场播报：一段固定音频，只在房主手机上放，以 claimAt 为锚，进来晚了就跳到对应位置；
+  // 离开认身份阶段就淡出。轮询每轮都会来一次，identityAudio 内部按 key 去重。
+  syncIdentityAudio(room, isHost) {
+    const identity = room.game && room.game.identity
+    if (isHost && room.phase === "reveal" && identity && identity.claimAt) {
+      identityAudio.start(assets.identityBriefing(), identity.claimAt)
+    } else identityAudio.stop(true)
+  },
+
+  toggleIdentityAudio(event) {
+    const on = !!(event.detail && event.detail.value)
+    identityAudio.setEnabled(on)
+    this.setData({ identityAudioOn: on })
+  },
+
+  previewIdentityAudio() { identityAudio.preview(assets.identityBriefing()) },
 
   // 「身份信息」：把服务端下发的私密记录整理成可读文案。
   // 这里只用 privateView 里的数据，不做任何本地推断，避免显示出玩家本不该知道的信息。
@@ -628,61 +649,40 @@ Page({
     const now = Date.now()
     if (this.data.phase === "reveal") {
       const identity = game.identity || {}
+      const pv = this.data.privateView || {}
       let identityMode = "prepare"
       let roleVisible = false
-      let identityCountdown = 3
-      let identitySecondsLeft = 40
-      // 阅读计时从「本人翻开牌」那一刻算起，不是从全局揭示时刻算起。
-      // 否则没翻牌的人会被倒计时直接推到下一步，整局都没看到自己的身份。
+      let identitySecondsLeft = 0
+      let claimSecondsLeft = 0
       let readingHint = ""
-      // 队长先选展示阵营，选完才全员揭示。这一段是那个「只有队长在动」的窗口：
-      // 队长看到自己的牌和两个选项，其他人等着。
-      // 顺序不能反——教士的首夜信息里写着「第一位领袖显示为X」，
-      // 队长还没选就揭示的话，教士读到的是一句空话。
-      if (identity.claimAt && !identity.revealAt) {
-        const iAmLeader = (this.data.privateView || {}).needsLeaderClaim
-        const next = { identityMode: iAmLeader ? "leaderClaim" : "waitLeaderClaim",
-                       roleVisible: !!iAmLeader, identityCountdown: 3, identitySecondsLeft: 40,
-                       readingHint: "", readingUrgent: false }
-        if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
-        return
-      }
-      if (identity.revealAt) {
-        if (now < identity.revealAt) {
-          // 不再做 3-2-1 倒计时：牌本来就要手动翻，等待感由牌背自己承担
-          identityMode = "reading"
-          readingHint = "翻开后开始计时"
-        } else if (!this.data.cardFlipped) {
-          // 还没翻牌就一直停在这一步，牌始终可点
-          identityMode = "reading"
-          readingHint = "翻开后开始计时"
-        } else {
-          // 全局窗口与「本人翻牌后 40 秒」取较晚者，翻得晚的人不会被压缩阅读时间
-          const readEndsAt = Math.max(identity.closeAt, (this.identityFlippedAt || now) + IDENTITY_READ_MS)
-          if (now < readEndsAt) {
-            identityMode = "reading"
-            roleVisible = true
-            identitySecondsLeft = Math.max(0, Math.ceil((readEndsAt - now) / 1000))
-            readingHint = `阅读时间 ${identitySecondsLeft}秒`
-            // 最后 5 秒提醒一次。玩家很可能正埋在密录/攻略里，
-            // 那儿是全屏浮层，会把外面的计时完全盖住。
-            if (identitySecondsLeft <= 5 && this.lastUrgeSecond !== identitySecondsLeft) {
-              this.lastUrgeSecond = identitySecondsLeft
-              this.vibrate("light")
-            }
-          } else identityMode = "remember"
+      // 时间轴在房主点「统一揭示身份」那一刻整段定死（和开场播报的音频一致）：
+      //   claimAt → lockAt：只有队长在选展示阵营，其他人等
+      //   lockAt → revealAt：阵营锁定，身份洗牌中
+      //   revealAt → closeAt：全员翻牌阅读，全局同一个窗口，翻得晚就少看几秒（对局中随时能回看）
+      //   closeAt 之后：收起，各自点「我已记住」；没翻过牌的人可以在那一屏补看
+      if (identity.claimAt && now < identity.lockAt) {
+        identityMode = pv.needsLeaderClaim ? "leaderClaim" : "waitLeaderClaim"
+        roleVisible = !!pv.needsLeaderClaim
+        claimSecondsLeft = Math.max(0, Math.ceil((identity.lockAt - now) / 1000))
+      } else if (identity.claimAt && now < identity.revealAt) {
+        identityMode = "shuffling"
+      } else if (identity.claimAt && now < identity.closeAt) {
+        identityMode = "reading"
+        identitySecondsLeft = Math.max(0, Math.ceil((identity.closeAt - now) / 1000))
+        roleVisible = !!this.data.cardFlipped
+        readingHint = `阅读时间 ${identitySecondsLeft}秒`
+        // 最后 5 秒提醒一次。玩家很可能正埋在身份信息/思路里，那儿是全屏浮层，会把外面的计时盖住。
+        if (roleVisible && identitySecondsLeft <= 5 && this.lastUrgeSecond !== identitySecondsLeft) {
+          this.lastUrgeSecond = identitySecondsLeft
+          this.vibrate("light")
         }
+      } else if (identity.claimAt) {
+        identityMode = "remember"
       }
-      // 只在真的变了才 setData。这个定时器 200ms 跑一次，无条件 setData 等于
-    // 每秒白白推 5 次渲染，和别的更新抢通道。
-    // 阅读时间到了**不再**强制收起密录。
-    // 原先收是怕浮层挡住「我已记住」，但代价更大：阅读窗口只有 40 秒，
-    // 读完「本局思路」基本必定超时，一超时浮层被关、身份牌同时收起，
-    // 玩家就再也回不到身份大图了（实战中被抓到）。
-    // 现在改成把「我已记住」搬进浮层里，就地读完就地确认。
-    const next = { identityMode, roleVisible, identityCountdown, identitySecondsLeft, readingHint,
-                   readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 }
-    if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
+      // 只在真的变了才 setData：这个定时器 200ms 跑一次
+      const next = { identityMode, roleVisible, identitySecondsLeft, claimSecondsLeft, readingHint,
+                     readingUrgent: identityMode === "reading" && roleVisible && identitySecondsLeft <= 5 }
+      if (Object.keys(next).some(key => this.data[key] !== next[key])) this.setData(next)
     }
     if (this.data.finalStage === "discussion" && game.final) {
       const finalSecondsLeft = Math.max(0, Math.ceil((game.final.discussionEndsAt - now) / 1000))
@@ -874,9 +874,15 @@ Page({
   // 玩家需要的是看清楚，不是反复动画。
   flipIdentityCard() {
     if (this.data.cardFlipped) return
-    this.identityFlippedAt = Date.now()
+    const identity = (this.data.game || {}).identity || {}
+    if (!identity.revealAt || Date.now() < identity.revealAt) return   // 洗牌中还不能翻
     this.setData({ cardFlipped: true, identityUnlocked: true })
     this.vibrate("medium")
+  },
+
+  // 阅读窗口过了还没翻牌的人：在「我已记住」那一屏补看，不让任何人盲点确认
+  lateFlip() {
+    this.setData({ cardFlipped: true, identityUnlocked: true, dossierVisible: true })
   },
 
   // 离开对局页。先停表并上锁：轮询每 900ms 就会再发一次导航，

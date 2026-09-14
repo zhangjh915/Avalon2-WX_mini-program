@@ -512,13 +512,18 @@ async function identityAction(event, openid) {
     const game = state.room.game
     if (state.room.phase !== "reveal") fail("当前不是身份确认阶段")
     const identity = game.identity
+    const nowAt = Date.now()
+    // 到点没选的展示阵营按真实阵营落盘，之后所有读取都一致
+    if (!state.secret.priestClaim && identity.lockAt && nowAt >= identity.lockAt) {
+      state.secret.priestClaim = core.effectivePriestClaim(game, state.secret, nowAt)
+    }
     if (event.action === "identityReady" && identity.readyIds.indexOf(player.id) < 0) identity.readyIds.push(player.id)
     if (event.action === "identityClaim") {
       if (["good", "evil"].indexOf(event.claim) < 0) fail("展示阵营选择不合法")
       if (player.id !== game.firstLeaderId) fail("只有首任队长需要选择展示阵营")
-      // 必须在全员揭示**之前**提交：教士的首夜信息里写着「第一位领袖显示为X」，
-      // 队长还没选就揭示的话，教士读到的是一句空话。
       if (!identity.claimAt) fail("还没轮到选择展示阵营")
+      // 选择窗口是死的（跟开场播报的音频走）：到点锁定，之后按真实阵营算
+      if (identity.lockAt && nowAt >= identity.lockAt) fail("展示阵营已锁定")
       if (state.secret.priestClaim) fail("展示阵营已经提交")
       // 非骗徒只能亮真实阵营。界面已经置灰了另一个，这里再挡一层——
       // 前端置灰是提示，不是校验。
@@ -527,20 +532,16 @@ async function identityAction(event, openid) {
         fail("只能展示你真实的阵营")
       }
       state.secret.priestClaim = event.claim
-      // 队长选完，全员揭示才开始
-      identity.revealAt = Date.now() + 3000
-      identity.closeAt = identity.revealAt + 40000
     }
     if (event.action === "startIdentity") {
       requireHost(state.secret, openid)
       if (identity.revealAt || identity.claimAt) fail("身份已经开始揭示")
       if (identity.readyIds.length < game.playerCount) fail("还有玩家未准备好")
-      identity.claimAt = Date.now()
-      // 队长是 bot 的话展示阵营在开局时就填好了，不用等他，直接进全员揭示
-      if (state.secret.priestClaim) {
-        identity.revealAt = Date.now() + 3000
-        identity.closeAt = identity.revealAt + 40000
-      }
+      // 整段时间轴此刻定死，队长是不是 bot 都一样——开场播报的音频只有一个版本
+      identity.claimAt = nowAt
+      identity.lockAt = nowAt + core.IDENTITY_SCHEDULE.claimMs
+      identity.revealAt = identity.lockAt + core.IDENTITY_SCHEDULE.shuffleMs
+      identity.closeAt = identity.revealAt + core.IDENTITY_SCHEDULE.readMs
     }
     if (event.action === "identityRemembered") {
       if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份阅读时间尚未结束")
@@ -568,6 +569,11 @@ async function advancePhase(event, openid) {
   const identity = state.room.game.identity
   if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份确认尚未结束")
   if (identity.rememberedIds.length < state.room.playerCount) fail("还有玩家未确认身份")
+  // 队长到点没选的展示阵营在这里兜底落盘，进了远征就不再变
+  if (!state.secret.priestClaim) {
+    const claim = core.effectivePriestClaim(state.room.game, state.secret)
+    if (claim) await secrets.doc(event.roomId).update({ data: { priestClaim: claim, updatedAt: Date.now() } })
+  }
   await rooms.doc(event.roomId).update({ data: { phase: "mission", updatedAt: Date.now() } })
   state.room.phase = "mission"
   return resultView(state.room, state.secret, openid)

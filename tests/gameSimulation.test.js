@@ -100,7 +100,7 @@ const violations = new Map()
 const coverage = {
   games: 0, finished: 0, byCount: {}, rolesSeen: {}, probes: 0, audits: 0, clientChecks: 0,
   unknownRoles: 0, hunterVote: 0, withBots: 0, deceiverLies: 0, inspections: 0, deceiverInspectLies: 0,
-  galahadClaims: 0, hunts: 0, huntSuccess: 0, hunterVotesForced: 0, traitorConverted: 0,
+  galahadClaims: 0, claimTimeouts: 0, hunts: 0, huntSuccess: 0, hunterVotesForced: 0, traitorConverted: 0,
   identifyRuns: 0, identifyGood: 0, correctionsUsed: 0, goodByMissions: 0, allLeadersEvil: 0, winners: { good: 0, evil: 0 }
 }
 class Violation extends Error {}
@@ -288,6 +288,11 @@ class Sim {
     if (nonHost && chance(0.6)) await this.bad("startIdentity", { roomId: this.roomId }, nonHost.openid, /只有房主/, "startIdentity-by-player")
     await this.ok("startIdentity", { roomId: this.roomId }, "host")
     await this.bad("startIdentity", { roomId: this.roomId }, "host", /已经开始揭示/, "startIdentity-twice")
+    // 时间轴一次定死：claimAt < lockAt <= revealAt < closeAt
+    const schedule = this.room().game.identity
+    if (!(schedule.claimAt && schedule.lockAt > schedule.claimAt && schedule.revealAt >= schedule.lockAt && schedule.closeAt > schedule.revealAt)) {
+      throw new Violation(`startIdentity 应当一次定死 lockAt/revealAt/closeAt：${JSON.stringify(schedule)}`)
+    }
 
     const leader = this.byId(this.room().game.firstLeaderId)
     if (leader.openid) {
@@ -300,19 +305,29 @@ class Sim {
       }
       if (chance(0.5)) await this.bad("identityClaim", { roomId: this.roomId, claim: "both" }, leader.openid, /不合法/, "claim-garbage")
       if (chance(0.5)) await this.bad("identityRemembered", { roomId: this.roomId }, leader.openid, /尚未结束|请先选择/, "remember-before-claim")
-      const claim = pick(options)
-      if (leader.role === "deceiver" && claim !== "evil") coverage.deceiverLies += 1
-      this.leaderClaim = claim
-      await this.ok("identityClaim", { roomId: this.roomId, claim }, leader.openid)
-      await this.bad("identityClaim", { roomId: this.roomId, claim }, leader.openid, /已经提交/, "claim-twice")
+      if (chance(0.3)) {
+        // 队长到点没选：锁定后按真实阵营算，再选被拒
+        this.room().game.identity.lockAt = Date.now() - 1
+        this.leaderClaim = oracle.defaultClaim(leader)
+        coverage.claimTimeouts += 1
+        await this.bad("identityClaim", { roomId: this.roomId, claim: options[0] }, leader.openid, /已锁定/, "claim-after-lock")
+      } else {
+        const claim = pick(options)
+        if (leader.role === "deceiver" && claim !== "evil") coverage.deceiverLies += 1
+        this.leaderClaim = claim
+        await this.ok("identityClaim", { roomId: this.roomId, claim }, leader.openid)
+        await this.bad("identityClaim", { roomId: this.roomId, claim }, leader.openid, /已经提交/, "claim-twice")
+      }
     } else {
       this.leaderClaim = this.secret().priestClaim   // bot 队长开局就填好了
     }
     const identity = this.room().game.identity
-    if (!identity.revealAt || !identity.closeAt) throw new Violation("队长选完展示阵营后应当进入全员揭示")
     if (chance(0.7)) await this.bad("enterMission", { roomId: this.roomId }, "host", /身份确认尚未结束/, "enterMission-before-close")
     if (chance(0.5)) await this.bad("identityRemembered", { roomId: this.roomId }, pick(this.humans()).openid, /尚未结束/, "remember-before-close")
-    this.room().game.identity.closeAt = Date.now() - 1     // 40 秒阅读时间直接拨过去
+    // 把整段时间轴拨到过去：锁定、揭示、收起都已发生
+    this.room().game.identity.lockAt = Math.min(this.room().game.identity.lockAt, Date.now() - 3)
+    this.room().game.identity.revealAt = Math.min(this.room().game.identity.revealAt, Date.now() - 2)
+    this.room().game.identity.closeAt = Date.now() - 1
     const rememberOrder = shuffled(this.humans())
     for (let index = 0; index < rememberOrder.length; index += 1) {
       if (index === 1 && chance(0.6)) await this.bad("enterMission", { roomId: this.roomId }, "host", /还有玩家未确认身份/, "enterMission-before-all-remembered")
@@ -792,7 +807,9 @@ class Sim {
     const knownEvil = new Set(oracle.knownSeats(me, secret.players).filter(id => oracle.faction(secret.players.find(item => item.id === id)) === "evil"))
     if (!setEqual(new Set(pv.knownEvilIds || []), knownEvil)) record(`knownEvilIds:${me.role}`, `${me.roleName} knownEvilIds=${pv.knownEvilIds}，应为 ${Array.from(knownEvil)}`, this)
     if (me.role === "priest") {
-      const claim = secret.priestClaim
+      const firstLeader = secret.players.find(item => item.id === room.game.firstLeaderId)
+      const locked = room.game.identity.lockAt && Date.now() >= room.game.identity.lockAt
+      const claim = secret.priestClaim || (locked && firstLeader ? oracle.defaultClaim(firstLeader) : "")
       if (claim) {
         const wanted = `第一位领袖显示为${claim === "good" ? "正义方" : "邪恶方"}`
         if (!pv.nightInfo.some(line => line.indexOf(wanted) >= 0)) record("priest-claim-line", `教士没读到「${wanted}」：${JSON.stringify(pv.nightInfo)}`, this)
@@ -805,7 +822,11 @@ class Sim {
     if (!!pv.needsLeaderClaim !== isFirstLeader) record("needsLeaderClaim", `${me.id} 号 needsLeaderClaim=${pv.needsLeaderClaim}`, this)
     const claimOptions = isFirstLeader ? oracle.claimOptions(me) : []
     if (!setEqual(new Set(pv.leaderClaimOptions), new Set(claimOptions))) record(`leaderClaimOptions:${me.role}`, `${me.role} 得到 ${pv.leaderClaimOptions}，应为 ${claimOptions}`, this)
-    if (isFirstLeader && pv.leaderClaim && pv.leaderClaim !== secret.priestClaim) record("leaderClaim-echo", "队长回显的展示阵营不对", this)
+    if (isFirstLeader && pv.leaderClaim) {
+      const locked = room.game.identity.lockAt && Date.now() >= room.game.identity.lockAt
+      const expectedClaim = secret.priestClaim || (locked ? oracle.defaultClaim(me) : "")
+      if (pv.leaderClaim !== expectedClaim) record("leaderClaim-echo", `队长回显的展示阵营 ${pv.leaderClaim}，应为 ${expectedClaim}`, this)
+    }
     if (!isFirstLeader && pv.leaderClaim) record("leaderClaim-leak", "非队长看到了展示阵营", this)
     // 出牌选项：只有在队伍里且在投票阶段才有
     // 本轮队伍在交接前一直保留，所以结算阶段队员仍带着自己的出牌选项——是本人信息，不算泄露
@@ -905,8 +926,11 @@ class Sim {
     if (room.phase === "reveal") {
       const identity = game.identity
       let mode = "prepare"
-      if (identity.claimAt && !identity.revealAt) mode = view.private.needsLeaderClaim ? "leaderClaim" : "waitLeaderClaim"
-      else if (identity.revealAt) mode = "reading"    // 没翻牌就一直是 reading
+      const nowMs = Date.now()
+      if (identity.claimAt && nowMs < identity.lockAt) mode = view.private.needsLeaderClaim ? "leaderClaim" : "waitLeaderClaim"
+      else if (identity.claimAt && nowMs < identity.revealAt) mode = "shuffling"
+      else if (identity.claimAt && nowMs < identity.closeAt) mode = "reading"
+      else if (identity.claimAt) mode = "remember"
       if (data.identityMode !== mode) bad("identityMode", `${data.identityMode}，应为 ${mode}`)
       if (data.canLeadClaimGood !== view.private.leaderClaimOptions.indexOf("good") >= 0) bad("canLeadClaimGood", `${data.canLeadClaimGood}`)
     }
@@ -941,7 +965,7 @@ async function main() {
   console.log(`  人数分布 ${JSON.stringify(coverage.byCount)}；未知角色 ${coverage.unknownRoles} 局；猎杀投票变体 ${coverage.hunterVote} 局；含测试骑士 ${coverage.withBots} 局`)
   console.log(`  角色出场 ${Object.keys(coverage.rolesSeen).length}/27 种：${Object.keys(coverage.rolesSeen).map(role => `${role}×${coverage.rolesSeen[role]}`).join(" ")}`)
   console.log(`  审计 ${coverage.audits} 次，非法操作探针 ${coverage.probes} 次，客户端派生检查 ${coverage.clientChecks} 次`)
-  console.log(`  护身符查验 ${coverage.inspections} 次（骗徒谎报 ${coverage.deceiverInspectLies}）；首任队长骗徒谎报 ${coverage.deceiverLies} 次；加拉哈德发动 ${coverage.galahadClaims} 次`)
+  console.log(`  护身符查验 ${coverage.inspections} 次（骗徒谎报 ${coverage.deceiverInspectLies}）；首任队长骗徒谎报 ${coverage.deceiverLies} 次、到点没选 ${coverage.claimTimeouts} 次；加拉哈德发动 ${coverage.galahadClaims} 次`)
   console.log(`  猎杀 ${coverage.hunts} 次（得手 ${coverage.huntSuccess}，投票强制 ${coverage.hunterVotesForced}）；最终指认 ${coverage.identifyRuns} 次（正义 ${coverage.identifyGood}，用到修正 ${coverage.correctionsUsed}，叛徒转正 ${coverage.traitorConverted}，全队长邪恶 ${coverage.allLeadersEvil}）`)
   console.log(`  胜负 正义 ${coverage.winners.good || 0} / 邪恶 ${coverage.winners.evil || 0}，其中三胜直接结束 ${coverage.goodByMissions}`)
   if (!violations.size) {

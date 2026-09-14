@@ -260,14 +260,12 @@ async function testFirstLeaderDeceiverClaim() {
   await expectFailure(action("identityClaim", { roomId, claim: "good" }, otherOpenid), /只有首任队长/)
   for (const player of privateState.players) await action("identityReady", { roomId }, player.id === 1 ? "host" : `user-${player.id}`)
   await action("startIdentity", { roomId }, "host")
-  // 新时序：startIdentity 之后先只开「队长选展示阵营」这一步，
-  // 队长提交完才开始全员揭示与阅读窗口。
-  assert.ok(room(roomId).game.identity.claimAt, "应当先进入队长选择阶段")
-  assert.strictEqual(room(roomId).game.identity.revealAt, 0, "队长没选之前不该开始揭示")
+  // 时间轴在 startIdentity 一次定死：队长在 lockAt 之前选，揭示在 revealAt 到点自动开始
+  const schedule = room(roomId).game.identity
+  assert.ok(schedule.claimAt && schedule.lockAt > schedule.claimAt && schedule.revealAt >= schedule.lockAt && schedule.closeAt > schedule.revealAt, "应当一次定死锁定/揭示/收起三个时刻")
   await expectFailure(action("identityRemembered", { roomId }, leaderOpenid), /尚未结束/)
   await action("identityClaim", { roomId, claim: "good" }, leaderOpenid)
   assert.strictEqual(secret(roomId).priestClaim, "good")
-  assert.ok(room(roomId).game.identity.revealAt > 0, "队长选完就该开始全员揭示")
   room(roomId).game.identity.closeAt = Date.now() - 1
   await action("identityRemembered", { roomId }, leaderOpenid)
 }
@@ -1014,25 +1012,38 @@ async function testLeaderClaimsBeforeReveal() {
   for (const p of players) await action("identityReady", { roomId }, who(p.id))
   await action("startIdentity", { roomId }, "host")
 
-  // 队长没选之前：不能开始揭示
-  assert.strictEqual(room(roomId).game.identity.revealAt, 0,
-    "队长还没选展示阵营，不该开始全员揭示——教士会读到空信息")
-  assert.ok(room(roomId).game.identity.claimAt > 0, "应当停在队长选择阶段")
-
-  // 此时教士拿到的信息里不该出现「显示为」——本来也还没有值
+  // 锁定之前：教士拿到的信息里不该出现「显示为」——本来也还没有值
   const priest = players.find(p => p.role === "priest")
   const before = core.privateView(room(roomId).game, secret(roomId), who(priest.id))
   assert.ok(!(before.nightInfo || []).some(t => /显示为/.test(t)),
     "队长还没选，教士不该已经拿到展示结果")
 
-  // 队长选完：揭示才开始，教士的信息也齐了
+  // 队长在锁定前选完：教士的信息立刻齐了
   const leader = core.getPlayer(secret(roomId), room(roomId).game.firstLeaderId)
   const claim = leader.role === "deceiver" ? "good" : core.displayedFaction(leader)
   await action("identityClaim", { roomId, claim }, who(leader.id))
-  assert.ok(room(roomId).game.identity.revealAt > 0, "队长选完就该开始全员揭示")
   const after = core.privateView(room(roomId).game, secret(roomId), who(priest.id))
   assert.ok((after.nightInfo || []).some(t => /第一位领袖显示为/.test(t)),
     "队长选完之后，教士必须拿到展示结果")
+
+  // 另一局：队长到点没选。锁定后按真实阵营算，再选被拒，教士读到的是真实展示
+  cloudMock.reset()
+  const roomB = await createHumanRoom(6, counts)
+  const playersB = secret(roomB).players
+  for (const p of playersB) await action("identityReady", { roomId: roomB }, who(p.id))
+  await action("startIdentity", { roomId: roomB }, "host")
+  const leaderB = core.getPlayer(secret(roomB), room(roomB).game.firstLeaderId)
+  room(roomB).game.identity.lockAt = Date.now() - 1
+  await expectFailure(action("identityClaim", { roomId: roomB, claim: "good" }, who(leaderB.id)), /已锁定/)
+  const priestB = playersB.find(p => p.role === "priest")
+  const expected = core.displayedFaction(leaderB) === "good" ? "正义方" : "邪恶方"
+  const viewB = core.privateView(room(roomB).game, secret(roomB), who(priestB.id))
+  assert.ok((viewB.nightInfo || []).some(t => t.indexOf(`第一位领袖显示为${expected}`) >= 0),
+    `到点没选应按真实阵营展示，教士应读到「${expected}」，实际 ${JSON.stringify(viewB.nightInfo)}`)
+  // 队长之后照样能确认身份，且落盘的展示阵营就是真实阵营
+  room(roomB).game.identity.closeAt = Date.now() - 1
+  await action("identityRemembered", { roomId: roomB }, who(leaderB.id))
+  assert.strictEqual(secret(roomB).priestClaim, core.displayedFaction(leaderB))
   console.log("  leader claims before reveal ok")
 }
 

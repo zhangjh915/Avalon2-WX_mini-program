@@ -1433,6 +1433,9 @@ button::after {
 .waiting-title { color: #f1ede5; font-size: 32rpx; font-weight: 900; text-align: center; }
 .waiting-copy,.action-copy { max-width: 650rpx; margin: 14rpx auto 22rpx; color: #9eaaa4; font-size: 24rpx; line-height: 1.65; text-align: center; }
 .identity-progress { margin-top: 18rpx; color: #9ca7a1; font-size: 22rpx; font-variant-numeric: tabular-nums; text-align: center; }
+.identity-progress.urgent { color: #e0a56a; }
+/* 房主的开场播报开关：只在他手机上放，所以只有他看得到 */
+.audio-toggle { display: flex; width: 100%; margin-top: 18rpx; padding: 10rpx 4rpx; align-items: center; justify-content: space-between; color: #b9c1bd; font-size: 23rpx; }
 .primary-action,.secondary-action,.launch-action { width: 100%; min-height: 84rpx; margin-top: 14rpx; border-radius: 7rpx; font-size: 26rpx; font-weight: 900; }
 .primary-action { background: #2f7358; color: #fff; }
 .secondary-action { border: 2rpx solid #657169; background: #202b27; color: #e9ece9; }

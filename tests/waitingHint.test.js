@@ -48,7 +48,7 @@ assert.strictEqual(hint("reveal", baseGame({ identity: { readyIds: [1, 2, 3, 4, 
 
 // 揭示开始后改为等确认身份
 const remember = hint("reveal", baseGame({
-  identity: { revealAt: 1, readyIds: [1, 2, 3, 4, 5], rememberedIds: [1, 2] }
+  identity: { claimAt: 1, lockAt: 1, revealAt: 1, closeAt: 1, readyIds: [1, 2, 3, 4, 5], rememberedIds: [1, 2] }
 }))
 assert.match(remember.text, /确认身份/)
 assert.strictEqual(remember.progress, "2/5")

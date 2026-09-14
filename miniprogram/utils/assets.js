@@ -39,6 +39,11 @@ function roleArt(skin, role, artVariant) {
   return path ? CLOUD_PREFIX + path : ""
 }
 
+// 认身份的开场播报：配音和 BGM 合成好的一整段，只在房主手机上放
+function identityBriefing() {
+  return `${CLOUD_PREFIX}assets/audio/identity-briefing.mp3`
+}
+
 function identityBack(skin) {
   return `${CLOUD_PREFIX}assets/cards/identity/${skin || "painted"}/back.jpg`
 }
@@ -333,6 +338,7 @@ function missionCard(skin, face) {
 
 module.exports = {
   CLOUD_PREFIX,
+  identityBriefing,
   floorOptions,
   localCopy,
   remoteUrl,

@@ -52,6 +52,10 @@ function displayedFaction(player, claim) {
 function claimOptions(player) {
   return player.role === "deceiver" ? ["good", "evil"] : [displayedFaction(player)]
 }
+// 产品规则：选择窗口到点没选，按真实阵营展示（骗徒没来得及撒谎就亮真身；捣乱者仍按规则显示邪恶）
+function defaultClaim(player) {
+  return player.role === "deceiver" ? "evil" : displayedFaction(player)
+}
 
 // 任务牌：§六（二）1 基础规则 + §八/§九 各角色的出牌限制
 function legalVotes(player, round, isLeader, hasMagic) {
@@ -179,7 +183,7 @@ function allLeadersEvil(players, missions) {
 module.exports = {
   FACTION, MISSION_SIZES, FACTION_TOTALS, MUTUAL_EVIL, THUMB_ONLY,
   faction, failsNeeded, isProtectedRound, missionWinner, amuletAfterRound,
-  displayedFaction, claimOptions, legalVotes, knownSeats,
+  displayedFaction, claimOptions, defaultClaim, legalVotes, knownSeats,
   canLead, canHoldAmulet, canBeInspected, galahadEligible,
   hunterSuccess, hunterVoteForcesHunt, identifySuccess, allLeadersEvil
 }

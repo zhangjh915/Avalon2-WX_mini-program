@@ -217,7 +217,7 @@ function createGame(settings, seats, options) {
       missionPreset: missionPresets[settings.playerCount],
       missions: [],
       amuletHistory: [],
-      identity: { readyIds: [], claimAt: 0, revealAt: 0, closeAt: 0, rememberedIds: [] },
+      identity: { readyIds: [], claimAt: 0, lockAt: 0, revealAt: 0, closeAt: 0, rememberedIds: [] },
       current: { team: [], magicTargetId: null, voteCount: 0, votedIds: [] },
       amulet: null,
       final: null,
@@ -278,6 +278,22 @@ function displayedFaction(player, claim) {
   return player.faction
 }
 
+// 认身份的固定时间轴（毫秒）。房主点「统一揭示身份」那一刻整段定死：
+//   claimAt ─claimMs→ lockAt ─shuffleMs→ revealAt ─readMs→ closeAt
+// 之所以固定：开场播报是一整段生成好的音频，台词的位置是死的，流程要跟音频走。
+// 数值要和最终选定的那段音频里台词出现的秒数一致。
+const IDENTITY_SCHEDULE = { claimMs: 15000, shuffleMs: 3000, readMs: 40000 }
+
+// 首任队长对外展示的阵营：选了就用选的；到点没选按真实阵营算（骗徒没来得及撒谎就亮真身）。
+// 服务端没有定时器，所以「到点」在每次读取时按 lockAt 现算，写盘由下一次身份操作完成。
+function effectivePriestClaim(game, secret, now) {
+  if (secret.priestClaim) return secret.priestClaim
+  const lockAt = game.identity && game.identity.lockAt
+  if (!lockAt || (now || Date.now()) < lockAt) return null
+  const leader = getPlayer(secret, game.firstLeaderId)
+  return leader ? displayedFaction(leader) : null
+}
+
 // 揭露阶段一起睁眼的邪恶方（说明书只给了例外名单，其余邪恶角色都按普通爪牙）
 const mutualEvilRoles = ["morgan", "minion", "barbarian", "revealer", "lunatic", "deceiver", "boaster", "saboteur"]
 // 只竖拇指让爪牙看见、自己不睁眼的邪恶角色
@@ -325,7 +341,8 @@ function privateNightInfo(game, secret, player) {
     const leader = getPlayer(secret, game.firstLeaderId)
     // 队长选完之前什么都不写：原先骗徒队长会多一句「正在选择」，
     // 而这句只在队长是骗徒时出现——接口层面等于提前告诉教士队长是骗徒。
-    if (leader && secret.priestClaim) info.push(`第一位领袖显示为${secret.priestClaim === "good" ? "正义方" : "邪恶方"}。`)
+    const claim = effectivePriestClaim(game, secret)
+    if (leader && claim) info.push(`第一位领袖显示为${claim === "good" ? "正义方" : "邪恶方"}。`)
   }
   if (player.role === "percival") {
     const priests = secret.players.filter(item => item.role === "priest")
@@ -401,8 +418,8 @@ function privateView(game, secret, openid) {
     // 同理，这一步和场上有没有教士无关：没有教士也照走，
     // 否则「这局没人点」就等于告诉所有人本局没有教士。
     needsLeaderClaim: player.id === game.firstLeaderId,
-    leaderClaimSubmitted: player.id === game.firstLeaderId && !!secret.priestClaim,
-    leaderClaim: player.id === game.firstLeaderId ? (secret.priestClaim || "") : "",
+    leaderClaimSubmitted: player.id === game.firstLeaderId && !!effectivePriestClaim(game, secret),
+    leaderClaim: player.id === game.firstLeaderId ? (effectivePriestClaim(game, secret) || "") : "",
     // 骗徒可以撒谎，其余人只能亮真实展示（置灰另一个）
     leaderClaimOptions: player.id === game.firstLeaderId
       ? (player.role === "deceiver" ? ["good", "evil"] : [displayedFaction(player)])
@@ -549,6 +566,8 @@ function findFinaleCorrection(secret, traitorConverted) {
 }
 
 module.exports = {
+  IDENTITY_SCHEDULE,
+  effectivePriestClaim,
   roleInfo,
   roleArtVariants,
   assignArtVariants,

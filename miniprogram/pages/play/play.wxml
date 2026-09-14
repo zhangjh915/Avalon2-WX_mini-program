@@ -34,6 +34,8 @@
         <button wx:if="{{!identityReady}}" class="primary-action" bindtap="confirmIdentity">我已准备</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">等待全员准备</view></view>
         <view class="identity-progress">{{identityReadyCount}} / {{game.playerCount}}</view>
+        <view wx:if="{{isHost}}" class="audio-toggle"><text class="audio-toggle-label">开场播报（只在你的手机上放）</text><switch checked="{{identityAudioOn}}" bindchange="toggleIdentityAudio" color="#2c6b52" /></view>
+        <view wx:if="{{isHost && identityAudioOn}}" class="ghost-action" bindtap="previewIdentityAudio">试听</view>
         <button wx:if="{{isHost && identityReadyCount === game.playerCount && !game.identity.revealAt}}" class="launch-action" bindtap="startIdentity">统一揭示身份</button>
       </view>
 
@@ -42,7 +44,8 @@
            写着「第一位领袖显示为X」，队长没选就揭示的话那句话是空的。 -->
       <view wx:if="{{identityMode === 'leaderClaim'}}" class="phase-content">
         <view class="waiting-title">你是首任队长</view>
-        <view class="waiting-copy">先选择对外展示的阵营，选完全员一起翻牌。</view>
+        <view class="waiting-copy">先选择对外展示的阵营，到时全员一起翻牌。</view>
+        <view class="identity-progress {{claimSecondsLeft <= 5 ? 'urgent' : ''}}">{{claimSecondsLeft}} 秒后锁定，未选按真实阵营</view>
         <!-- 立绘是 3:4，容器也必须是 3:4，否则 aspectFill 会把人裁掉。
              沿用揭示页那张牌的 39vh/52vh，同一比例、同一套观感。 -->
         <view class="claim-card">
@@ -59,7 +62,13 @@
       <view wx:if="{{identityMode === 'waitLeaderClaim'}}" class="phase-content ceremony-content">
         <view class="ceremony-mark"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /></view>
         <view class="waiting-title">首任队长正在准备</view>
-        <view class="waiting-copy">稍等，马上一起翻开身份牌。</view>
+        <view class="waiting-copy">{{claimSecondsLeft}} 秒后一起翻开身份牌。</view>
+      </view>
+
+      <view wx:if="{{identityMode === 'shuffling'}}" class="phase-content ceremony-content">
+        <view class="ceremony-mark"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /></view>
+        <view class="waiting-title">阵营已锁定</view>
+        <view class="waiting-copy">身份洗牌中，马上一起翻牌。</view>
       </view>
 
       <view wx:if="{{identityMode === 'reading'}}" class="role-reveal-wrap">
@@ -94,6 +103,7 @@
         <image class="identity-card-back sealed" src="{{identityBackArt}}" mode="aspectFill" data-field="identityBackArt" data-raw="{{artRaw.identityBackArt}}" binderror="onRemoteImageError" />
         <view class="waiting-title">身份已隐藏</view>
         <view class="waiting-copy">确认你已记住角色、额外信息和本局思路。</view>
+        <view wx:if="{{!cardFlipped && !identityRemembered}}" class="ghost-action" bindtap="lateFlip">还没看身份？点这里查看</view>
         <button wx:if="{{!identityRemembered}}" class="primary-action" bindtap="rememberIdentity">我已记住</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-sealed"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">已完成确认</view></view>
         <view class="identity-progress">{{identityRememberedCount}} / {{game.playerCount}}</view>

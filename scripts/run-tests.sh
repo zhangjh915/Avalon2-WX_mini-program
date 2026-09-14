@@ -41,6 +41,7 @@ TESTS=(
   roomStoreRetry
   choiceShuffle
   handoffWarning
+  identityAudio
 )
 
 failed=0
