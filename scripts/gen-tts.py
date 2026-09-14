@@ -28,7 +28,8 @@ def generate(prompt, out_path):
     body = {
         "model": "seed-audio-1.0",
         "text_prompt": prompt,
-        "audio_config": {"format": "mp3", "sample_rate": 48000, "pitch_rate": 0, "speech_rate": 0, "loudness_rate": 0},
+        # enable_subtitle 必须放在 audio_config 里，放外层会被忽略；返回逐句逐字的毫秒时间戳，校准时间轴全靠它
+        "audio_config": {"format": "mp3", "sample_rate": 48000, "pitch_rate": 0, "speech_rate": 0, "loudness_rate": 0, "enable_subtitle": True},
         "watermark": {}
     }
     headers = {"Content-Type": "application/json", "Authorization": "Bearer " + api_key()}
@@ -48,10 +49,13 @@ def generate(prompt, out_path):
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "wb") as f:
         f.write(audio)
-    meta = {"duration": data.get("duration"), "original_duration": data.get("original_duration"), "elapsed": round(elapsed, 1), "bytes": len(audio), "prompt": prompt}
+    meta = {"duration": data.get("duration"), "original_duration": data.get("original_duration"), "elapsed": round(elapsed, 1), "bytes": len(audio),
+            "subtitle": data.get("subtitle"), "prompt": prompt}
     with open(re.sub(r"\.mp3$", "", out_path) + ".json", "w") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
     print(f"{out_path}: {meta['duration']}s 音频，{len(audio)//1024} KB，耗时 {elapsed:.0f}s")
+    for sentence in ((data.get("subtitle") or {}).get("sentences") or []):
+        print(f"   {sentence.get('start_time')} → {sentence.get('end_time')}  {sentence.get('text')}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
