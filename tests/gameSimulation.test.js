@@ -100,7 +100,7 @@ const violations = new Map()
 const coverage = {
   games: 0, finished: 0, byCount: {}, rolesSeen: {}, probes: 0, audits: 0, clientChecks: 0,
   unknownRoles: 0, hunterVote: 0, withBots: 0, deceiverLies: 0, inspections: 0, deceiverInspectLies: 0,
-  galahadClaims: 0, claimTimeouts: 0, hunts: 0, huntSuccess: 0, hunterVotesForced: 0, traitorConverted: 0,
+  galahadClaims: 0, claimTimeouts: 0, briefingGames: 0, hunts: 0, huntSuccess: 0, hunterVotesForced: 0, traitorConverted: 0,
   identifyRuns: 0, identifyGood: 0, correctionsUsed: 0, goodByMissions: 0, allLeadersEvil: 0, winners: { good: 0, evil: 0 }
 }
 class Violation extends Error {}
@@ -227,6 +227,21 @@ class Sim {
 
   async run() {
     mock.reset()
+    // 一半的局往音频库里塞两段假音频（各自的时间轴不同），验证开局随机挑一段并按它定时间轴；
+    // 另一半库是空的，走默认时间轴
+    this.fakeBriefings = chance(0.5) ? [
+      { id: "sim-a", claimMs: 12000, shuffleMs: 2000, readMs: 30000 },
+      { id: "sim-b", claimMs: 20000, shuffleMs: 3000, readMs: 45000 }
+    ] : []
+    core.IDENTITY_BRIEFINGS.push(...this.fakeBriefings)
+    try {
+      await this.runGame()
+    } finally {
+      core.IDENTITY_BRIEFINGS.splice(core.IDENTITY_BRIEFINGS.length - this.fakeBriefings.length, this.fakeBriefings.length)
+    }
+  }
+
+  async runGame() {
     await this.setup()
     let guard = 0
     while (this.room().status !== "finished") {
@@ -293,6 +308,17 @@ class Sim {
     if (!(schedule.claimAt && schedule.lockAt > schedule.claimAt && schedule.revealAt >= schedule.lockAt && schedule.closeAt > schedule.revealAt)) {
       throw new Violation(`startIdentity 应当一次定死 lockAt/revealAt/closeAt：${JSON.stringify(schedule)}`)
     }
+    // 时间轴要跟挑中的播报音频走；库空时用默认
+    const chosen = this.fakeBriefings.find(item => item.id === schedule.briefing) || null
+    if (this.fakeBriefings.length && !chosen) record("briefing-pick", `挑中的播报 ${JSON.stringify(schedule.briefing)} 不在库里`, this)
+    if (!this.fakeBriefings.length && schedule.briefing) record("briefing-unexpected", "库是空的却挑了播报", this)
+    const expectedSchedule = chosen || core.IDENTITY_SCHEDULE
+    if (schedule.lockAt - schedule.claimAt !== expectedSchedule.claimMs || schedule.revealAt - schedule.lockAt !== expectedSchedule.shuffleMs || schedule.closeAt - schedule.revealAt !== expectedSchedule.readMs) {
+      record("briefing-schedule", `时间轴 ${schedule.lockAt - schedule.claimAt}/${schedule.revealAt - schedule.lockAt}/${schedule.closeAt - schedule.revealAt} 与播报 ${JSON.stringify(expectedSchedule)} 不符`, this)
+    }
+    if (this.fakeBriefings.length) coverage.briefingGames += 1
+    const poolIds = (schedule.briefingPool || []).slice().sort().join(",")
+    if (poolIds !== this.fakeBriefings.map(item => item.id).sort().join(",")) record("briefing-pool", `公开的音频池 ${poolIds} 与库不符`, this)
 
     const leader = this.byId(this.room().game.firstLeaderId)
     if (leader.openid) {
@@ -965,7 +991,7 @@ async function main() {
   console.log(`  人数分布 ${JSON.stringify(coverage.byCount)}；未知角色 ${coverage.unknownRoles} 局；猎杀投票变体 ${coverage.hunterVote} 局；含测试骑士 ${coverage.withBots} 局`)
   console.log(`  角色出场 ${Object.keys(coverage.rolesSeen).length}/27 种：${Object.keys(coverage.rolesSeen).map(role => `${role}×${coverage.rolesSeen[role]}`).join(" ")}`)
   console.log(`  审计 ${coverage.audits} 次，非法操作探针 ${coverage.probes} 次，客户端派生检查 ${coverage.clientChecks} 次`)
-  console.log(`  护身符查验 ${coverage.inspections} 次（骗徒谎报 ${coverage.deceiverInspectLies}）；首任队长骗徒谎报 ${coverage.deceiverLies} 次、到点没选 ${coverage.claimTimeouts} 次；加拉哈德发动 ${coverage.galahadClaims} 次`)
+  console.log(`  护身符查验 ${coverage.inspections} 次（骗徒谎报 ${coverage.deceiverInspectLies}）；首任队长骗徒谎报 ${coverage.deceiverLies} 次、到点没选 ${coverage.claimTimeouts} 次；有播报音频的局 ${coverage.briefingGames}；加拉哈德发动 ${coverage.galahadClaims} 次`)
   console.log(`  猎杀 ${coverage.hunts} 次（得手 ${coverage.huntSuccess}，投票强制 ${coverage.hunterVotesForced}）；最终指认 ${coverage.identifyRuns} 次（正义 ${coverage.identifyGood}，用到修正 ${coverage.correctionsUsed}，叛徒转正 ${coverage.traitorConverted}，全队长邪恶 ${coverage.allLeadersEvil}）`)
   console.log(`  胜负 正义 ${coverage.winners.good || 0} / 邪恶 ${coverage.winners.evil || 0}，其中三胜直接结束 ${coverage.goodByMissions}`)
   if (!violations.size) {

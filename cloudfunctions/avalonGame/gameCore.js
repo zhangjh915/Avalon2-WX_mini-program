@@ -217,7 +217,7 @@ function createGame(settings, seats, options) {
       missionPreset: missionPresets[settings.playerCount],
       missions: [],
       amuletHistory: [],
-      identity: { readyIds: [], claimAt: 0, lockAt: 0, revealAt: 0, closeAt: 0, rememberedIds: [] },
+      identity: { readyIds: [], claimAt: 0, lockAt: 0, revealAt: 0, closeAt: 0, briefing: "", briefingPool: IDENTITY_BRIEFINGS.map(item => item.id), rememberedIds: [] },
       current: { team: [], magicTargetId: null, voteCount: 0, votedIds: [] },
       amulet: null,
       final: null,
@@ -283,6 +283,17 @@ function displayedFaction(player, claim) {
 // 之所以固定：开场播报是一整段生成好的音频，台词的位置是死的，流程要跟音频走。
 // 数值要和最终选定的那段音频里台词出现的秒数一致。
 const IDENTITY_SCHEDULE = { claimMs: 15000, shuffleMs: 3000, readMs: 40000 }
+
+// 开场播报的音频库。每段音频都有自己校准过的时间轴（台词落点由字幕时间戳读出，
+// 由 scripts/calibrate-identity-audio.py --add 写进来，音频文件在云存储 assets/audio/identity/<id>.mp3）。
+// 开局时随机挑一段；库为空时没有播报，走上面的默认时间轴。
+const IDENTITY_BRIEFINGS = [
+]
+
+function pickIdentityBriefing() {
+  if (!IDENTITY_BRIEFINGS.length) return null
+  return IDENTITY_BRIEFINGS[Math.floor(Math.random() * IDENTITY_BRIEFINGS.length)]
+}
 
 // 首任队长对外展示的阵营：选了就用选的；到点没选按真实阵营算（骗徒没来得及撒谎就亮真身）。
 // 服务端没有定时器，所以「到点」在每次读取时按 lockAt 现算，写盘由下一次身份操作完成。
@@ -567,6 +578,8 @@ function findFinaleCorrection(secret, traitorConverted) {
 
 module.exports = {
   IDENTITY_SCHEDULE,
+  IDENTITY_BRIEFINGS,
+  pickIdentityBriefing,
   effectivePriestClaim,
   roleInfo,
   roleArtVariants,

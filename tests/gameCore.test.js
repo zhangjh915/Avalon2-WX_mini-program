@@ -17,6 +17,16 @@ function finaleSecret(players, submissions) {
 }
 
 function run() {
+  // 开场播报音频库：条目必须 id 唯一、三个时长都是正数；库空时不挑，非空时挑到的一定在库里
+  const briefings = core.IDENTITY_BRIEFINGS
+  assert.strictEqual(new Set(briefings.map(item => item.id)).size, briefings.length, "音频库 id 重复")
+  briefings.forEach(item => {
+    assert.ok(item.claimMs > 0 && item.shuffleMs >= 0 && item.readMs > 0, `${item.id} 的时间轴不合法`)
+  })
+  if (!briefings.length) assert.strictEqual(core.pickIdentityBriefing(), null)
+  briefings.push({ id: "test-only", claimMs: 1000, shuffleMs: 1000, readMs: 1000 })
+  assert.ok(briefings.indexOf(core.pickIdentityBriefing()) >= 0, "挑出来的音频必须在库里")
+  briefings.pop()
   const presets = {
     5: [2, 3, 2, 4, 3], 6: [2, 3, 4, 3, 4], 7: [2, 3, 3, 4, 4],
     8: [3, 4, 4, 5, 5], 9: [3, 4, 4, 5, 5], 10: [3, 4, 4, 5, 5]

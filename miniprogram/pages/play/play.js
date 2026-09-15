@@ -576,8 +576,8 @@ Page({
   // 离开认身份阶段就淡出。轮询每轮都会来一次，identityAudio 内部按 key 去重。
   syncIdentityAudio(room, isHost) {
     const identity = room.game && room.game.identity
-    if (isHost && room.phase === "reveal" && identity && identity.claimAt) {
-      identityAudio.start(assets.identityBriefing(), identity.claimAt)
+    if (isHost && room.phase === "reveal" && identity && identity.claimAt && identity.briefing) {
+      identityAudio.start(assets.identityBriefing(identity.briefing), identity.claimAt)
     } else identityAudio.stop(true)
   },
 
@@ -587,7 +587,12 @@ Page({
     this.setData({ identityAudioOn: on })
   },
 
-  previewIdentityAudio() { identityAudio.preview(assets.identityBriefing()) },
+  // 试听：从音频库里随便挑一段放 8 秒
+  previewIdentityAudio() {
+    const pool = ((this.data.game || {}).identity || {}).briefingPool || []
+    if (!pool.length) return wx.showToast({ title: "还没有配置播报音频", icon: "none" })
+    identityAudio.preview(assets.identityBriefing(pool[Math.floor(Math.random() * pool.length)]))
+  },
 
   // 「身份信息」：把服务端下发的私密记录整理成可读文案。
   // 这里只用 privateView 里的数据，不做任何本地推断，避免显示出玩家本不该知道的信息。

@@ -537,11 +537,15 @@ async function identityAction(event, openid) {
       requireHost(state.secret, openid)
       if (identity.revealAt || identity.claimAt) fail("身份已经开始揭示")
       if (identity.readyIds.length < game.playerCount) fail("还有玩家未准备好")
-      // 整段时间轴此刻定死，队长是不是 bot 都一样——开场播报的音频只有一个版本
+      // 整段时间轴此刻定死，队长是不是 bot 都一样。随机挑一段播报音频，时间轴跟着它走；
+      // 音频库为空时没有播报，用默认时间轴
+      const briefing = core.pickIdentityBriefing()
+      const schedule = briefing || core.IDENTITY_SCHEDULE
+      identity.briefing = briefing ? briefing.id : ""
       identity.claimAt = nowAt
-      identity.lockAt = nowAt + core.IDENTITY_SCHEDULE.claimMs
-      identity.revealAt = identity.lockAt + core.IDENTITY_SCHEDULE.shuffleMs
-      identity.closeAt = identity.revealAt + core.IDENTITY_SCHEDULE.readMs
+      identity.lockAt = nowAt + schedule.claimMs
+      identity.revealAt = identity.lockAt + schedule.shuffleMs
+      identity.closeAt = identity.revealAt + schedule.readMs
     }
     if (event.action === "identityRemembered") {
       if (!identity.closeAt || Date.now() < identity.closeAt) fail("身份阅读时间尚未结束")

@@ -12,6 +12,10 @@
       },
       {
         "type": "folder",
+        "value": "assets/audio"
+      },
+      {
+        "type": "folder",
         "value": "assets/ui/table-long"
       },
       {

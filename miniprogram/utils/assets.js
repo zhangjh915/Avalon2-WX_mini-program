@@ -39,9 +39,10 @@ function roleArt(skin, role, artVariant) {
   return path ? CLOUD_PREFIX + path : ""
 }
 
-// 认身份的开场播报：配音和 BGM 合成好的一整段，只在房主手机上放
-function identityBriefing() {
-  return `${CLOUD_PREFIX}assets/audio/identity-briefing.mp3`
+// 认身份的开场播报：配音和 BGM 合成好的一整段，只在房主手机上放。
+// 服务端开局时从音频库里随机挑一段，id 写在 game.identity.briefing 里
+function identityBriefing(id) {
+  return id ? `${CLOUD_PREFIX}assets/audio/identity/${id}.mp3` : ""
 }
 
 function identityBack(skin) {

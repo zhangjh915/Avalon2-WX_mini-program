@@ -34,8 +34,8 @@
         <button wx:if="{{!identityReady}}" class="primary-action" bindtap="confirmIdentity">我已准备</button>
         <view wx:else class="submitted-state"><view class="submitted-seal seal-waiting"><image class="seal-base" src="{{ui.seal}}" mode="scaleToFill" /><view class="seal-initial">{{myInitial}}</view></view><view class="waiting-title">等待全员准备</view></view>
         <view class="identity-progress">{{identityReadyCount}} / {{game.playerCount}}</view>
-        <view wx:if="{{isHost}}" class="audio-toggle"><text class="audio-toggle-label">开场播报（只在你的手机上放）</text><switch checked="{{identityAudioOn}}" bindchange="toggleIdentityAudio" color="#2c6b52" /></view>
-        <view wx:if="{{isHost && identityAudioOn}}" class="ghost-action" bindtap="previewIdentityAudio">试听</view>
+        <view wx:if="{{isHost && game.identity.briefingPool.length}}" class="audio-toggle"><text class="audio-toggle-label">开场播报（只在你的手机上放）</text><switch checked="{{identityAudioOn}}" bindchange="toggleIdentityAudio" color="#2c6b52" /></view>
+        <view wx:if="{{isHost && identityAudioOn && game.identity.briefingPool.length}}" class="ghost-action" bindtap="previewIdentityAudio">试听</view>
         <button wx:if="{{isHost && identityReadyCount === game.playerCount && !game.identity.revealAt}}" class="launch-action" bindtap="startIdentity">统一揭示身份</button>
       </view>
 
