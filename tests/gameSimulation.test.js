@@ -308,17 +308,18 @@ class Sim {
     if (!(schedule.claimAt && schedule.lockAt > schedule.claimAt && schedule.revealAt >= schedule.lockAt && schedule.closeAt > schedule.revealAt)) {
       throw new Violation(`startIdentity 应当一次定死 lockAt/revealAt/closeAt：${JSON.stringify(schedule)}`)
     }
-    // 时间轴要跟挑中的播报音频走；库空时用默认
-    const chosen = this.fakeBriefings.find(item => item.id === schedule.briefing) || null
-    if (this.fakeBriefings.length && !chosen) record("briefing-pick", `挑中的播报 ${JSON.stringify(schedule.briefing)} 不在库里`, this)
-    if (!this.fakeBriefings.length && schedule.briefing) record("briefing-unexpected", "库是空的却挑了播报", this)
+    // 时间轴要跟挑中的播报音频走；库空时用默认。库 = 真实条目 + 本局塞进去的假音频
+    const catalog = core.IDENTITY_BRIEFINGS
+    const chosen = catalog.find(item => item.id === schedule.briefing) || null
+    if (catalog.length && !chosen) record("briefing-pick", `挑中的播报 ${JSON.stringify(schedule.briefing)} 不在库里`, this)
+    if (!catalog.length && schedule.briefing) record("briefing-unexpected", "库是空的却挑了播报", this)
     const expectedSchedule = chosen || core.IDENTITY_SCHEDULE
     if (schedule.lockAt - schedule.claimAt !== expectedSchedule.claimMs || schedule.revealAt - schedule.lockAt !== expectedSchedule.shuffleMs || schedule.closeAt - schedule.revealAt !== expectedSchedule.readMs) {
       record("briefing-schedule", `时间轴 ${schedule.lockAt - schedule.claimAt}/${schedule.revealAt - schedule.lockAt}/${schedule.closeAt - schedule.revealAt} 与播报 ${JSON.stringify(expectedSchedule)} 不符`, this)
     }
-    if (this.fakeBriefings.length) coverage.briefingGames += 1
+    if (catalog.length) coverage.briefingGames += 1
     const poolIds = (schedule.briefingPool || []).slice().sort().join(",")
-    if (poolIds !== this.fakeBriefings.map(item => item.id).sort().join(",")) record("briefing-pool", `公开的音频池 ${poolIds} 与库不符`, this)
+    if (poolIds !== catalog.map(item => item.id).sort().join(",")) record("briefing-pool", `公开的音频池 ${poolIds} 与库不符`, this)
 
     const leader = this.byId(this.room().game.firstLeaderId)
     if (leader.openid) {
