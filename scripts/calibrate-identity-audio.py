@@ -18,14 +18,31 @@
 """
 import json, re, sys, pathlib
 
-# 每个锚点接受几种说法（台词改过版本），按顺序匹配
-LINES = {
-    "claim": ["第一位领袖", "首任队长"],
-    "lock": ["展示已锁定", "阵营已定", "阵营已锁定"],
-    "reveal": ["翻开身份牌", "翻开你的身份牌"],
-    "tenLeft": ["还有十秒"],
-    "close": ["收起身份牌"],
-}
+# 台词每版都不一样，锚点按「句子的功能」找，不按固定字面：
+#   claim   含「第一位领袖」的第一句
+#   lock    claim 之后紧跟的那句短话（不超过 6 个字，如「锁定。」「好。」「嗯。」）；找不到就按 reveal 前 3 秒算
+#   reveal  claim 之后第一句带「牌」且不带「收」的话
+#   tenLeft 「还有十秒」
+#   close   带「收」又带「牌」的第一句
+def locate(sentences):
+    found = {}
+    idx = {}
+    for i, s in enumerate(sentences):
+        text = (s.get("text") or "").strip()
+        if "claim" not in found and "第一位领袖" in text:
+            found["claim"] = s; idx["claim"] = i; continue
+        if "claim" in found and "reveal" not in found and "牌" in text and "收" not in text:
+            found["reveal"] = s; idx["reveal"] = i; continue
+        if "tenLeft" not in found and "还有十秒" in text:
+            found["tenLeft"] = s; idx["tenLeft"] = i; continue
+        if "close" not in found and "收" in text and "牌" in text:
+            found["close"] = s; idx["close"] = i; continue
+    if "claim" in found and "reveal" in found:
+        for s in sentences[idx["claim"] + 1: idx["reveal"]]:
+            text = (s.get("text") or "").strip()
+            if 0 < len(text.rstrip("。！？…")) <= 6:
+                found["lock"] = s; break
+    return found
 
 def main():
     if len(sys.argv) < 2:
@@ -34,13 +51,14 @@ def main():
     sentences = ((meta.get("subtitle") or {}).get("sentences")) or []
     if not sentences:
         sys.exit("这个 json 没有字幕时间戳：生成时 audio_config.enable_subtitle 要为 true")
-    found = {}
-    for key, markers in LINES.items():
-        hit = next((s for s in sentences if any(marker in (s.get("text") or "") for marker in markers)), None)
-        if hit: found[key] = (hit["start_time"] / 1000.0, hit["end_time"] / 1000.0)
-    missing = [k for k in LINES if k not in found]
+    hits = locate(sentences)
+    found = {k: (v["start_time"] / 1000.0, v["end_time"] / 1000.0) for k, v in hits.items()}
+    missing = [k for k in ("claim", "reveal", "tenLeft", "close") if k not in found]
     if missing:
         sys.exit(f"台词没找齐，缺 {missing}；字幕里有：{[s.get('text') for s in sentences]}")
+    if "lock" not in found:
+        found["lock"] = (found["reveal"][0] - 3.0, found["reveal"][0] - 3.0)
+        print("（没找到锁定短句，按翻牌前 3 秒算）")
     lock, reveal, close, ten = found["lock"][0], found["reveal"][0], found["close"][0], found["tenLeft"][0]
     schedule = {"claimMs": int(round(lock * 10)) * 100, "shuffleMs": int(round((reveal - lock) * 10)) * 100, "readMs": int(round((close - reveal) * 10)) * 100}
     print(f"音频 {meta.get('duration')}s")
