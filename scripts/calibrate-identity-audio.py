@@ -18,30 +18,33 @@
 """
 import json, re, sys, pathlib
 
-# 台词每版都不一样，锚点按「句子的功能」找，不按固定字面：
+# 台词每版都不一样，锚点不按字面找，按**顺序**找：
 #   claim   含「第一位领袖」的第一句
-#   lock    claim 之后紧跟的那句短话（不超过 6 个字，如「锁定。」「好。」「嗯。」）；找不到就按 reveal 前 3 秒算
-#   reveal  claim 之后第一句带「牌」且不带「收」的话
+#   lock    claim 之后第一句不超过 8 个字的短话（「好。」「记下了。」「阿门。」）
+#   reveal  claim 之后第一句长于 8 个字的话（让大家各自看清身份那句）
 #   tenLeft 「还有十秒」
-#   close   带「收」又带「牌」的第一句
+#   close   「还有十秒」之后的第一句
 def locate(sentences):
     found = {}
-    idx = {}
-    for i, s in enumerate(sentences):
+    stage = "before"
+    for s in sentences:
         text = (s.get("text") or "").strip()
-        if "claim" not in found and "第一位领袖" in text:
-            found["claim"] = s; idx["claim"] = i; continue
-        if "claim" in found and "reveal" not in found and "牌" in text and "收" not in text:
-            found["reveal"] = s; idx["reveal"] = i; continue
-        if "tenLeft" not in found and "还有十秒" in text:
-            found["tenLeft"] = s; idx["tenLeft"] = i; continue
-        if "close" not in found and "收" in text and "牌" in text:
-            found["close"] = s; idx["close"] = i; continue
-    if "claim" in found and "reveal" in found:
-        for s in sentences[idx["claim"] + 1: idx["reveal"]]:
-            text = (s.get("text") or "").strip()
-            if 0 < len(text.rstrip("。！？…")) <= 6:
-                found["lock"] = s; break
+        core_len = len(text.rstrip("。！？…"))
+        if stage == "before":
+            if "第一位领袖" in text:
+                found["claim"] = s; stage = "after-claim"
+        elif stage == "after-claim":
+            if "第一位领袖" in text or "教士" in text:
+                continue   # claim 拆成两句
+            if core_len <= 8 and "lock" not in found:
+                found["lock"] = s
+            else:
+                found["reveal"] = s; stage = "reading"
+        elif stage == "reading":
+            if "还有十秒" in text:
+                found["tenLeft"] = s; stage = "after-ten"
+        elif stage == "after-ten":
+            found["close"] = s; break
     return found
 
 def main():
@@ -75,6 +78,9 @@ def main():
         dest = pathlib.Path("miniprogram/assets/audio/identity") / f"{audio_id}.mp3"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(mp3.read_bytes())
+        # 结尾统一补淡出：生成模型常把结尾切得很硬，注入时一律处理，不靠重生成
+        import subprocess
+        subprocess.run([sys.executable, "scripts/fade-audio.py", str(dest)], check=True)
         core = pathlib.Path("cloudfunctions/avalonGame/gameCore.js")
         text = core.read_text()
         entry = f'  {{ id: "{audio_id}", claimMs: {schedule["claimMs"]}, shuffleMs: {schedule["shuffleMs"]}, readMs: {schedule["readMs"]} }},'
